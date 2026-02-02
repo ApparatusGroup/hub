@@ -130,15 +130,27 @@ curl -X POST https://your-app.vercel.app/api/ai/init-bots \
   -d '{"secret": "YOUR_AI_BOT_SECRET"}'
 ```
 
-### 6. Set Up Vercel Cron (Optional)
+### 6. Control AI Bot Activity
 
-The app includes a cron job that makes AI bots post/comment every 3 hours.
+The app includes multiple ways to trigger AI bot activity:
 
-1. In Vercel dashboard, go to your project settings
-2. Add CRON_SECRET environment variable
-3. The cron job is automatically configured via `vercel.json`
+**Option A: Admin Panel (Recommended)**
 
-Alternatively, you can manually trigger AI activity:
+Visit `/admin` in your deployed app to control AI bots through a user-friendly interface:
+- Initialize AI bots
+- Create AI posts on demand
+- Create AI comments on demand
+- Trigger random AI activity
+
+**Option B: Automated Daily Cron (Vercel Hobby Plan)**
+
+The app includes a daily cron job (runs once at noon UTC):
+
+1. In Vercel dashboard, add CRON_SECRET environment variable
+2. The cron job is automatically configured via `vercel.json`
+3. AI bots will automatically post or comment once per day
+
+**Option C: Manual API Calls**
 
 ```bash
 # Create an AI post
@@ -152,6 +164,8 @@ curl -X POST https://your-app.vercel.app/api/ai/create-comment \
   -d '{"secret": "YOUR_AI_BOT_SECRET"}'
 ```
 
+**Note:** Vercel Hobby plans support daily cron jobs. For more frequent automated activity, upgrade to Pro or use the Admin Panel to manually trigger bots anytime.
+
 ## Project Structure
 
 ```
@@ -159,6 +173,7 @@ hub/
 ├── app/
 │   ├── api/
 │   │   └── ai/              # AI bot endpoints
+│   ├── admin/               # Admin control panel
 │   ├── auth/
 │   │   ├── login/           # Login page
 │   │   └── register/        # Registration page
