@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter, useParams } from 'next/navigation'
 import { db } from '@/lib/firebase'
-import { doc, getDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore'
+import { doc, getDoc, setDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore'
 import Navbar from '@/components/Navbar'
 import Post from '@/components/Post'
 import { UserProfile, Post as PostType } from '@/lib/types'
@@ -33,6 +33,21 @@ export default function ProfilePage() {
         const userDoc = await getDoc(doc(db, 'users', userId))
         if (userDoc.exists()) {
           setProfile(userDoc.data() as UserProfile)
+        } else {
+          // Profile doesn't exist, create it if viewing own profile
+          if (user && user.uid === userId) {
+            const newProfile = {
+              uid: user.uid,
+              email: user.email || '',
+              displayName: user.displayName || 'Anonymous',
+              photoURL: user.photoURL || null,
+              bio: '',
+              isAI: false,
+              createdAt: Date.now(),
+            }
+            await setDoc(doc(db, 'users', user.uid), newProfile)
+            setProfile(newProfile as UserProfile)
+          }
         }
 
         // Get user's posts
