@@ -1,98 +1,161 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import { redirect } from "next/navigation";
-import Navbar from "@/components/Navbar";
-import Image from "next/image";
+'use client'
 
-async function getUser(userId: string) {
-  const res = await fetch(
-    `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/users/${userId}`,
-    {
-      cache: "no-store",
+import { useEffect, useState } from 'react'
+import { useAuth } from '@/lib/auth-context'
+import { useRouter, useParams } from 'next/navigation'
+import { db } from '@/lib/firebase'
+import { doc, getDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore'
+import Navbar from '@/components/Navbar'
+import Post from '@/components/Post'
+import { UserProfile, Post as PostType } from '@/lib/types'
+import { Loader2, Bot, Calendar } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
+
+export default function ProfilePage() {
+  const { user } = useAuth()
+  const router = useRouter()
+  const params = useParams()
+  const userId = params?.userId as string
+
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [posts, setPosts] = useState<PostType[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!user) {
+      router.push('/auth/login')
+      return
     }
-  );
 
-  if (!res.ok) {
-    throw new Error("Failed to fetch user");
+    const loadProfile = async () => {
+      try {
+        // Get user profile
+        const userDoc = await getDoc(doc(db, 'users', userId))
+        if (userDoc.exists()) {
+          setProfile(userDoc.data() as UserProfile)
+        }
+
+        // Get user's posts
+        const q = query(
+          collection(db, 'posts'),
+          where('userId', '==', userId),
+          orderBy('createdAt', 'desc')
+        )
+        const snapshot = await getDocs(q)
+        const postsData = snapshot.docs.map(doc => {
+          const data = doc.data()
+          return {
+            id: doc.id,
+            userId: data.userId,
+            userName: data.userName,
+            userPhoto: data.userPhoto,
+            isAI: data.isAI,
+            content: data.content,
+            imageUrl: data.imageUrl,
+            articleUrl: data.articleUrl,
+            articleTitle: data.articleTitle,
+            createdAt: data.createdAt?.toMillis() || Date.now(),
+            likes: data.likes || [],
+            commentCount: data.commentCount || 0,
+          } as PostType
+        })
+        setPosts(postsData)
+      } catch (error) {
+        console.error('Error loading profile:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadProfile()
+  }, [userId, user, router])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
-  return res.json();
-}
-
-export default async function ProfilePage({
-  params,
-}: {
-  params: Promise<{ userId: string }>;
-}) {
-  const session = await getServerSession(authOptions);
-  const { userId } = await params;
-
-  if (!session) {
-    redirect("/login");
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="max-w-2xl mx-auto px-4 py-12 text-center">
+          <h1 className="text-2xl font-bold text-gray-900">Profile not found</h1>
+        </div>
+      </div>
+    )
   }
-
-  const user = await getUser(userId);
-  const isOwnProfile = session.user.id === userId;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white shadow rounded-lg p-8">
-          <div className="flex items-center space-x-6 mb-6">
-            {user.image ? (
-              <Image
-                src={user.image}
-                alt={user.name || "User"}
-                width={100}
-                height={100}
-                className="rounded-full"
-              />
-            ) : (
-              <div className="w-24 h-24 bg-gray-300 rounded-full flex items-center justify-center">
-                <span className="text-gray-600 text-3xl font-semibold">
-                  {user.name?.charAt(0) || "U"}
+
+      <main className="max-w-2xl mx-auto px-4 py-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="flex items-start space-x-4">
+            <div className="flex-shrink-0">
+              {profile.photoURL ? (
+                <img
+                  src={profile.photoURL}
+                  alt={profile.displayName}
+                  className="w-20 h-20 rounded-full"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold">
+                  {profile.displayName[0].toUpperCase()}
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center space-x-2">
+                <h1 className="text-2xl font-bold text-gray-900">{profile.displayName}</h1>
+                {profile.isAI && (
+                  <span className="flex items-center text-sm bg-secondary/10 text-secondary px-2 py-1 rounded-full">
+                    <Bot className="w-4 h-4 mr-1" />
+                    AI Bot
+                  </span>
+                )}
+              </div>
+
+              <p className="text-gray-600 mt-1">{profile.email}</p>
+
+              {profile.bio && (
+                <p className="text-gray-800 mt-3">{profile.bio}</p>
+              )}
+
+              <div className="flex items-center text-sm text-gray-500 mt-3">
+                <Calendar className="w-4 h-4 mr-1" />
+                <span>
+                  Joined {formatDistanceToNow(profile.createdAt, { addSuffix: true })}
                 </span>
               </div>
-            )}
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{user.name}</h1>
-              <p className="text-gray-600">{user.email}</p>
-              <p className="text-sm text-gray-500 mt-1">
-                Member since {new Date(user.createdAt).toLocaleDateString()}
-              </p>
+
+              <div className="flex items-center space-x-6 mt-4 text-sm">
+                <div>
+                  <span className="font-bold text-gray-900">{posts.length}</span>
+                  <span className="text-gray-600 ml-1">Posts</span>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
 
-          {user.bio && (
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Bio</h2>
-              <p className="text-gray-700 whitespace-pre-wrap">{user.bio}</p>
-            </div>
-          )}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900">Posts</h2>
 
-          <div className="grid grid-cols-2 gap-4 border-t pt-4">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">
-                {user._count.posts}
-              </p>
-              <p className="text-gray-600">Posts</p>
+          {posts.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+              <p className="text-gray-500">No posts yet</p>
             </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">0</p>
-              <p className="text-gray-600">Followers</p>
-            </div>
-          </div>
-
-          {isOwnProfile && (
-            <div className="mt-6 border-t pt-4">
-              <p className="text-sm text-gray-600">
-                Profile editing functionality can be added here
-              </p>
-            </div>
+          ) : (
+            posts.map(post => <Post key={post.id} post={post} />)
           )}
         </div>
       </main>
     </div>
-  );
+  )
 }

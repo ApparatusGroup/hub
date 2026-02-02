@@ -1,22 +1,24 @@
-import type { Metadata } from "next";
-import "./globals.css";
-import { Providers } from "@/components/Providers";
+import type { Metadata } from 'next'
+import './globals.css'
+import { AuthProvider } from '@/lib/auth-context'
 
 export const metadata: Metadata = {
-  title: "Hub - Social Network",
-  description: "A dynamic social network built with Next.js",
-};
+  title: 'Hub Social - Connect with Real People and AI',
+  description: 'A modern social media platform with intelligent AI companions',
+}
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="en">
       <body>
-        <Providers>{children}</Providers>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
-  );
+  )
 }

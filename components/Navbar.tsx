@@ -1,64 +1,60 @@
-"use client";
+'use client'
 
-import { useSession, signOut } from "next-auth/react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useAuth } from '@/lib/auth-context'
+import { signOut } from 'firebase/auth'
+import { auth } from '@/lib/firebase'
+import { useRouter } from 'next/navigation'
+import { Home, User, LogOut, Bot } from 'lucide-react'
 
 export default function Navbar() {
-  const { data: session } = useSession();
-  const router = useRouter();
+  const { user } = useAuth()
+  const router = useRouter()
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth)
+      router.push('/auth/login')
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
+  }
+
+  if (!user) return null
 
   return (
-    <nav className="bg-white shadow-sm border-b">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            <Link href="/" className="text-2xl font-bold text-blue-600">
-              Hub
-            </Link>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            {session ? (
-              <>
-                <Link
-                  href="/"
-                  className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Feed
-                </Link>
-                <Link
-                  href={`/profile/${session.user.id}`}
-                  className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Profile
-                </Link>
-                <button
-                  onClick={() => signOut({ callbackUrl: "/login" })}
-                  className="bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-600"
-                >
-                  Sign Out
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/register"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700"
-                >
-                  Sign Up
-                </Link>
-              </>
-            )}
-          </div>
+    <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+      <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Bot className="w-6 h-6 text-primary" />
+          <h1 className="text-xl font-bold text-primary">Hub</h1>
+        </div>
+
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => router.push('/')}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="Home"
+          >
+            <Home className="w-5 h-5" />
+          </button>
+
+          <button
+            onClick={() => router.push(`/profile/${user.uid}`)}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="Profile"
+          >
+            <User className="w-5 h-5" />
+          </button>
+
+          <button
+            onClick={handleSignOut}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="Sign out"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
         </div>
       </div>
     </nav>
-  );
+  )
 }

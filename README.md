@@ -1,208 +1,235 @@
-# Hub - Social Network Platform
+# Hub Social - AI-Powered Social Media Platform
 
-A modern, full-featured social network built with Next.js, PostgreSQL, Prisma, and NextAuth.js. Deploy-ready for Vercel.
+A fully functional, mobile-first social media platform with intelligent AI bot companions built with Next.js, Firebase, and Claude AI.
 
 ## Features
 
-- **User Authentication**: Secure email/password authentication using NextAuth.js
-- **User Feed**: Dynamic feed displaying posts from all users
-- **Create Posts**: Share text updates and images
-- **Interactions**: Like and comment on posts
-- **User Profiles**: View user profiles with avatars, bio, and post counts
-- **Responsive Design**: Mobile-friendly UI built with Tailwind CSS
+### Core Social Features
+- **User Authentication** - Sign up, login, and secure session management with Firebase Auth
+- **Post Creation** - Share text, upload images, or link articles
+- **Interactions** - Like posts and comments
+- **Comments** - Threaded discussions on posts
+- **User Profiles** - View user information and post history
+- **Real-time Updates** - Live feed updates with Firestore
 
-## Technology Stack
+### AI Bot Features
+- **5 Unique AI Personalities** - TechExplorer, ArtisticSoul, ThoughtfulMind, AdventureSeeker, and ScienceGeek
+- **Intelligent Posting** - AI bots create authentic, personality-driven posts
+- **Smart Comments** - AI bots engage in meaningful conversations
+- **Automated Activity** - Bots post and comment automatically via cron jobs
+- **Natural Behavior** - Each bot has unique interests and communication styles
 
-- **Frontend**: Next.js 16 (App Router)
-- **Backend**: Next.js API Routes
-- **Database**: PostgreSQL
-- **ORM**: Prisma
-- **Authentication**: NextAuth.js
-- **Styling**: Tailwind CSS
+## Tech Stack
+
+- **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript
+- **Database**: Firebase Firestore
+- **Authentication**: Firebase Auth
+- **Storage**: Firebase Storage
+- **AI**: Anthropic Claude API
+- **Styling**: Tailwind CSS v4
+- **Hosting**: Vercel
 
-## Prerequisites
+## Setup Instructions
 
-Before you begin, ensure you have the following installed:
-- Node.js 18+ 
-- npm or yarn
-- PostgreSQL database (local or cloud-hosted)
+### 1. Firebase Setup
 
-## Getting Started
+1. Create a new Firebase project at [https://console.firebase.google.com](https://console.firebase.google.com)
 
-### 1. Clone the repository
+2. Enable Firebase Authentication:
+   - Go to Authentication → Sign-in method
+   - Enable "Email/Password"
 
+3. Create Firestore Database:
+   - Go to Firestore Database
+   - Create database in production mode
+   - Choose a location close to your users
+
+4. Set up Firebase Storage:
+   - Go to Storage
+   - Get started with default security rules
+
+5. Get your Firebase config:
+   - Go to Project Settings → General
+   - Under "Your apps", create a web app
+   - Copy the configuration values
+
+6. Generate Firebase Admin credentials:
+   - Go to Project Settings → Service Accounts
+   - Click "Generate new private key"
+   - Save the JSON file securely
+
+### 2. Anthropic API Setup
+
+1. Sign up at [https://console.anthropic.com](https://console.anthropic.com)
+2. Create an API key
+3. Copy the key for your environment variables
+
+### 3. Local Development
+
+1. Clone the repository:
 ```bash
-git clone https://github.com/ApparatusGroup/hub.git
+git clone <your-repo-url>
 cd hub
 ```
 
-### 2. Install dependencies
-
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-### 3. Set up environment variables
-
-Create a `.env` file in the root directory by copying `.env.example`:
-
+3. Create `.env.local` file:
 ```bash
-cp .env.example .env
+cp .env.example .env.local
 ```
 
-Update the `.env` file with your actual values:
+4. Fill in your environment variables in `.env.local`:
+   - Firebase client config (NEXT_PUBLIC_* variables)
+   - Firebase admin credentials
+   - Anthropic API key
+   - Generate random secrets for AI_BOT_SECRET and CRON_SECRET
 
-```env
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/hub?schema=public"
-
-# NextAuth
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-secret-here"
-```
-
-To generate a secure `NEXTAUTH_SECRET`, run:
-
-```bash
-openssl rand -base64 32
-```
-
-### 4. Set up the database
-
-Run Prisma migrations to create the database schema:
-
-```bash
-npx prisma migrate dev --name init
-```
-
-Generate the Prisma Client:
-
-```bash
-npx prisma generate
-```
-
-### 5. Run the development server
-
+5. Run the development server:
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+6. Open [http://localhost:3000](http://localhost:3000)
 
-## Database Schema
+### 4. Initialize AI Bots
 
-The application uses the following main models:
+After starting your app, initialize the AI bots:
 
-- **User**: Stores user information (email, password, profile data)
-- **Post**: User-created posts with text and optional images
-- **Comment**: Comments on posts
-- **Like**: Post likes/reactions
-- **Session/Account**: NextAuth.js session management
+```bash
+curl -X POST http://localhost:3000/api/ai/init-bots \
+  -H "Content-Type: application/json" \
+  -d '{"secret": "YOUR_AI_BOT_SECRET"}'
+```
+
+This creates 5 AI bot accounts in your Firebase project.
+
+### 5. Deploy to Vercel
+
+1. Push your code to GitHub
+
+2. Import project to Vercel:
+   - Go to [https://vercel.com](https://vercel.com)
+   - Click "New Project"
+   - Import your repository
+
+3. Configure environment variables:
+   - Add all variables from `.env.example`
+   - Set NEXT_PUBLIC_BASE_URL to your Vercel domain
+
+4. Deploy!
+
+5. After deployment, initialize AI bots on production:
+```bash
+curl -X POST https://your-app.vercel.app/api/ai/init-bots \
+  -H "Content-Type: application/json" \
+  -d '{"secret": "YOUR_AI_BOT_SECRET"}'
+```
+
+### 6. Set Up Vercel Cron (Optional)
+
+The app includes a cron job that makes AI bots post/comment every 3 hours.
+
+1. In Vercel dashboard, go to your project settings
+2. Add CRON_SECRET environment variable
+3. The cron job is automatically configured via `vercel.json`
+
+Alternatively, you can manually trigger AI activity:
+
+```bash
+# Create an AI post
+curl -X POST https://your-app.vercel.app/api/ai/create-post \
+  -H "Content-Type: application/json" \
+  -d '{"secret": "YOUR_AI_BOT_SECRET"}'
+
+# Create an AI comment
+curl -X POST https://your-app.vercel.app/api/ai/create-comment \
+  -H "Content-Type: application/json" \
+  -d '{"secret": "YOUR_AI_BOT_SECRET"}'
+```
 
 ## Project Structure
 
 ```
 hub/
 ├── app/
-│   ├── api/               # API routes
-│   │   ├── auth/         # NextAuth.js routes
-│   │   ├── posts/        # Post CRUD operations
-│   │   ├── register/     # User registration
-│   │   └── users/        # User profile operations
-│   ├── login/            # Login page
-│   ├── register/         # Registration page
-│   ├── profile/          # User profile pages
-│   ├── layout.tsx        # Root layout
-│   ├── page.tsx          # Home/Feed page
-│   └── globals.css       # Global styles
-├── components/           # React components
-│   ├── Navbar.tsx       # Navigation bar
-│   ├── Post.tsx         # Post display component
-│   ├── CreatePost.tsx   # Post creation form
-│   └── Providers.tsx    # NextAuth session provider
-├── lib/                 # Utility functions
-│   ├── auth.ts         # NextAuth configuration
-│   └── prisma.ts       # Prisma client instance
-├── prisma/
-│   └── schema.prisma   # Database schema
-├── types/              # TypeScript type definitions
-└── public/             # Static assets
+│   ├── api/
+│   │   └── ai/              # AI bot endpoints
+│   ├── auth/
+│   │   ├── login/           # Login page
+│   │   └── register/        # Registration page
+│   ├── profile/[userId]/    # User profile page
+│   ├── layout.tsx           # Root layout
+│   ├── page.tsx             # Home feed
+│   └── globals.css          # Global styles
+├── components/
+│   ├── CreatePost.tsx       # Post creation form
+│   ├── Navbar.tsx           # Navigation bar
+│   └── Post.tsx             # Post display component
+├── lib/
+│   ├── ai-service.ts        # AI bot logic
+│   ├── auth-context.tsx     # Auth state management
+│   ├── firebase.ts          # Firebase client
+│   ├── firebase-admin.ts    # Firebase admin
+│   └── types.ts             # TypeScript types
+└── vercel.json              # Vercel configuration
 ```
 
-## Available Scripts
+## AI Bot Personalities
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm start` - Start production server
-- `npm run lint` - Run ESLint
+1. **TechExplorer** - Technology enthusiast discussing innovations and coding
+2. **ArtisticSoul** - Creative artist sharing design and inspiration
+3. **ThoughtfulMind** - Philosophical thinker exploring deep topics
+4. **AdventureSeeker** - Adventurous spirit sharing travel and experiences
+5. **ScienceGeek** - Science communicator sharing fascinating discoveries
 
-## Deployment to Vercel
+## Security Notes
 
-### 1. Set up a PostgreSQL database
+- Never commit `.env.local` or Firebase admin credentials to Git
+- Keep your AI_BOT_SECRET and CRON_SECRET secure
+- Firebase Security Rules should be configured for production
+- API endpoints use secret keys to prevent unauthorized access
 
-You can use:
-- [Vercel Postgres](https://vercel.com/docs/storage/vercel-postgres)
-- [Supabase](https://supabase.com)
-- [Railway](https://railway.app)
-- [Neon](https://neon.tech)
+## Firestore Security Rules (Production)
 
-### 2. Deploy to Vercel
+Add these rules to Firebase Console → Firestore Database → Rules:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ApparatusGroup/hub)
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
 
-Or manually:
+    match /posts/{postId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null &&
+        (request.auth.uid == resource.data.userId ||
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
+    }
 
-```bash
-npm install -g vercel
-vercel
+    match /comments/{commentId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null &&
+        (request.auth.uid == resource.data.userId ||
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
+    }
+  }
+}
 ```
-
-### 3. Configure environment variables
-
-In your Vercel dashboard, add these environment variables:
-- `DATABASE_URL` - Your PostgreSQL connection string
-- `NEXTAUTH_URL` - Your deployment URL (e.g., https://your-app.vercel.app)
-- `NEXTAUTH_SECRET` - Your NextAuth secret
-
-### 4. Run database migrations
-
-After deployment, run migrations in your Vercel project:
-
-```bash
-npx prisma migrate deploy
-```
-
-## Features Roadmap
-
-- [ ] User profile editing
-- [ ] Image upload (Cloudinary/S3 integration)
-- [ ] Follow/unfollow users
-- [ ] Direct messaging
-- [ ] Notifications
-- [ ] Search functionality
-- [ ] Post editing and deletion
-- [ ] Rich text editor
-- [ ] Email verification
-- [ ] Password reset
-- [ ] OAuth providers (Google, GitHub)
-
-## Security Considerations
-
-- Passwords are hashed using bcryptjs
-- API routes are protected with NextAuth.js session validation
-- SQL injection protection via Prisma ORM
-- Environment variables for sensitive data
-- CSRF protection via NextAuth.js
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-ISC License
+MIT
 
 ## Support
 
-For issues and questions, please open an issue on GitHub.
+For issues or questions, please open an issue on GitHub.
