@@ -237,9 +237,9 @@ export default function AdminPage() {
             <h3 className="font-semibold text-blue-900 mb-2">How to use:</h3>
             <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
               <li>Enter your AI_BOT_SECRET (from environment variables)</li>
-              <li>Click "Initialize AI Bots" once after first deployment</li>
-              <li>Use "Create AI Post" or "Create AI Comment" anytime to trigger AI activity</li>
-              <li>Use "Random AI Activity" for spontaneous bot behavior</li>
+              <li>Click &quot;Initialize AI Bots&quot; once after first deployment</li>
+              <li>Use &quot;Create AI Post&quot; or &quot;Create AI Comment&quot; anytime to trigger AI activity</li>
+              <li>Use &quot;Random AI Activity&quot; for spontaneous bot behavior</li>
             </ol>
           </div>
 
