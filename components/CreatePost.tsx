@@ -1,81 +1,152 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useState, useRef } from 'react'
+import { useAuth } from '@/lib/auth-context'
+import { db, storage } from '@/lib/firebase'
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { Image, Link as LinkIcon, X } from 'lucide-react'
 
 export default function CreatePost() {
-  const { data: session } = useSession();
-  const router = useRouter();
-  const [content, setContent] = useState("");
-  const [image, setImage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth()
+  const [content, setContent] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [articleUrl, setArticleUrl] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [showLinkInput, setShowLinkInput] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setImageFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const removeImage = () => {
+    setImageFile(null)
+    setImagePreview(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!content.trim()) return;
+    e.preventDefault()
+    if (!user || (!content.trim() && !imageFile && !articleUrl)) return
 
-    setIsLoading(true);
-
+    setLoading(true)
     try {
-      const response = await fetch("/api/posts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          content,
-          image: image || null,
-        }),
-      });
+      let imageUrl = ''
 
-      if (response.ok) {
-        setContent("");
-        setImage("");
-        router.refresh();
-      } else {
-        console.error("Failed to create post");
+      if (imageFile) {
+        const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${imageFile.name}`)
+        await uploadBytes(storageRef, imageFile)
+        imageUrl = await getDownloadURL(storageRef)
       }
-    } catch (error) {
-      console.error("Error creating post:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  if (!session) {
-    return null;
+      await addDoc(collection(db, 'posts'), {
+        userId: user.uid,
+        userName: user.displayName || 'Anonymous',
+        userPhoto: user.photoURL || null,
+        isAI: false,
+        content: content.trim(),
+        imageUrl: imageUrl || null,
+        articleUrl: articleUrl || null,
+        createdAt: serverTimestamp(),
+        likes: [],
+      })
+
+      setContent('')
+      setImageFile(null)
+      setImagePreview(null)
+      setArticleUrl('')
+      setShowLinkInput(false)
+    } catch (error) {
+      console.error('Error creating post:', error)
+      alert('Failed to create post')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div className="bg-white shadow rounded-lg p-6 mb-6">
-      <h2 className="text-xl font-semibold mb-4">Create a Post</h2>
+    <div className="post-card">
       <form onSubmit={handleSubmit}>
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="What's on your mind?"
-          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-          rows={4}
-          disabled={isLoading}
+          className="w-full px-0 py-2 border-0 resize-none focus:outline-none"
+          rows={3}
         />
-        <input
-          type="url"
-          value={image}
-          onChange={(e) => setImage(e.target.value)}
-          placeholder="Image URL (optional)"
-          className="w-full mt-3 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          disabled={isLoading}
-        />
-        <button
-          type="submit"
-          disabled={isLoading || !content.trim()}
-          className="mt-3 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {isLoading ? "Posting..." : "Post"}
-        </button>
+
+        {imagePreview && (
+          <div className="relative mt-2 mb-2">
+            <img src={imagePreview} alt="Preview" className="rounded-lg max-h-64 w-full object-cover" />
+            <button
+              type="button"
+              onClick={removeImage}
+              className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full hover:bg-black/70"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {showLinkInput && (
+          <div className="mt-2 mb-2">
+            <input
+              type="url"
+              value={articleUrl}
+              onChange={(e) => setArticleUrl(e.target.value)}
+              placeholder="Paste article URL..."
+              className="input-field"
+            />
+          </div>
+        )}
+
+        <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+          <div className="flex items-center space-x-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="hidden"
+              id="image-upload"
+            />
+            <label
+              htmlFor="image-upload"
+              className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
+            >
+              <Image className="w-5 h-5 text-gray-600" />
+            </label>
+
+            <button
+              type="button"
+              onClick={() => setShowLinkInput(!showLinkInput)}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <LinkIcon className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading || (!content.trim() && !imageFile && !articleUrl)}
+            className="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Posting...' : 'Post'}
+          </button>
+        </div>
       </form>
     </div>
-  );
+  )
 }
