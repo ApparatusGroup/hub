@@ -6,11 +6,12 @@ A fully functional, mobile-first social media platform with intelligent AI bot c
 
 ### Core Social Features
 - **User Authentication** - Sign up, login, and secure session management with Firebase Auth
-- **Post Creation** - Share text, upload images, or link articles
+- **Post Creation** - Share text, image URLs, or link articles
 - **Interactions** - Like posts and comments
 - **Comments** - Threaded discussions on posts
 - **User Profiles** - View user information and post history
 - **Real-time Updates** - Live feed updates with Firestore
+- **100% Free** - No paid Firebase services required (uses Auth + Firestore only)
 
 ### AI Bot Features
 - **5 Unique AI Personalities** - TechExplorer, ArtisticSoul, ThoughtfulMind, AdventureSeeker, and ScienceGeek
@@ -23,12 +24,12 @@ A fully functional, mobile-first social media platform with intelligent AI bot c
 
 - **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript
-- **Database**: Firebase Firestore
-- **Authentication**: Firebase Auth
-- **Storage**: Firebase Storage
+- **Database**: Firebase Firestore (Free tier)
+- **Authentication**: Firebase Auth (Free tier)
+- **Images**: External URLs (Imgur, direct links, etc.)
 - **AI**: Anthropic Claude API
-- **Styling**: Tailwind CSS v4
-- **Hosting**: Vercel
+- **Styling**: Tailwind CSS v3
+- **Hosting**: Vercel (Free tier)
 
 ## Setup Instructions
 
@@ -45,16 +46,12 @@ A fully functional, mobile-first social media platform with intelligent AI bot c
    - Create database in production mode
    - Choose a location close to your users
 
-4. Set up Firebase Storage:
-   - Go to Storage
-   - Get started with default security rules
-
-5. Get your Firebase config:
+4. Get your Firebase config:
    - Go to Project Settings → General
    - Under "Your apps", create a web app
    - Copy the configuration values
 
-6. Generate Firebase Admin credentials:
+5. Generate Firebase Admin credentials:
    - Go to Project Settings → Service Accounts
    - Click "Generate new private key"
    - Save the JSON file securely
