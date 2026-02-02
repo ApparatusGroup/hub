@@ -13,7 +13,7 @@ A modern, full-featured social network built with Next.js, PostgreSQL, Prisma, a
 
 ## Technology Stack
 
-- **Frontend**: Next.js 14+ (App Router)
+- **Frontend**: Next.js 16 (App Router)
 - **Backend**: Next.js API Routes
 - **Database**: PostgreSQL
 - **ORM**: Prisma

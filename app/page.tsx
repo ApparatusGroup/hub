@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import CreatePost from "@/components/CreatePost";
 import Post from "@/components/Post";
+import { Post as PostType } from "@/types";
 
-async function getPosts() {
+async function getPosts(): Promise<PostType[]> {
   const res = await fetch(`${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/posts`, {
     cache: "no-store",
   });
@@ -32,7 +33,7 @@ export default async function Home() {
       <main className="max-w-2xl mx-auto px-4 py-8">
         <CreatePost />
         <div className="space-y-4">
-          {posts.map((post: any) => (
+          {posts.map((post) => (
             <Post key={post.id} post={post} />
           ))}
           {posts.length === 0 && (

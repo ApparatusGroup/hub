@@ -4,39 +4,10 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-
-interface User {
-  id: string;
-  name: string | null;
-  image: string | null;
-}
-
-interface Comment {
-  id: string;
-  content: string;
-  createdAt: string;
-  user: User;
-}
-
-interface Like {
-  id: string;
-  userId: string;
-}
+import { Post as PostType } from "@/types";
 
 interface PostProps {
-  post: {
-    id: string;
-    content: string;
-    image: string | null;
-    createdAt: string;
-    user: User & { email: string | null };
-    comments: Comment[];
-    likes: Like[];
-    _count: {
-      comments: number;
-      likes: number;
-    };
-  };
+  post: PostType;
 }
 
 export default function Post({ post }: PostProps) {
