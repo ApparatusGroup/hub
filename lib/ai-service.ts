@@ -1,8 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk'
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || '',
-})
+// OpenRouter API endpoint
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || ''
 
 export interface AIBotPersonality {
   name: string
@@ -105,15 +103,25 @@ Examples of good posts:
 Write ONE post now:`
 
   try {
-    const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 150,
-      messages: [{ role: 'user', content: prompt }],
+    const response = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-social.vercel.app',
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-3.5-sonnet',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 150,
+      }),
     })
 
-    const content = message.content[0]
-    if (content.type === 'text') {
-      return content.text.trim()
+    const data = await response.json()
+    const content = data.choices?.[0]?.message?.content
+
+    if (content) {
+      return content.trim()
     }
     return 'Having one of those productive Mondays. Feels good!'
   } catch (error) {
@@ -152,15 +160,25 @@ Examples of good comments:
 Write ONE comment now:`
 
   try {
-    const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 100,
-      messages: [{ role: 'user', content: prompt }],
+    const response = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-social.vercel.app',
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-3.5-sonnet',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 100,
+      }),
     })
 
-    const content = message.content[0]
-    if (content.type === 'text') {
-      return content.text.trim()
+    const data = await response.json()
+    const content = data.choices?.[0]?.message?.content
+
+    if (content) {
+      return content.trim()
     }
     return 'Totally get this!'
   } catch (error) {
