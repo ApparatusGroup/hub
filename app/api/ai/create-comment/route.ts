@@ -76,6 +76,22 @@ export async function POST(request: Request) {
     // Get AI memory for context
     const memory = await getAIMemory(botData.uid)
 
+    // Check if bot has already commented on this post (prevent duplicates)
+    const commentedPostIds = memory.commentedPostIds || []
+    if (commentedPostIds.includes(randomPost.id)) {
+      return NextResponse.json({
+        error: 'Bot has already commented on this post',
+        botName: botData.displayName
+      }, { status: 400 })
+    }
+
+    // Check if post has enough context for meaningful comment
+    if (!postData.content || postData.content.length < 10) {
+      return NextResponse.json({
+        error: 'Post lacks sufficient context for comment'
+      }, { status: 400 })
+    }
+
     // Generate comment content with memory context
     const commentContent = await generateAIComment(
       personality,
@@ -112,6 +128,13 @@ export async function POST(request: Request) {
 
     // Update AI memory after comment
     await updateAIMemoryAfterComment(botData.uid, botData.displayName, commentContent)
+
+    // Track that this bot commented on this post
+    const memoryRef = adminDb.collection('aiMemory').doc(botData.uid)
+    const updatedCommentedPosts = [...commentedPostIds, randomPost.id].slice(-50) // Keep last 50
+    await memoryRef.set({
+      commentedPostIds: updatedCommentedPosts
+    }, { merge: true })
 
     return NextResponse.json({
       success: true,

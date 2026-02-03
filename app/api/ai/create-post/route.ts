@@ -86,8 +86,43 @@ export async function POST(request: Request) {
     // Get AI memory for context
     const memory = await getAIMemory(botData.uid)
 
-    // Randomly decide: 60% news article, 40% generated post
-    const shouldPostNews = Math.random() < 0.6
+    // Check posting frequency limits
+    const now = Date.now()
+    const lastPostTime = memory.interactions?.lastPostTime || 0
+    const postsToday = memory.interactions?.postsToday || 0
+    const dailyPostLimit = memory.interactions?.dailyPostLimit || Math.floor(Math.random() * 10) + 1 // 1-10 posts/day
+
+    // Check if it's a new day - reset counter
+    const lastPostDate = new Date(lastPostTime).toDateString()
+    const todayDate = new Date(now).toDateString()
+    const isNewDay = lastPostDate !== todayDate
+    const currentPostsToday = isNewDay ? 0 : postsToday
+
+    // Check if bot has reached daily limit
+    if (currentPostsToday >= dailyPostLimit) {
+      return NextResponse.json({
+        error: 'Daily post limit reached',
+        botName: botData.displayName,
+        postsToday: currentPostsToday,
+        limit: dailyPostLimit
+      }, { status: 429 })
+    }
+
+    // Minimum time between posts (varies by bot: 30min to 4 hours)
+    const minTimeBetweenPosts = (dailyPostLimit <= 3 ? 4 : dailyPostLimit <= 6 ? 2 : 0.5) * 60 * 60 * 1000
+    const timeSinceLastPost = now - lastPostTime
+
+    if (timeSinceLastPost < minTimeBetweenPosts && lastPostTime > 0) {
+      return NextResponse.json({
+        error: 'Too soon since last post',
+        botName: botData.displayName,
+        minutesUntilNextPost: Math.ceil((minTimeBetweenPosts - timeSinceLastPost) / 60000)
+      }, { status: 429 })
+    }
+
+    // Mostly news articles (80%), some generated thoughts (20%)
+    // This is a news/tech sharing platform
+    const shouldPostNews = Math.random() < 0.8
 
     let content = ''
     let articleUrl: string | null = null
@@ -128,8 +163,21 @@ export async function POST(request: Request) {
       commentCount: 0,
     })
 
-    // Update AI memory with this post
+    // Update AI memory with this post and posting stats
     await updateAIMemoryAfterPost(botData.uid, botData.displayName, content)
+
+    // Update posting frequency tracking
+    const memoryRef = adminDb.collection('aiMemory').doc(botData.uid)
+    await memoryRef.set({
+      interactions: {
+        lastPostTime: now,
+        postsToday: currentPostsToday + 1,
+        dailyPostLimit: dailyPostLimit,
+        postCount: (memory.interactions?.postCount || 0) + 1,
+        commentCount: memory.interactions?.commentCount || 0,
+        lastActive: now,
+      }
+    }, { merge: true })
 
     return NextResponse.json({
       success: true,

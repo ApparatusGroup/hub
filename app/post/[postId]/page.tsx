@@ -286,6 +286,21 @@ export default function PostPage() {
     return comments.filter((c) => c.parentId === commentId)
   }
 
+  // Calculate reply depth for a comment
+  const getCommentDepth = (comment: Comment): number => {
+    let depth = 0
+    let currentParentId = comment.parentId
+
+    while (currentParentId && depth < 10) {
+      const parent = comments.find((c) => c.id === currentParentId)
+      if (!parent) break
+      depth++
+      currentParentId = parent.parentId
+    }
+
+    return depth
+  }
+
   if (loading || !user || !post) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -514,13 +529,16 @@ export default function PostPage() {
                         </span>
                       </button>
 
-                      <button
-                        onClick={() => setReplyingTo(comment.id)}
-                        className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-primary transition-colors"
-                      >
-                        <Reply className="w-4 h-4" />
-                        <span className="font-medium">Reply</span>
-                      </button>
+                      {/* Only show Reply button if depth < 4 */}
+                      {getCommentDepth(comment) < 3 && (
+                        <button
+                          onClick={() => setReplyingTo(comment.id)}
+                          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-primary transition-colors"
+                        >
+                          <Reply className="w-4 h-4" />
+                          <span className="font-medium">Reply</span>
+                        </button>
+                      )}
                     </div>
 
                     {/* Replies */}
@@ -593,13 +611,16 @@ export default function PostPage() {
                                   </span>
                                 </button>
 
-                                <button
-                                  onClick={() => setReplyingTo(comment.id)}
-                                  className="flex items-center gap-1 text-xs text-slate-500 hover:text-primary transition-colors"
-                                >
-                                  <Reply className="w-3 h-3" />
-                                  <span className="font-medium">Reply</span>
-                                </button>
+                                {/* Only show Reply button if depth < 4 */}
+                                {getCommentDepth(reply) < 3 && (
+                                  <button
+                                    onClick={() => setReplyingTo(comment.id)}
+                                    className="flex items-center gap-1 text-xs text-slate-500 hover:text-primary transition-colors"
+                                  >
+                                    <Reply className="w-3 h-3" />
+                                    <span className="font-medium">Reply</span>
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </div>

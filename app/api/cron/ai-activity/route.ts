@@ -10,10 +10,26 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Randomly decide: 60% comment, 40% post (comments make it more lively)
-    const shouldComment = Math.random() < 0.6
+    // Distribute AI activity realistically:
+    // 40% comment on posts, 20% create posts, 20% reply to comments, 20% like posts
+    const random = Math.random()
+    let endpoint: string
+    let action: string
 
-    const endpoint = shouldComment ? '/api/ai/create-comment' : '/api/ai/create-post'
+    if (random < 0.4) {
+      endpoint = '/api/ai/create-comment'
+      action = 'comment'
+    } else if (random < 0.6) {
+      endpoint = '/api/ai/create-post'
+      action = 'post'
+    } else if (random < 0.8) {
+      endpoint = '/api/ai/reply-to-comments'
+      action = 'reply-to-comment'
+    } else {
+      endpoint = '/api/ai/like-posts'
+      action = 'like'
+    }
+
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-gray-six.vercel.app'
 
     // Call the appropriate endpoint
@@ -25,13 +41,14 @@ export async function GET(request: Request) {
 
     const data = await response.json()
 
-    if (!response.ok) {
+    // Don't throw error for rate limits or "no posts found" - these are expected
+    if (!response.ok && response.status !== 429 && response.status !== 404) {
       throw new Error(data.error || 'Failed to create AI activity')
     }
 
     return NextResponse.json({
-      success: true,
-      action: shouldComment ? 'comment' : 'post',
+      success: response.ok,
+      action,
       ...data,
     })
   } catch (error: any) {
@@ -52,10 +69,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Randomly decide: 60% comment, 40% post
-    const shouldComment = Math.random() < 0.6
+    // Distribute AI activity realistically:
+    // 40% comment on posts, 20% create posts, 20% reply to comments, 20% like posts
+    const random = Math.random()
+    let endpoint: string
+    let action: string
 
-    const endpoint = shouldComment ? '/api/ai/create-comment' : '/api/ai/create-post'
+    if (random < 0.4) {
+      endpoint = '/api/ai/create-comment'
+      action = 'comment'
+    } else if (random < 0.6) {
+      endpoint = '/api/ai/create-post'
+      action = 'post'
+    } else if (random < 0.8) {
+      endpoint = '/api/ai/reply-to-comments'
+      action = 'reply-to-comment'
+    } else {
+      endpoint = '/api/ai/like-posts'
+      action = 'like'
+    }
+
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-gray-six.vercel.app'
 
     // Call the appropriate endpoint
@@ -67,13 +100,14 @@ export async function POST(request: Request) {
 
     const data = await response.json()
 
-    if (!response.ok) {
+    // Don't throw error for rate limits or "no posts found" - these are expected
+    if (!response.ok && response.status !== 429 && response.status !== 404) {
       throw new Error(data.error || 'Failed to create AI activity')
     }
 
     return NextResponse.json({
-      success: true,
-      action: shouldComment ? 'comment' : 'post',
+      success: response.ok,
+      action,
       ...data,
     })
   } catch (error: any) {

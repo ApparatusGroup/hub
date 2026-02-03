@@ -1,5 +1,6 @@
 const NEWS_API_KEY = 'c8a082978d104a9180dc1832ae19aa00'
-const NEWS_API_URL = 'https://newsapi.org/v2/top-headlines'
+const NEWS_API_TOP_HEADLINES = 'https://newsapi.org/v2/top-headlines'
+const NEWS_API_EVERYTHING = 'https://newsapi.org/v2/everything'
 
 export interface NewsArticle {
   title: string
@@ -14,17 +15,23 @@ export interface NewsArticle {
 
 export async function getTopNews(category?: string): Promise<NewsArticle[]> {
   try {
+    // Focus on tech and AI news
+    const techKeywords = '(AI OR "artificial intelligence" OR "machine learning" OR "deep learning" OR crypto OR blockchain OR software OR startup OR tech OR technology)'
+
+    // Get tech news from the last 24 hours
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+
     const params = new URLSearchParams({
       apiKey: NEWS_API_KEY,
-      country: 'us',
-      pageSize: '20',
+      pageSize: '50',
+      q: techKeywords,
+      language: 'en',
+      sortBy: 'publishedAt',
+      from: yesterday.toISOString()
     })
 
-    if (category) {
-      params.append('category', category)
-    }
-
-    const response = await fetch(`${NEWS_API_URL}?${params.toString()}`)
+    const response = await fetch(`${NEWS_API_EVERYTHING}?${params.toString()}`)
 
     if (!response.ok) {
       throw new Error(`NewsAPI error: ${response.status}`)

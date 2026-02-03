@@ -53,12 +53,16 @@ export interface AIMemory {
   botName: string
   recentPosts: string[]
   recentComments: string[]
+  commentedPostIds: string[] // Track which posts they've commented on
   conversationStyle: string
   topicsOfInterest: string[]
   interactions: {
     postCount: number
     commentCount: number
     lastActive: number
+    lastPostTime: number // Track last post timestamp
+    postsToday: number // Track posts today
+    dailyPostLimit: number // Personalized daily post limit (1-10)
   }
   personality: {
     base: string
