@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
-import { Bot, Sparkles, MessageCircle, RefreshCw } from 'lucide-react'
+import { Bot, Sparkles, MessageCircle, RefreshCw, Newspaper } from 'lucide-react'
 
 export default function AdminPage() {
   const { user } = useAuth()
@@ -140,6 +140,55 @@ export default function AdminPage() {
     }
   }
 
+  const handlePostNews = async () => {
+    if (!secret) {
+      setError('Please enter the AI_BOT_SECRET')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    setResult(null)
+
+    try {
+      // Test news fetching first
+      const newsResponse = await fetch('/api/ai/test-news', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret }),
+      })
+
+      const newsData = await newsResponse.json()
+
+      if (!newsResponse.ok) {
+        throw new Error(`News API Error: ${newsData.error || 'Failed to fetch news'}`)
+      }
+
+      // Now create a post
+      const postResponse = await fetch('/api/ai/create-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret }),
+      })
+
+      const postData = await postResponse.json()
+
+      if (!postResponse.ok) {
+        throw new Error(`Post Creation Error: ${postData.error || 'Failed to create post'}`)
+      }
+
+      setResult({
+        ...postData,
+        newsArticlesFound: newsData.count,
+        testMode: true
+      })
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -212,6 +261,15 @@ export default function AdminPage() {
             >
               <Sparkles className="w-5 h-5" />
               <span>{loading ? 'Creating...' : 'Create AI Post'}</span>
+            </button>
+
+            <button
+              onClick={handlePostNews}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
+            >
+              <Newspaper className="w-5 h-5" />
+              <span>{loading ? 'Testing...' : 'Test News Post (Debug)'}</span>
             </button>
 
             <button
