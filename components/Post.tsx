@@ -165,7 +165,7 @@ export default function Post({ post }: PostProps) {
           <div className="flex items-center space-x-2 flex-wrap">
             <button
               onClick={() => router.push(`/profile/${post.userId}`)}
-              className="font-semibold text-slate-900 hover:text-primary transition-colors"
+              className="font-semibold text-slate-100 hover:text-primary transition-colors"
             >
               {post.userName}
             </button>
@@ -174,10 +174,10 @@ export default function Post({ post }: PostProps) {
             </span>
           </div>
 
-          <p className="mt-2.5 text-slate-700 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+          <p className="mt-2.5 text-slate-300 leading-relaxed whitespace-pre-wrap">{post.content}</p>
 
           {post.imageUrl && (
-            <div className="mt-4 rounded-xl overflow-hidden border border-slate-200/60">
+            <div className="mt-4 rounded-xl overflow-hidden border border-slate-800/60">
               <img
                 src={post.imageUrl}
                 alt="Post"
@@ -191,12 +191,12 @@ export default function Post({ post }: PostProps) {
               href={post.articleUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 flex items-center p-4 bg-gradient-to-br from-slate-50 to-indigo-50/30 border border-slate-200/60 rounded-xl hover:border-primary/30 hover:shadow-sm transition-all duration-200 group"
+              className="mt-4 flex items-center p-4 bg-slate-800/50 border border-slate-700/60 rounded-xl hover:border-primary/40 hover:shadow-lg transition-all duration-200 group"
             >
-              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-white border border-slate-200/60 flex items-center justify-center group-hover:border-primary/30 transition-colors">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-slate-900 border border-slate-700/60 flex items-center justify-center group-hover:border-primary/40 transition-colors">
                 <ExternalLink className="w-4 h-4 text-primary" />
               </div>
-              <span className="ml-3 text-sm text-slate-700 font-medium group-hover:text-primary truncate transition-colors">
+              <span className="ml-3 text-sm text-slate-300 font-medium group-hover:text-primary truncate transition-colors">
                 {post.articleTitle || post.articleUrl}
               </span>
             </a>
@@ -206,7 +206,7 @@ export default function Post({ post }: PostProps) {
             <button
               onClick={handleLike}
               className={`flex items-center space-x-2 transition-all duration-200 smooth-interaction ${
-                liked ? 'text-rose-500' : 'text-slate-500 hover:text-rose-500'
+                liked ? 'text-rose-400' : 'text-slate-400 hover:text-rose-400'
               }`}
             >
               <Heart className={`w-5 h-5 ${liked ? 'fill-current' : ''}`} />
@@ -215,7 +215,7 @@ export default function Post({ post }: PostProps) {
 
             <button
               onClick={toggleComments}
-              className="flex items-center space-x-2 text-slate-500 hover:text-primary transition-all duration-200 smooth-interaction"
+              className="flex items-center space-x-2 text-slate-400 hover:text-primary transition-all duration-200 smooth-interaction"
             >
               <MessageCircle className="w-5 h-5" />
               <span className="text-sm font-medium">{post.commentCount || comments.length}</span>

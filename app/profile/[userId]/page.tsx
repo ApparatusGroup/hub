@@ -241,10 +241,10 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen">
         <Navbar />
         <div className="max-w-2xl mx-auto px-4 py-12 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Profile not found</h1>
+          <h1 className="text-2xl font-bold text-slate-200">Profile not found</h1>
         </div>
       </div>
     )
@@ -256,28 +256,28 @@ export default function ProfilePage() {
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {error && (
-          <div className="mb-4 bg-rose-50 border border-rose-200 text-rose-700 px-5 py-4 rounded-xl font-medium">
+          <div className="mb-4 bg-rose-900/30 border border-rose-800/60 text-rose-300 px-5 py-4 rounded-xl font-medium">
             {error}
           </div>
         )}
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5 sm:p-6 mb-6 hover:shadow-md transition-all duration-300">
+        <div className="bg-slate-900/90 rounded-2xl shadow-xl border border-slate-800/60 p-5 sm:p-6 mb-6 hover:shadow-2xl transition-all duration-300">
           <div className="flex flex-col sm:flex-row sm:items-start gap-4">
             <div className="flex-shrink-0 mx-auto sm:mx-0">
               {editMode ? (
                 <div className="w-full sm:w-auto space-y-2">
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">Upload Photo</label>
+                    <label className="block text-xs text-slate-400 mb-1">Upload Photo</label>
                     <input
                       ref={fileInputRef}
                       type="file"
                       accept="image/*"
                       onChange={handlePhotoFileChange}
-                      className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90"
+                      className="block w-full text-xs text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">Or Paste URL</label>
+                    <label className="block text-xs text-slate-400 mb-1">Or Paste URL</label>
                     <input
                       type="url"
                       value={editForm.photoURL}
@@ -328,10 +328,10 @@ export default function ProfilePage() {
                         placeholder="Display name"
                       />
                     ) : (
-                      <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{profile.displayName}</h1>
+                      <h1 className="text-xl sm:text-2xl font-bold text-slate-100">{profile.displayName}</h1>
                     )}
                     {profile.isAI && (
-                      <span className="flex items-center text-xs sm:text-sm bg-secondary/10 text-secondary px-2 py-1 rounded-full whitespace-nowrap">
+                      <span className="flex items-center text-xs sm:text-sm bg-secondary/20 text-secondary-light px-2 py-1 rounded-full whitespace-nowrap">
                         <Bot className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                         AI Bot
                       </span>
@@ -382,7 +382,7 @@ export default function ProfilePage() {
                   )}
                 </div>
 
-              <p className="text-gray-600 text-sm sm:text-base break-words">{profile.email}</p>
+              <p className="text-slate-400 text-sm sm:text-base break-words">{profile.email}</p>
 
               {editMode ? (
                 <>
@@ -395,14 +395,14 @@ export default function ProfilePage() {
                   />
 
                   {profile?.isAI && (
-                    <div className="space-y-3 border-t border-gray-200 pt-3">
-                      <div className="flex items-center gap-2 text-sm text-secondary font-semibold">
+                    <div className="space-y-3 border-t border-slate-800/60 pt-3">
+                      <div className="flex items-center gap-2 text-sm text-secondary-light font-semibold">
                         <Bot className="w-4 h-4" />
                         <span>AI Configuration</span>
                       </div>
 
                       <div>
-                        <label className="block text-xs text-gray-600 mb-1">Personality Description</label>
+                        <label className="block text-xs text-slate-400 mb-1">Personality Description</label>
                         <textarea
                           value={editForm.aiPersonality}
                           onChange={(e) => setEditForm({ ...editForm, aiPersonality: e.target.value })}
@@ -410,13 +410,13 @@ export default function ProfilePage() {
                           className="input-field resize-none w-full text-sm"
                           rows={4}
                         />
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-slate-500 mt-1">
                           This defines how the AI will generate posts and comments. Be detailed and specific for more realistic behavior.
                         </p>
                       </div>
 
                       <div>
-                        <label className="block text-xs text-gray-600 mb-1">Interests (comma-separated)</label>
+                        <label className="block text-xs text-slate-400 mb-1">Interests (comma-separated)</label>
                         <input
                           type="text"
                           value={editForm.aiInterests.join(', ')}
@@ -427,7 +427,7 @@ export default function ProfilePage() {
                           placeholder="coding, design, coffee, travel, books"
                           className="input-field w-full text-sm"
                         />
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-slate-500 mt-1">
                           Topics the AI will post about and engage with.
                         </p>
                       </div>
@@ -435,10 +435,10 @@ export default function ProfilePage() {
                   )}
                 </>
               ) : profile.bio ? (
-                <p className="text-gray-800 text-sm sm:text-base">{profile.bio}</p>
+                <p className="text-slate-300 text-sm sm:text-base">{profile.bio}</p>
               ) : null}
 
-              <div className="flex items-center text-xs sm:text-sm text-gray-500">
+              <div className="flex items-center text-xs sm:text-sm text-slate-500">
                 <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
                 <span>
                   Joined {formatDistanceToNow(profile.createdAt, { addSuffix: true })}

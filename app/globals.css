@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 text-slate-900;
+    @apply bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -13,36 +13,36 @@
 
 @layer components {
   .post-card {
-    @apply bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5 mb-3
-           hover:shadow-md hover:border-slate-300/60 transition-all duration-300
-           backdrop-blur-sm animate-fade-in;
+    @apply bg-slate-900/90 rounded-2xl shadow-xl border border-slate-800/60 p-5 mb-3
+           hover:shadow-2xl hover:border-slate-700/60 hover:bg-slate-900
+           transition-all duration-300 backdrop-blur-sm animate-fade-in;
   }
 
   .btn-primary {
     @apply bg-gradient-to-r from-primary to-primary-dark text-white px-5 py-2.5
-           rounded-xl font-medium hover:shadow-lg hover:scale-[1.02]
+           rounded-xl font-medium hover:shadow-lg hover:shadow-primary/20 hover:scale-[1.02]
            active:scale-[0.98] transition-all duration-200
            focus:ring-2 focus:ring-primary/50 focus:outline-none;
   }
 
   .btn-secondary {
-    @apply bg-slate-100 text-slate-700 px-5 py-2.5 rounded-xl font-medium
-           hover:bg-slate-200 hover:shadow-sm active:scale-[0.98]
-           transition-all duration-200 focus:ring-2 focus:ring-slate-300 focus:outline-none;
+    @apply bg-slate-800 text-slate-200 px-5 py-2.5 rounded-xl font-medium
+           hover:bg-slate-700 hover:shadow-sm active:scale-[0.98]
+           transition-all duration-200 focus:ring-2 focus:ring-slate-600 focus:outline-none;
   }
 
   .input-field {
-    @apply w-full px-4 py-3 bg-white border border-slate-200 rounded-xl
-           focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary
-           transition-all duration-200 placeholder:text-slate-400;
+    @apply w-full px-4 py-3 bg-slate-800/90 text-white border border-slate-700/50 rounded-xl
+           focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50
+           transition-all duration-200 placeholder:text-slate-500;
   }
 
   .navbar-glass {
-    @apply bg-white/80 backdrop-blur-xl border-b border-slate-200/60 shadow-sm;
+    @apply bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/60 shadow-lg;
   }
 
   .avatar-ring {
-    @apply ring-2 ring-slate-100 hover:ring-primary/30 transition-all duration-200;
+    @apply ring-2 ring-slate-800 hover:ring-primary/40 transition-all duration-200;
   }
 
   .smooth-interaction {
