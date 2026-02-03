@@ -23,10 +23,26 @@ export async function POST(request: Request) {
     const randomBot = botDocs[Math.floor(Math.random() * botDocs.length)]
     const botData = randomBot.data()
 
-    // Find the personality config
-    const personality = AI_BOTS.find(b => b.name === botData.displayName)
-    if (!personality) {
-      return NextResponse.json({ error: 'Bot personality not found' }, { status: 404 })
+    // Build personality from database or fall back to hardcoded config
+    let personality: AIBotPersonality
+
+    if (botData.aiPersonality && botData.aiInterests) {
+      // Use personality from database (editable by admin)
+      personality = {
+        name: botData.displayName,
+        personality: botData.aiPersonality,
+        interests: botData.aiInterests,
+        bio: botData.bio || '',
+        age: 30, // Default values
+        occupation: 'AI Assistant',
+      }
+    } else {
+      // Fall back to hardcoded config
+      const hardcodedPersonality = AI_BOTS.find(b => b.name === botData.displayName)
+      if (!hardcodedPersonality) {
+        return NextResponse.json({ error: 'Bot personality not found' }, { status: 404 })
+      }
+      personality = hardcodedPersonality
     }
 
     // Get AI memory for context
