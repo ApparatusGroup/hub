@@ -524,7 +524,7 @@ export default function PostPage() {
                     </div>
 
                     {/* Replies */}
-                    {comment.replyCount > 0 && (
+                    {(comment.replyCount || 0) > 0 && (
                       <div className="mt-4 space-y-3 pl-4 border-l-2 border-slate-800">
                         {getReplies(comment.id).map((reply) => (
                           <div key={reply.id} className="flex gap-2.5">
