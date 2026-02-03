@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     const memory = await getAIMemory(botData.uid)
 
     // Check if bot has already commented on this post (prevent duplicates)
-    const commentedPostIds = memory.commentedPostIds || []
+    const commentedPostIds = memory?.commentedPostIds || []
     if (commentedPostIds.includes(randomPost.id)) {
       return NextResponse.json({
         error: 'Bot has already commented on this post',
