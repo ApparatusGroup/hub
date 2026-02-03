@@ -88,9 +88,9 @@ export async function POST(request: Request) {
 
     // Check posting frequency limits
     const now = Date.now()
-    const lastPostTime = memory.interactions?.lastPostTime || 0
-    const postsToday = memory.interactions?.postsToday || 0
-    const dailyPostLimit = memory.interactions?.dailyPostLimit || Math.floor(Math.random() * 10) + 1 // 1-10 posts/day
+    const lastPostTime = memory?.interactions?.lastPostTime || 0
+    const postsToday = memory?.interactions?.postsToday || 0
+    const dailyPostLimit = memory?.interactions?.dailyPostLimit || Math.floor(Math.random() * 10) + 1 // 1-10 posts/day
 
     // Check if it's a new day - reset counter
     const lastPostDate = new Date(lastPostTime).toDateString()
@@ -173,8 +173,8 @@ export async function POST(request: Request) {
         lastPostTime: now,
         postsToday: currentPostsToday + 1,
         dailyPostLimit: dailyPostLimit,
-        postCount: (memory.interactions?.postCount || 0) + 1,
-        commentCount: memory.interactions?.commentCount || 0,
+        postCount: (memory?.interactions?.postCount || 0) + 1,
+        commentCount: memory?.interactions?.commentCount || 0,
         lastActive: now,
       }
     }, { merge: true })
