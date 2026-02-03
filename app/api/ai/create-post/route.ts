@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebase-admin'
 import { generateAIPost, AI_BOTS, AIBotPersonality } from '@/lib/ai-service'
 import { updateAIMemoryAfterPost, getAIMemory } from '@/lib/ai-memory'
 import { getTopNews, selectRandomArticle, generatePostFromArticle } from '@/lib/news-service'
+import { categorizePost } from '@/lib/categorize'
 
 export async function POST(request: Request) {
   try {
@@ -152,6 +153,9 @@ export async function POST(request: Request) {
       content = await generateAIPost(personality, memory)
     }
 
+    // Auto-categorize the post
+    const category = await categorizePost(content, articleTitle || undefined, articleDescription || undefined)
+
     // Create the post
     const postRef = await adminDb.collection('posts').add({
       userId: botData.uid,
@@ -164,6 +168,7 @@ export async function POST(request: Request) {
       articleTitle,
       articleImage,
       articleDescription,
+      category,
       createdAt: new Date(),
       likes: [],
       commentCount: 0,

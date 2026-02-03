@@ -22,10 +22,58 @@ export interface Post {
   articleTitle?: string
   articleImage?: string
   articleDescription?: string
+  category?: string
   createdAt: number
   likes: string[]
   commentCount: number
 }
+
+export const POST_CATEGORIES = {
+  'Artificial Intelligence': {
+    name: 'Artificial Intelligence',
+    color: '#8B5CF6', // Purple
+    borderColor: 'border-purple-500',
+    bgColor: 'bg-purple-500/10',
+    textColor: 'text-purple-400'
+  },
+  'Computing & Hardware': {
+    name: 'Computing & Hardware',
+    color: '#3B82F6', // Blue
+    borderColor: 'border-blue-500',
+    bgColor: 'bg-blue-500/10',
+    textColor: 'text-blue-400'
+  },
+  'Emerging Tech & Science': {
+    name: 'Emerging Tech & Science',
+    color: '#10B981', // Emerald
+    borderColor: 'border-emerald-500',
+    bgColor: 'bg-emerald-500/10',
+    textColor: 'text-emerald-400'
+  },
+  'Software & Development': {
+    name: 'Software & Development',
+    color: '#F59E0B', // Amber
+    borderColor: 'border-amber-500',
+    bgColor: 'bg-amber-500/10',
+    textColor: 'text-amber-400'
+  },
+  'Big Tech & Policy': {
+    name: 'Big Tech & Policy',
+    color: '#EF4444', // Red
+    borderColor: 'border-red-500',
+    bgColor: 'bg-red-500/10',
+    textColor: 'text-red-400'
+  },
+  'Personal Tech & Gadgets': {
+    name: 'Personal Tech & Gadgets',
+    color: '#EC4899', // Pink
+    borderColor: 'border-pink-500',
+    bgColor: 'bg-pink-500/10',
+    textColor: 'text-pink-400'
+  }
+} as const
+
+export type PostCategory = keyof typeof POST_CATEGORIES
 
 export interface Comment {
   id: string

@@ -5,9 +5,9 @@ import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { db } from '@/lib/firebase'
 import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
-import { Heart, MessageCircle, ExternalLink } from 'lucide-react'
+import { Heart, MessageCircle } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
-import { Post as PostType } from '@/lib/types'
+import { Post as PostType, POST_CATEGORIES } from '@/lib/types'
 import { useEffect } from 'react'
 
 interface PostProps {
@@ -51,12 +51,23 @@ export default function Post({ post }: PostProps) {
   }
 
 
+  // Get category styling
+  const categoryStyle = post.category && POST_CATEGORIES[post.category as keyof typeof POST_CATEGORIES]
+  const borderClass = categoryStyle ? categoryStyle.borderColor : 'border-slate-800/60'
+  const categoryBadgeClass = categoryStyle ? categoryStyle.bgColor + ' ' + categoryStyle.textColor : ''
+
   return (
-    <div className="post-card">
+    <div
+      onClick={() => router.push(`/post/${post.id}`)}
+      className={`post-card cursor-pointer border-l-4 ${borderClass} hover:border-opacity-100 transition-all`}
+    >
       {/* Header with profile picture and name */}
       <div className="flex items-center space-x-2.5 mb-3">
         <button
-          onClick={() => router.push(`/profile/${post.userId}`)}
+          onClick={(e) => {
+            e.stopPropagation()
+            router.push(`/profile/${post.userId}`)
+          }}
           className="flex-shrink-0 cursor-pointer group"
         >
           {post.userPhoto ? (
@@ -73,7 +84,10 @@ export default function Post({ post }: PostProps) {
         </button>
         <div className="flex items-center space-x-2 flex-wrap min-w-0 flex-1">
           <button
-            onClick={() => router.push(`/profile/${post.userId}`)}
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push(`/profile/${post.userId}`)
+            }}
             className="font-semibold text-slate-100 hover:text-primary transition-colors"
           >
             {post.userName}
@@ -81,70 +95,44 @@ export default function Post({ post }: PostProps) {
           <span className="text-sm text-slate-500">
             · {formatDistanceToNow(post.createdAt, { addSuffix: true })}
           </span>
+          {post.category && categoryStyle && (
+            <span className={`text-xs px-2 py-0.5 rounded-full ${categoryBadgeClass} font-medium`}>
+              {categoryStyle.name}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Post content */}
-      <p className="text-slate-300 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+      {/* Post content - truncated to 3 lines */}
+      <p className="text-slate-300 leading-relaxed line-clamp-3">{post.content}</p>
 
-      {post.imageUrl && (
-        <div className="mt-4 rounded-xl overflow-hidden border border-slate-800/60 aspect-square">
-          <img
-            src={post.imageUrl}
-            alt="Post"
-            className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-500"
-          />
+      {/* Article preview - compact */}
+      {post.articleUrl && post.articleTitle && (
+        <div className="mt-2 text-xs text-slate-500 flex items-center space-x-1">
+          <span className="font-medium">📄</span>
+          <span className="line-clamp-1">{post.articleTitle}</span>
         </div>
       )}
 
-      {post.articleUrl && (
-        <a
-          href={post.articleUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-4 flex items-start space-x-3 p-3 bg-slate-800/50 border border-slate-700/60 rounded-xl hover:border-primary/40 hover:shadow-lg transition-all duration-200 group cursor-pointer"
-        >
-          {post.articleImage && (
-            <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-slate-900">
-              <img
-                src={post.articleImage}
-                alt={post.articleTitle || 'Article'}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-semibold text-slate-200 group-hover:text-primary transition-colors line-clamp-2 leading-snug">
-              {post.articleTitle || 'Read Article'}
-            </h4>
-            {post.articleDescription && (
-              <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                {post.articleDescription}
-              </p>
-            )}
-          </div>
-        </a>
-      )}
-
       {/* Actions - larger tap targets for mobile */}
-      <div className="mt-4 flex items-center space-x-3">
+      <div className="mt-3 flex items-center space-x-3">
         <button
-          onClick={handleLike}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg transition-all duration-200 active:scale-95 ${
+          onClick={(e) => {
+            e.stopPropagation()
+            handleLike()
+          }}
+          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 active:scale-95 ${
             liked ? 'text-rose-400 bg-rose-400/10' : 'text-slate-400 hover:text-rose-400 hover:bg-slate-800/50'
           }`}
         >
-          <Heart className={`w-6 h-6 ${liked ? 'fill-current' : ''}`} />
-          <span className="text-base font-semibold">{likeCount}</span>
+          <Heart className={`w-5 h-5 ${liked ? 'fill-current' : ''}`} />
+          <span className="text-sm font-semibold">{likeCount}</span>
         </button>
 
-        <button
-          onClick={() => router.push(`/post/${post.id}`)}
-          className="flex items-center space-x-2 px-4 py-2.5 rounded-lg text-slate-400 hover:text-primary hover:bg-slate-800/50 transition-all duration-200 active:scale-95"
-        >
-          <MessageCircle className="w-6 h-6" />
-          <span className="text-base font-semibold">{post.commentCount || 0}</span>
-        </button>
+        <div className="flex items-center space-x-1.5 px-3 py-1.5 text-slate-400">
+          <MessageCircle className="w-5 h-5" />
+          <span className="text-sm font-semibold">{post.commentCount || 0}</span>
+        </div>
       </div>
 
     </div>

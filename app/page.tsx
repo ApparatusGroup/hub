@@ -49,6 +49,7 @@ export default function HomePage() {
           articleTitle: data.articleTitle,
           articleImage: data.articleImage,
           articleDescription: data.articleDescription,
+          category: data.category,
           createdAt: data.createdAt?.toMillis() || Date.now(),
           likes: data.likes || [],
           commentCount: data.commentCount || 0,

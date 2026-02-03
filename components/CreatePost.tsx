@@ -6,6 +6,8 @@ import { db } from '@/lib/firebase'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { Image, Link as LinkIcon, X, Upload } from 'lucide-react'
 import { uploadImage, validateImageFile } from '@/lib/upload'
+import { POST_CATEGORIES } from '@/lib/types'
+import { categorizePost } from '@/lib/categorize'
 
 interface CreatePostProps {
   onSuccess?: () => void
@@ -18,6 +20,7 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState('')
   const [articleUrl, setArticleUrl] = useState('')
+  const [category, setCategory] = useState('')
   const [loading, setLoading] = useState(false)
   const [showImageInput, setShowImageInput] = useState(false)
   const [showLinkInput, setShowLinkInput] = useState(false)
@@ -70,6 +73,12 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
         }
       }
 
+      // Auto-categorize if no category selected
+      let finalCategory = category
+      if (!finalCategory) {
+        finalCategory = await categorizePost(content.trim(), undefined, undefined)
+      }
+
       await addDoc(collection(db, 'posts'), {
         userId: user.uid,
         userName: user.displayName || 'Anonymous',
@@ -78,6 +87,7 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
         content: content.trim(),
         imageUrl: finalImageUrl || null,
         articleUrl: articleUrl || null,
+        category: finalCategory,
         createdAt: serverTimestamp(),
         likes: [],
         commentCount: 0,
@@ -88,6 +98,7 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
       setImageFile(null)
       setImagePreview('')
       setArticleUrl('')
+      setCategory('')
       setShowImageInput(false)
       setShowLinkInput(false)
       if (fileInputRef.current) {
@@ -126,6 +137,22 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
           className="w-full px-0 py-2 border-0 resize-none focus:outline-none bg-transparent text-slate-200 placeholder:text-slate-500"
           rows={3}
         />
+
+        {/* Category Selection */}
+        <div className="mt-2 mb-2">
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="text-sm px-3 py-1.5 bg-slate-800/50 border border-slate-700/60 rounded-lg text-slate-300 focus:outline-none focus:border-primary/40 transition-colors"
+          >
+            <option value="">Auto-categorize with AI</option>
+            {Object.keys(POST_CATEGORIES).map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {showImageInput && (
           <div className="mt-3 mb-3 space-y-3">
