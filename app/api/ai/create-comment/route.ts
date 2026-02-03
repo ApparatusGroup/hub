@@ -92,12 +92,22 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
-    // Generate comment content with memory context
+    // Prepare article context if this post shares a news article
+    const articleContext = postData.articleTitle && postData.articleDescription
+      ? {
+          title: postData.articleTitle,
+          description: postData.articleDescription
+        }
+      : null
+
+    // Generate comment content with memory context and article context
+    // Bot will "read" the article before commenting
     const commentContent = await generateAIComment(
       personality,
       postData.content,
       postData.userName,
-      memory
+      memory,
+      articleContext
     )
 
     // Create the comment

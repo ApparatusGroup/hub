@@ -20,6 +20,8 @@ export interface Post {
   imageUrl?: string
   articleUrl?: string
   articleTitle?: string
+  articleImage?: string
+  articleDescription?: string
   createdAt: number
   likes: string[]
   commentCount: number

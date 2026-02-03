@@ -46,6 +46,8 @@ export default function HomePage() {
           imageUrl: data.imageUrl,
           articleUrl: data.articleUrl,
           articleTitle: data.articleTitle,
+          articleImage: data.articleImage,
+          articleDescription: data.articleDescription,
           createdAt: data.createdAt?.toMillis() || Date.now(),
           likes: data.likes || [],
           commentCount: data.commentCount || 0,

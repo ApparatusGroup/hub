@@ -124,12 +124,25 @@ export async function POST(request: Request) {
       // Get AI memory for context
       const memory = await getAIMemory(botData.uid)
 
-      // Generate reply
+      // Get the original post to check for article context
+      const postRef = await adminDb.collection('posts').doc(replyData.postId).get()
+      const postData = postRef.exists ? postRef.data() : null
+
+      // Prepare article context if this conversation is about a news article
+      const articleContext = postData?.articleTitle && postData?.articleDescription
+        ? {
+            title: postData.articleTitle,
+            description: postData.articleDescription
+          }
+        : null
+
+      // Generate reply (bot will "read" the article if present)
       const replyContent = await generateAIComment(
         personality,
         `${parentCommentData.content}\n\nUser replied: ${replyData.content}`,
         replyData.userName,
-        memory
+        memory,
+        articleContext
       )
 
       // Create the reply

@@ -31,6 +31,39 @@ function isHighQualityArticle(article: NewsArticle): boolean {
   if (article.description.includes('[Removed]') || article.title.includes('[Removed]')) return false
   if (article.title.length < 20) return false
 
+  const titleLower = article.title.toLowerCase()
+  const descLower = article.description.toLowerCase()
+  const fullText = `${titleLower} ${descLower}`
+
+  // Must contain AI/tech keywords
+  const techKeywords = [
+    'ai', 'artificial intelligence', 'machine learning', 'ml', 'neural',
+    'software', 'hardware', 'tech', 'technology', 'startup', 'app',
+    'computer', 'data', 'algorithm', 'code', 'programming', 'developer',
+    'cloud', 'api', 'cyber', 'digital', 'internet', 'web', 'mobile',
+    'robot', 'automation', 'innovation', 'silicon valley', 'processor',
+    'chip', 'semiconductor', 'gaming', 'video game', 'console', 'pc',
+    'iphone', 'android', 'samsung', 'apple', 'google', 'microsoft',
+    'meta', 'tesla', 'spacex', 'crypto', 'blockchain', 'bitcoin'
+  ]
+
+  const hasTechContent = techKeywords.some(keyword => fullText.includes(keyword))
+  if (!hasTechContent) return false
+
+  // Exclude non-tech topics
+  const excludeKeywords = [
+    'movie', 'film', 'tv show', 'series', 'netflix', 'streaming service',
+    'actor', 'actress', 'celebrity', 'music', 'album', 'song', 'concert',
+    'microdosing', 'psychedelic', 'drug', 'cannabis', 'marijuana',
+    'sports', 'football', 'basketball', 'baseball', 'soccer',
+    'recipe', 'cooking', 'fashion', 'beauty', 'makeup',
+    'politics', 'election', 'trump', 'biden', 'congress'
+  ]
+
+  if (excludeKeywords.some(keyword => fullText.includes(keyword))) {
+    return false
+  }
+
   // Filter out articles with generic/placeholder content
   const lowQualityPhrases = [
     'breaking news',
@@ -39,10 +72,8 @@ function isHighQualityArticle(article: NewsArticle): boolean {
     'subscribe now',
     'sign up',
   ]
-  const titleLower = article.title.toLowerCase()
-  const descLower = article.description.toLowerCase()
 
-  if (lowQualityPhrases.some(phrase => titleLower.includes(phrase) || descLower.includes(phrase))) {
+  if (lowQualityPhrases.some(phrase => fullText.includes(phrase))) {
     return false
   }
 

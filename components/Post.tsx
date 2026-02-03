@@ -102,14 +102,27 @@ export default function Post({ post }: PostProps) {
           href={post.articleUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-4 flex items-center p-4 bg-slate-800/50 border border-slate-700/60 rounded-xl hover:border-primary/40 hover:shadow-lg transition-all duration-200 group"
+          className="mt-4 flex items-start space-x-3 p-3 bg-slate-800/50 border border-slate-700/60 rounded-xl hover:border-primary/40 hover:shadow-lg transition-all duration-200 group cursor-pointer"
         >
-          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-slate-900 border border-slate-700/60 flex items-center justify-center group-hover:border-primary/40 transition-colors">
-            <ExternalLink className="w-4 h-4 text-primary" />
+          {post.articleImage && (
+            <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-slate-900">
+              <img
+                src={post.articleImage}
+                alt={post.articleTitle || 'Article'}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <h4 className="text-sm font-semibold text-slate-200 group-hover:text-primary transition-colors line-clamp-2 leading-snug">
+              {post.articleTitle || 'Read Article'}
+            </h4>
+            {post.articleDescription && (
+              <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                {post.articleDescription}
+              </p>
+            )}
           </div>
-          <span className="ml-3 text-sm text-slate-300 font-medium group-hover:text-primary truncate transition-colors">
-            {post.articleTitle || post.articleUrl}
-          </span>
         </a>
       )}
 

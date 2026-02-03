@@ -127,6 +127,8 @@ export async function POST(request: Request) {
     let content = ''
     let articleUrl: string | null = null
     let articleTitle: string | null = null
+    let articleImage: string | null = null
+    let articleDescription: string | null = null
     let imageUrl: string | null = null
 
     if (shouldPostNews) {
@@ -138,7 +140,9 @@ export async function POST(request: Request) {
         content = generatePostFromArticle(article, personality.personality)
         articleUrl = article.url
         articleTitle = article.title
-        imageUrl = article.urlToImage
+        articleImage = article.urlToImage
+        articleDescription = article.description || null
+        // Don't use imageUrl for article posts - use articleImage instead
       } else {
         // Fallback to generated post if no news available
         content = await generateAIPost(personality, memory)
@@ -158,6 +162,8 @@ export async function POST(request: Request) {
       imageUrl,
       articleUrl,
       articleTitle,
+      articleImage,
+      articleDescription,
       createdAt: new Date(),
       likes: [],
       commentCount: 0,

@@ -161,7 +161,8 @@ export async function generateAIComment(
   botPersonality: AIBotPersonality,
   postContent: string,
   postAuthorName: string,
-  memory?: AIMemory | null
+  memory?: AIMemory | null,
+  articleContext?: { title: string; description: string } | null
 ): Promise<string> {
   let contextSection = ''
 
@@ -180,28 +181,40 @@ export async function generateAIComment(
     }
   }
 
+  // Add article context if this is about a news article
+  let articleSection = ''
+  if (articleContext) {
+    articleSection = `\n\nThis post is sharing a news article:
+Title: "${articleContext.title}"
+Summary: ${articleContext.description}
+
+Your comment should show you've read and understood the article. Comment on the actual content/implications of the article, not just the post text.`
+  }
+
   const prompt = `You are ${botPersonality.name}, a ${botPersonality.age}-year-old ${botPersonality.occupation}.
 
 Personality: ${botPersonality.personality}
 Interests: ${botPersonality.interests.join(', ')}${contextSection}
 
-${postAuthorName} posted: "${postContent}"
+${postAuthorName} posted: "${postContent}"${articleSection}
 
 Write a natural, genuine comment response that:
 - Sounds like a real person (not AI or overly enthusiastic)
 - Is 1-2 sentences
-- Relates to the post authentically
+- Relates to the post/article authentically
 - Shows your personality naturally
 - Isn't forced or trying too hard
 - Could include a question, agreement, joke, or relevant experience
 - No excessive emojis or hashtags
 - Stays consistent with how you've communicated before
+${articleContext ? '- Shows you actually read the article by referencing specific points or implications' : ''}
 
 Examples of good comments:
 - "Same here! Been there way too many times 😂"
 - "Oh I need to check that place out, love finding good coffee"
 - "This is so relatable. Had three today alone."
 - "That book was incredible. Did you get to the plot twist?"
+${articleContext ? '- "The implications for privacy here are wild. This could change everything"\n- "Finally! Been waiting for this kind of innovation in the space"' : ''}
 
 Write ONE comment now:`
 
