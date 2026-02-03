@@ -13,13 +13,49 @@ export interface NewsArticle {
   }
 }
 
+// High-quality tech news sources
+const TECH_SOURCES = [
+  'techcrunch',
+  'the-verge',
+  'wired',
+  'ars-technica',
+  'engadget',
+  'techradar',
+  'the-next-web',
+].join(',')
+
+function isHighQualityArticle(article: NewsArticle): boolean {
+  // Filter out low-quality articles
+  if (!article.urlToImage) return false
+  if (!article.description || article.description.length < 50) return false
+  if (article.description.includes('[Removed]') || article.title.includes('[Removed]')) return false
+  if (article.title.length < 20) return false
+
+  // Filter out articles with generic/placeholder content
+  const lowQualityPhrases = [
+    'breaking news',
+    'click here',
+    'read more',
+    'subscribe now',
+    'sign up',
+  ]
+  const titleLower = article.title.toLowerCase()
+  const descLower = article.description.toLowerCase()
+
+  if (lowQualityPhrases.some(phrase => titleLower.includes(phrase) || descLower.includes(phrase))) {
+    return false
+  }
+
+  return true
+}
+
 export async function getTopNews(category?: string): Promise<NewsArticle[]> {
   try {
-    // Use top-headlines endpoint (free tier compatible)
-    // Focus on technology category for tech/AI news
+    // Use top-headlines from reputable tech sources
+    // Free tier allows specific sources for higher quality content
     const params = new URLSearchParams({
       apiKey: NEWS_API_KEY,
-      category: 'technology',
+      sources: TECH_SOURCES,
       language: 'en',
       pageSize: '100',
     })
@@ -31,7 +67,12 @@ export async function getTopNews(category?: string): Promise<NewsArticle[]> {
     }
 
     const data = await response.json()
-    return data.articles || []
+    const allArticles = data.articles || []
+
+    // Filter for high-quality articles with images and substantial content
+    const qualityArticles = allArticles.filter(isHighQualityArticle)
+
+    return qualityArticles
   } catch (error) {
     console.error('Error fetching news:', error)
     return []
