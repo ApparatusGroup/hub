@@ -23,7 +23,13 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
   const [editMode, setEditMode] = useState(false)
-  const [editForm, setEditForm] = useState({ displayName: '', bio: '', photoURL: '' })
+  const [editForm, setEditForm] = useState({
+    displayName: '',
+    bio: '',
+    photoURL: '',
+    aiPersonality: '',
+    aiInterests: [] as string[]
+  })
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState('')
   const [saving, setSaving] = useState(false)
@@ -48,12 +54,14 @@ export default function ProfilePage() {
         // Get target user profile
         const userDoc = await getDoc(doc(db, 'users', userId))
         if (userDoc.exists()) {
-          const profileData = userDoc.data() as UserProfile
+          const profileData = userDoc.data() as UserProfile & { aiPersonality?: string, aiInterests?: string[] }
           setProfile(profileData)
           setEditForm({
             displayName: profileData.displayName || '',
             bio: profileData.bio || '',
             photoURL: profileData.photoURL || '',
+            aiPersonality: profileData.aiPersonality || '',
+            aiInterests: profileData.aiInterests || []
           })
         } else {
           // Profile doesn't exist, create it if viewing own profile
@@ -172,6 +180,18 @@ export default function ProfilePage() {
 
       const token = await (user as any).getIdToken()
 
+      const updates: any = {
+        displayName: editForm.displayName,
+        bio: editForm.bio,
+        photoURL: finalPhotoURL || null,
+      }
+
+      // Add AI-specific fields if editing an AI profile
+      if (profile?.isAI) {
+        updates.aiPersonality = editForm.aiPersonality
+        updates.aiInterests = editForm.aiInterests
+      }
+
       const response = await fetch('/api/admin/update-profile', {
         method: 'POST',
         headers: {
@@ -180,11 +200,7 @@ export default function ProfilePage() {
         },
         body: JSON.stringify({
           targetUserId: userId,
-          updates: {
-            displayName: editForm.displayName,
-            bio: editForm.bio,
-            photoURL: finalPhotoURL || null,
-          },
+          updates,
         }),
       })
 
@@ -335,10 +351,13 @@ export default function ProfilePage() {
                           <button
                             onClick={() => {
                               setEditMode(false)
+                              const profileData = profile as UserProfile & { aiPersonality?: string, aiInterests?: string[] }
                               setEditForm({
                                 displayName: profile.displayName || '',
                                 bio: profile.bio || '',
                                 photoURL: profile.photoURL || '',
+                                aiPersonality: profileData.aiPersonality || '',
+                                aiInterests: profileData.aiInterests || []
                               })
                             }}
                             disabled={saving}
@@ -364,13 +383,55 @@ export default function ProfilePage() {
               <p className="text-gray-600 text-sm sm:text-base break-words">{profile.email}</p>
 
               {editMode ? (
-                <textarea
-                  value={editForm.bio}
-                  onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
-                  placeholder="Bio"
-                  className="input-field resize-none w-full"
-                  rows={3}
-                />
+                <>
+                  <textarea
+                    value={editForm.bio}
+                    onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
+                    placeholder="Bio"
+                    className="input-field resize-none w-full"
+                    rows={3}
+                  />
+
+                  {profile?.isAI && (
+                    <div className="space-y-3 border-t border-gray-200 pt-3">
+                      <div className="flex items-center gap-2 text-sm text-secondary font-semibold">
+                        <Bot className="w-4 h-4" />
+                        <span>AI Configuration</span>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Personality Description</label>
+                        <textarea
+                          value={editForm.aiPersonality}
+                          onChange={(e) => setEditForm({ ...editForm, aiPersonality: e.target.value })}
+                          placeholder="Describe the AI's personality, tone, and behavior..."
+                          className="input-field resize-none w-full text-sm"
+                          rows={4}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          This defines how the AI will generate posts and comments. Be detailed and specific for more realistic behavior.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Interests (comma-separated)</label>
+                        <input
+                          type="text"
+                          value={editForm.aiInterests.join(', ')}
+                          onChange={(e) => setEditForm({
+                            ...editForm,
+                            aiInterests: e.target.value.split(',').map(i => i.trim()).filter(i => i)
+                          })}
+                          placeholder="coding, design, coffee, travel, books"
+                          className="input-field w-full text-sm"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Topics the AI will post about and engage with.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : profile.bio ? (
                 <p className="text-gray-800 text-sm sm:text-base">{profile.bio}</p>
               ) : null}
