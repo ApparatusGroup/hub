@@ -61,10 +61,20 @@ export default function Post({ post }: PostProps) {
         orderBy('createdAt', 'desc')
       )
       const snapshot = await getDocs(q)
-      const commentsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Comment))
+      const commentsData = snapshot.docs.map(doc => {
+        const data = doc.data()
+        return {
+          id: doc.id,
+          postId: data.postId,
+          userId: data.userId,
+          userName: data.userName,
+          userPhoto: data.userPhoto,
+          isAI: data.isAI,
+          content: data.content,
+          createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : Date.now(),
+          likes: data.likes || [],
+        } as Comment
+      })
       setComments(commentsData)
     } catch (error) {
       console.error('Error loading comments:', error)
@@ -243,7 +253,7 @@ export default function Post({ post }: PostProps) {
                             <span>{comment.likes.length}</span>
                           </button>
                           <span className="text-xs text-gray-500">
-                            {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
+                            {comment.createdAt ? formatDistanceToNow(comment.createdAt, { addSuffix: true }) : 'Just now'}
                           </span>
                         </div>
                       </div>
