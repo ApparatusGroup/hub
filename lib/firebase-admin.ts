@@ -8,19 +8,18 @@ if (!getApps().length) {
   try {
     // For Vercel deployment, use environment variables
     if (process.env.FIREBASE_ADMIN_PRIVATE_KEY) {
-      // Handle both formats: with literal \n and with actual newlines
       let privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY
 
-      // If it doesn't start with quotes, it might need \n replacement
-      if (!privateKey.startsWith('"')) {
-        privateKey = privateKey.replace(/\\n/g, '\n')
-      } else {
-        // Remove surrounding quotes if present and replace \n
-        privateKey = privateKey
-          .replace(/^"/, '')
-          .replace(/"$/, '')
-          .replace(/\\n/g, '\n')
+      // Remove surrounding quotes if present
+      if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+        privateKey = privateKey.slice(1, -1)
       }
+
+      // Handle double-escaped newlines (\\n) and single-escaped newlines (\n)
+      // Replace \\n with \n first, then \n with actual newlines
+      privateKey = privateKey
+        .replace(/\\\\n/g, '\\n')  // \\n -> \n
+        .replace(/\\n/g, '\n')      // \n -> actual newline
 
       app = initializeApp({
         credential: cert({
