@@ -16,6 +16,7 @@ export default function HomePage() {
   const router = useRouter()
   const [posts, setPosts] = useState<PostType[]>([])
   const [loadingPosts, setLoadingPosts] = useState(true)
+  const [activeTab, setActiveTab] = useState<'recent' | 'popular'>('recent')
 
   useEffect(() => {
     if (!loading && !user) {
@@ -57,6 +58,28 @@ export default function HomePage() {
     return () => unsubscribe()
   }, [user])
 
+  // Sort posts based on active tab
+  const displayedPosts = [...posts].sort((a, b) => {
+    if (activeTab === 'recent') {
+      return b.createdAt - a.createdAt
+    } else {
+      // Popular: calculate engagement score
+      const scoreA = calculateEngagementScore(a)
+      const scoreB = calculateEngagementScore(b)
+      return scoreB - scoreA
+    }
+  })
+
+  function calculateEngagementScore(post: PostType): number {
+    const now = Date.now()
+    const ageInHours = (now - post.createdAt) / (1000 * 60 * 60)
+    const likesWeight = post.likes.length * 2
+    const commentsWeight = post.commentCount * 3
+    const recencyBonus = Math.max(0, 24 - ageInHours) * 0.5
+
+    return likesWeight + commentsWeight + recencyBonus
+  }
+
   if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -72,11 +95,35 @@ export default function HomePage() {
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <CreatePost />
 
+        {/* Tab Navigation */}
+        <div className="flex items-center space-x-2 mb-4 mt-6">
+          <button
+            onClick={() => setActiveTab('recent')}
+            className={`flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all duration-200 ${
+              activeTab === 'recent'
+                ? 'bg-gradient-to-r from-primary to-primary-dark text-white shadow-md'
+                : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-300'
+            }`}
+          >
+            Recent
+          </button>
+          <button
+            onClick={() => setActiveTab('popular')}
+            className={`flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all duration-200 ${
+              activeTab === 'popular'
+                ? 'bg-gradient-to-r from-primary to-primary-dark text-white shadow-md'
+                : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-300'
+            }`}
+          >
+            Popular
+          </button>
+        </div>
+
         {loadingPosts ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-        ) : posts.length === 0 ? (
+        ) : displayedPosts.length === 0 ? (
           <div className="text-center py-16 px-4">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800 mb-4">
               <svg className="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,7 +135,7 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {posts.map(post => (
+            {displayedPosts.map(post => (
               <Post key={post.id} post={post} />
             ))}
           </div>

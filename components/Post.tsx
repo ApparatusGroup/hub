@@ -177,11 +177,11 @@ export default function Post({ post }: PostProps) {
           <p className="mt-2.5 text-slate-300 leading-relaxed whitespace-pre-wrap">{post.content}</p>
 
           {post.imageUrl && (
-            <div className="mt-4 rounded-xl overflow-hidden border border-slate-800/60">
+            <div className="mt-4 rounded-xl overflow-hidden border border-slate-800/60 aspect-square">
               <img
                 src={post.imageUrl}
                 alt="Post"
-                className="w-full max-h-[500px] object-cover hover:scale-[1.02] transition-transform duration-500"
+                className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-500"
               />
             </div>
           )}

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
 import { generateAIPost, AI_BOTS, AIBotPersonality } from '@/lib/ai-service'
 import { updateAIMemoryAfterPost, getAIMemory } from '@/lib/ai-memory'
+import { getTopNews, selectRandomArticle, generatePostFromArticle } from '@/lib/news-service'
 
 export async function POST(request: Request) {
   try {
@@ -18,9 +19,46 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No AI bots found' }, { status: 404 })
     }
 
-    // Randomly select a bot
+    // Get recent posts to check bot distribution (last 2 hours)
+    const twoHoursAgo = new Date()
+    twoHoursAgo.setHours(twoHoursAgo.getHours() - 2)
+
+    const recentPostsSnapshot = await adminDb
+      .collection('posts')
+      .where('isAI', '==', true)
+      .where('createdAt', '>=', twoHoursAgo)
+      .get()
+
+    // Count posts per bot
+    const botPostCounts = new Map<string, number>()
+    recentPostsSnapshot.docs.forEach(doc => {
+      const postData = doc.data()
+      const count = botPostCounts.get(postData.userId) || 0
+      botPostCounts.set(postData.userId, count + 1)
+    })
+
+    // Calculate weights for bot selection (bots with fewer posts get higher weight)
     const botDocs = botsSnapshot.docs
-    const randomBot = botDocs[Math.floor(Math.random() * botDocs.length)]
+    const botWeights = botDocs.map(doc => {
+      const postCount = botPostCounts.get(doc.data().uid) || 0
+      // Higher weight for bots that haven't posted recently
+      return Math.max(1, 10 - postCount * 3)
+    })
+
+    // Weighted random selection
+    const totalWeight = botWeights.reduce((sum, weight) => sum + weight, 0)
+    let random = Math.random() * totalWeight
+    let selectedIndex = 0
+
+    for (let i = 0; i < botWeights.length; i++) {
+      random -= botWeights[i]
+      if (random <= 0) {
+        selectedIndex = i
+        break
+      }
+    }
+
+    const randomBot = botDocs[selectedIndex]
     const botData = randomBot.data()
 
     // Build personality from database or fall back to hardcoded config
@@ -48,8 +86,32 @@ export async function POST(request: Request) {
     // Get AI memory for context
     const memory = await getAIMemory(botData.uid)
 
-    // Generate post content with memory context
-    const content = await generateAIPost(personality, memory)
+    // Randomly decide: 60% news article, 40% generated post
+    const shouldPostNews = Math.random() < 0.6
+
+    let content = ''
+    let articleUrl: string | null = null
+    let articleTitle: string | null = null
+    let imageUrl: string | null = null
+
+    if (shouldPostNews) {
+      // Fetch news and post an article
+      const news = await getTopNews()
+      const article = selectRandomArticle(news)
+
+      if (article) {
+        content = generatePostFromArticle(article, personality.personality)
+        articleUrl = article.url
+        articleTitle = article.title
+        imageUrl = article.urlToImage
+      } else {
+        // Fallback to generated post if no news available
+        content = await generateAIPost(personality, memory)
+      }
+    } else {
+      // Generate original post content with memory context
+      content = await generateAIPost(personality, memory)
+    }
 
     // Create the post
     const postRef = await adminDb.collection('posts').add({
@@ -58,8 +120,9 @@ export async function POST(request: Request) {
       userPhoto: botData.photoURL,
       isAI: true,
       content,
-      imageUrl: null,
-      articleUrl: null,
+      imageUrl,
+      articleUrl,
+      articleTitle,
       createdAt: new Date(),
       likes: [],
       commentCount: 0,
@@ -73,6 +136,8 @@ export async function POST(request: Request) {
       postId: postRef.id,
       botName: botData.displayName,
       content,
+      articleUrl,
+      articleTitle,
     })
   } catch (error) {
     console.error('Error creating AI post:', error)
