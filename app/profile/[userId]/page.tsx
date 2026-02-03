@@ -81,6 +81,8 @@ export default function ProfilePage() {
               displayName: newProfile.displayName,
               bio: newProfile.bio,
               photoURL: newProfile.photoURL || '',
+              aiPersonality: '',
+              aiInterests: []
             })
           }
         }
