@@ -477,8 +477,8 @@ export default function PostPage() {
           ) : (
             topLevelComments.map((comment) => (
               <div key={comment.id} className="post-card">
-                {/* Comment */}
-                <div className="flex gap-3">
+                {/* Comment Header */}
+                <div className="flex items-center space-x-2.5 mb-2">
                   <button
                     onClick={() => router.push(`/profile/${comment.userId}`)}
                     className="flex-shrink-0 cursor-pointer"
@@ -487,158 +487,158 @@ export default function PostPage() {
                       <img
                         src={comment.userPhoto}
                         alt={comment.userName}
-                        className="w-9 h-9 rounded-full object-cover ring-2 ring-slate-700/30"
+                        className="w-8 h-8 rounded-full object-cover avatar-ring"
                       />
                     ) : (
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-sm font-semibold ring-2 ring-slate-700/30">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center text-white text-sm font-semibold avatar-ring">
                         {comment.userName[0].toUpperCase()}
                       </div>
                     )}
                   </button>
+                  <div className="flex items-center space-x-2 flex-wrap min-w-0 flex-1">
+                    <button
+                      onClick={() => router.push(`/profile/${comment.userId}`)}
+                      className="font-semibold text-sm text-slate-100 hover:text-primary transition-colors"
+                    >
+                      {comment.userName}
+                    </button>
+                    <span className="text-xs text-slate-500">
+                      · {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
+                    </span>
+                  </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <button
-                          onClick={() => router.push(`/profile/${comment.userId}`)}
-                          className="font-semibold text-sm text-white hover:text-primary transition-colors"
-                        >
-                          {comment.userName}
-                        </button>
-                        <span className="text-xs text-slate-500 ml-2">
-                          {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
-                        </span>
-                      </div>
+                  {/* Delete button for comment author or admin */}
+                  {(user.uid === comment.userId || isAdmin) && (
+                    <button
+                      onClick={() => handleDeleteComment(comment.id)}
+                      className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-all flex-shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
 
-                      {/* Delete button for comment author or admin */}
-                      {(user.uid === comment.userId || isAdmin) && (
-                        <button
-                          onClick={() => handleDeleteComment(comment.id)}
-                          className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-all"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
+                {/* Comment Content */}
+                <p className="text-slate-200 leading-relaxed break-words">
+                  {comment.content}
+                </p>
 
-                    <p className="text-slate-200 mt-1 leading-snug break-words">
-                      {comment.content}
-                    </p>
+                <div className="mt-3">
+                  <div className="flex items-center gap-4">
 
-                    <div className="flex items-center gap-4 mt-2">
-                      <button
-                        onClick={() => handleLikeComment(comment.id, comment.likes)}
-                        className={`flex items-center gap-1.5 text-sm transition-colors ${
-                          user && comment.likes.includes(user.uid)
-                            ? 'text-rose-400'
-                            : 'text-slate-500 hover:text-rose-400'
+                    <button
+                      onClick={() => handleLikeComment(comment.id, comment.likes)}
+                      className={`flex items-center gap-1.5 text-sm transition-colors ${
+                        user && comment.likes.includes(user.uid)
+                          ? 'text-rose-400'
+                          : 'text-slate-500 hover:text-rose-400'
+                      }`}
+                    >
+                      <Heart
+                        className={`w-4 h-4 ${
+                          user && comment.likes.includes(user.uid) ? 'fill-current' : ''
                         }`}
+                      />
+                      <span className="font-medium">
+                        {comment.likes.length > 0 ? comment.likes.length : ''}
+                      </span>
+                    </button>
+
+                    {/* Only show Reply button if depth < 4 */}
+                    {getCommentDepth(comment) < 3 && (
+                      <button
+                        onClick={() => setReplyingTo(comment.id)}
+                        className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-primary transition-colors"
                       >
-                        <Heart
-                          className={`w-4 h-4 ${
-                            user && comment.likes.includes(user.uid) ? 'fill-current' : ''
-                          }`}
-                        />
-                        <span className="font-medium">
-                          {comment.likes.length > 0 ? comment.likes.length : ''}
-                        </span>
+                        <Reply className="w-4 h-4" />
+                        <span className="font-medium">Reply</span>
                       </button>
+                    )}
+                  </div>
+                </div>
 
-                      {/* Only show Reply button if depth < 4 */}
-                      {getCommentDepth(comment) < 3 && (
-                        <button
-                          onClick={() => setReplyingTo(comment.id)}
-                          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-primary transition-colors"
-                        >
-                          <Reply className="w-4 h-4" />
-                          <span className="font-medium">Reply</span>
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Replies */}
-                    {(comment.replyCount || 0) > 0 && (
-                      <div className="mt-4 space-y-3 pl-4 border-l-2 border-slate-800">
-                        {getReplies(comment.id).map((reply) => (
-                          <div key={reply.id} className="flex gap-2.5">
-                            <button
-                              onClick={() => router.push(`/profile/${reply.userId}`)}
-                              className="flex-shrink-0 cursor-pointer"
-                            >
-                              {reply.userPhoto ? (
-                                <img
-                                  src={reply.userPhoto}
-                                  alt={reply.userName}
-                                  className="w-7 h-7 rounded-full object-cover ring-1 ring-slate-700/30"
-                                />
-                              ) : (
-                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-xs font-semibold ring-1 ring-slate-700/30">
+                {/* Replies */}
+                {(comment.replyCount || 0) > 0 && (
+                  <div className="mt-4 space-y-3 pl-4 border-l-2 border-slate-800">
+                    {getReplies(comment.id).map((reply) => (
+                      <div key={reply.id}>
+                        {/* Reply Header */}
+                        <div className="flex items-center space-x-2 mb-1.5">
+                          <button
+                            onClick={() => router.push(`/profile/${reply.userId}`)}
+                            className="flex-shrink-0 cursor-pointer"
+                          >
+                            {reply.userPhoto ? (
+                              <img
+                                src={reply.userPhoto}
+                                alt={reply.userName}
+                                className="w-7 h-7 rounded-full object-cover avatar-ring"
+                              />
+                            ) : (
+                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center text-white text-xs font-semibold avatar-ring">
                                   {reply.userName[0].toUpperCase()}
                                 </div>
                               )}
                             </button>
-
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <button
-                                    onClick={() => router.push(`/profile/${reply.userId}`)}
-                                    className="font-semibold text-xs text-white hover:text-primary transition-colors"
-                                  >
-                                    {reply.userName}
-                                  </button>
-                                  <span className="text-xs text-slate-500 ml-2">
-                                    {formatDistanceToNow(reply.createdAt, { addSuffix: true })}
-                                  </span>
-                                </div>
-
-                                {/* Delete button for reply author or admin */}
-                                {(user.uid === reply.userId || isAdmin) && (
-                                  <button
-                                    onClick={() => handleDeleteComment(reply.id)}
-                                    className="p-1 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-all"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                )}
-                              </div>
-
-                              <p className="text-slate-200 text-sm mt-0.5 leading-snug break-words">
-                                {reply.content}
-                              </p>
-
-                              <div className="flex items-center gap-3 mt-1">
-                                <button
-                                  onClick={() => handleLikeComment(reply.id, reply.likes)}
-                                  className={`flex items-center gap-1 text-xs transition-colors ${
-                                    user && reply.likes.includes(user.uid)
-                                      ? 'text-rose-400'
-                                      : 'text-slate-500 hover:text-rose-400'
-                                  }`}
-                                >
-                                  <Heart
-                                    className={`w-3 h-3 ${
-                                      user && reply.likes.includes(user.uid) ? 'fill-current' : ''
-                                    }`}
-                                  />
-                                  <span className="font-medium">
-                                    {reply.likes.length > 0 ? reply.likes.length : ''}
-                                  </span>
-                                </button>
-
-                                {/* Only show Reply button if depth < 4 */}
-                                {getCommentDepth(reply) < 3 && (
-                                  <button
-                                    onClick={() => setReplyingTo(comment.id)}
-                                    className="flex items-center gap-1 text-xs text-slate-500 hover:text-primary transition-colors"
-                                  >
-                                    <Reply className="w-3 h-3" />
-                                    <span className="font-medium">Reply</span>
-                                  </button>
-                                )}
-                              </div>
+                            <div className="flex items-center space-x-2 flex-wrap min-w-0 flex-1">
+                              <button
+                                onClick={() => router.push(`/profile/${reply.userId}`)}
+                                className="font-semibold text-xs text-slate-100 hover:text-primary transition-colors"
+                              >
+                                {reply.userName}
+                              </button>
+                              <span className="text-xs text-slate-500">
+                                · {formatDistanceToNow(reply.createdAt, { addSuffix: true })}
+                              </span>
                             </div>
+
+                            {/* Delete button for reply author or admin */}
+                            {(user.uid === reply.userId || isAdmin) && (
+                              <button
+                                onClick={() => handleDeleteComment(reply.id)}
+                                className="p-1 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-all flex-shrink-0"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
                           </div>
+
+                          {/* Reply Content */}
+                          <p className="text-slate-200 text-sm mt-1 leading-relaxed break-words">
+                            {reply.content}
+                          </p>
+
+                          <div className="flex items-center gap-3 mt-2">
+                            <button
+                              onClick={() => handleLikeComment(reply.id, reply.likes)}
+                              className={`flex items-center gap-1 text-xs transition-colors ${
+                                user && reply.likes.includes(user.uid)
+                                  ? 'text-rose-400'
+                                  : 'text-slate-500 hover:text-rose-400'
+                              }`}
+                            >
+                              <Heart
+                                className={`w-3 h-3 ${
+                                  user && reply.likes.includes(user.uid) ? 'fill-current' : ''
+                                }`}
+                              />
+                              <span className="font-medium">
+                                {reply.likes.length > 0 ? reply.likes.length : ''}
+                              </span>
+                            </button>
+
+                            {/* Only show Reply button if depth < 4 */}
+                            {getCommentDepth(reply) < 3 && (
+                              <button
+                                onClick={() => setReplyingTo(comment.id)}
+                                className="flex items-center gap-1 text-xs text-slate-500 hover:text-primary transition-colors"
+                              >
+                                <Reply className="w-3 h-3" />
+                                <span className="font-medium">Reply</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
                         ))}
                       </div>
                     )}

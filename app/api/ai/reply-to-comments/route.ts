@@ -142,7 +142,8 @@ export async function POST(request: Request) {
         `${parentCommentData.content}\n\nUser replied: ${replyData.content}`,
         replyData.userName,
         memory,
-        articleContext
+        articleContext,
+        null // No need to check existing comments for replies
       )
 
       // Create the reply

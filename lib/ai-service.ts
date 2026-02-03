@@ -175,7 +175,8 @@ export async function generateAIComment(
   postContent: string,
   postAuthorName: string,
   memory?: AIMemory | null,
-  articleContext?: { title: string; description: string } | null
+  articleContext?: { title: string; description: string } | null,
+  existingComments?: Array<{ userName: string; content: string; isAI: boolean }> | null
 ): Promise<string> {
   let contextSection = ''
 
@@ -217,23 +218,30 @@ Summary: ${articleContext.description}
 Your comment should show you've read and understood the article. Comment on the actual content/implications of the article, not just the post text.`
   }
 
+  // Add existing comments to ensure uniqueness
+  let existingCommentsSection = ''
+  if (existingComments && existingComments.length > 0) {
+    existingCommentsSection = `\n\nEXISTING COMMENTS ON THIS POST (DO NOT REPEAT THESE - be unique!):\n${existingComments.map(c => `- ${c.userName}: "${c.content}"`).join('\n')}`
+  }
+
   const prompt = `You are ${botPersonality.name}, a ${botPersonality.age}-year-old ${botPersonality.occupation}.
 
 Personality: ${botPersonality.personality}
 Interests: ${botPersonality.interests.join(', ')}${contextSection}
 
-${postAuthorName} posted: "${postContent}"${articleSection}
+${postAuthorName} posted: "${postContent}"${articleSection}${existingCommentsSection}
 
 Write a natural, genuine comment response that:
 - Sounds like a real person (not AI or overly enthusiastic)
 - Is 1-2 sentences
 - Relates to the post/article authentically
-- Shows your personality naturally
+- Shows YOUR UNIQUE personality naturally (different from the other commenters!)
 - Isn't forced or trying too hard
 - Could include a question, agreement, joke, or relevant experience
 - No excessive emojis or hashtags
 - Stays consistent with how you've communicated before
 ${articleContext ? '- Shows you actually read the article by referencing specific points or implications' : ''}
+${existingComments && existingComments.length > 0 ? '- CRITICAL: Your comment MUST be different from existing comments. Take a different angle, focus on a different aspect, or bring a fresh perspective.' : ''}
 
 Examples of good comments:
 - "Same here! Been there way too many times 😂"
@@ -242,7 +250,7 @@ Examples of good comments:
 - "That book was incredible. Did you get to the plot twist?"
 ${articleContext ? '- "The implications for privacy here are wild. This could change everything"\n- "Finally! Been waiting for this kind of innovation in the space"' : ''}
 
-Write ONE comment now:`
+Write ONE comment now (make it unique based on YOUR personality):`
 
   try {
     const response = await fetch(OPENROUTER_API_URL, {

@@ -92,6 +92,22 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
+    // Get existing comments on this post to ensure uniqueness
+    const existingCommentsSnapshot = await adminDb
+      .collection('comments')
+      .where('postId', '==', randomPost.id)
+      .where('parentId', '==', null) // Only top-level comments
+      .get()
+
+    const existingComments = existingCommentsSnapshot.docs.map(doc => {
+      const data = doc.data()
+      return {
+        userName: data.userName,
+        content: data.content,
+        isAI: data.isAI
+      }
+    })
+
     // Prepare article context if this post shares a news article
     const articleContext = postData.articleTitle && postData.articleDescription
       ? {
@@ -101,13 +117,14 @@ export async function POST(request: Request) {
       : null
 
     // Generate comment content with memory context and article context
-    // Bot will "read" the article before commenting
+    // Bot will "read" the article before commenting and see what others said
     const commentContent = await generateAIComment(
       personality,
       postData.content,
       postData.userName,
       memory,
-      articleContext
+      articleContext,
+      existingComments
     )
 
     // Create the comment
