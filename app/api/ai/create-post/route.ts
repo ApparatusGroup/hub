@@ -46,6 +46,7 @@ export async function POST(request: Request) {
       articleUrl: null,
       createdAt: new Date(),
       likes: [],
+      commentCount: 0,
     })
 
     // Update AI memory with this post

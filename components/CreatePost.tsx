@@ -31,6 +31,7 @@ export default function CreatePost() {
         articleUrl: articleUrl || null,
         createdAt: serverTimestamp(),
         likes: [],
+        commentCount: 0,
       })
 
       setContent('')
