@@ -137,6 +137,19 @@ export default function ProfilePage() {
     setEditForm({ ...editForm, photoURL: '' })
   }
 
+  const handlePhotoURLChange = (url: string) => {
+    setEditForm({ ...editForm, photoURL: url })
+
+    // Clear file upload if URL is entered
+    if (url && photoFile) {
+      setPhotoFile(null)
+      setPhotoPreview('')
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
   const handleSaveProfile = async () => {
     if (!isAdmin || !user) return
 
@@ -242,8 +255,7 @@ export default function ProfilePage() {
                       type="file"
                       accept="image/*"
                       onChange={handlePhotoFileChange}
-                      disabled={!!editForm.photoURL}
-                      className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90 disabled:opacity-50"
+                      className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90"
                     />
                   </div>
                   <div>
@@ -251,10 +263,9 @@ export default function ProfilePage() {
                     <input
                       type="url"
                       value={editForm.photoURL}
-                      onChange={(e) => setEditForm({ ...editForm, photoURL: e.target.value })}
-                      disabled={!!photoFile}
+                      onChange={(e) => handlePhotoURLChange(e.target.value)}
                       placeholder="Photo URL"
-                      className="input-field text-xs w-full disabled:opacity-50"
+                      className="input-field text-xs w-full"
                     />
                   </div>
                   {(photoPreview || editForm.photoURL) ? (
