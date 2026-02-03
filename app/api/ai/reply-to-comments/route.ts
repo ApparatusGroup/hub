@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
       // Get the parent comment
       const parentCommentRef = await adminDb.collection('comments').doc(replyData.parentId).get()
-      if (!parentCommentRef.exists()) continue
+      if (!parentCommentRef.exists) continue
 
       const parentCommentData = parentCommentRef.data()
 
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       let currentParentId = replyData.parentId
       while (currentParentId && depth < 5) {
         const parentDoc = await adminDb.collection('comments').doc(currentParentId).get()
-        if (!parentDoc.exists()) break
+        if (!parentDoc.exists) break
         const parentData = parentDoc.data()
         if (parentData?.parentId) {
           currentParentId = parentData.parentId
