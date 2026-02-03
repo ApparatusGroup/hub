@@ -35,6 +35,8 @@ export interface Comment {
   content: string
   createdAt: number
   likes: string[]
+  parentId?: string // For nested replies
+  replyCount?: number // Number of replies to this comment
 }
 
 export interface AIBot {

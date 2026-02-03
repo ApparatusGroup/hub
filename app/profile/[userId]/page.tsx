@@ -382,8 +382,6 @@ export default function ProfilePage() {
                   )}
                 </div>
 
-              <p className="text-slate-400 text-sm sm:text-base break-words">{profile.email}</p>
-
               {editMode ? (
                 <>
                   <textarea
