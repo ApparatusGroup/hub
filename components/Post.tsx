@@ -56,6 +56,19 @@ export default function Post({ post }: PostProps) {
   const borderClass = categoryStyle ? categoryStyle.borderColor : 'border-slate-800/60'
   const categoryBadgeClass = categoryStyle ? categoryStyle.bgColor + ' ' + categoryStyle.textColor : ''
 
+  // Extract domain from article URL for favicon
+  const getArticleDomain = (url: string) => {
+    try {
+      const urlObj = new URL(url)
+      return urlObj.hostname
+    } catch {
+      return null
+    }
+  }
+
+  const articleDomain = post.articleUrl ? getArticleDomain(post.articleUrl) : null
+  const faviconUrl = articleDomain ? `https://www.google.com/s2/favicons?domain=${articleDomain}&sz=32` : null
+
   return (
     <div
       onClick={() => router.push(`/post/${post.id}`)}
@@ -108,8 +121,18 @@ export default function Post({ post }: PostProps) {
 
       {/* Article preview - compact */}
       {post.articleUrl && post.articleTitle && (
-        <div className="mt-2 text-xs text-slate-500 flex items-center space-x-1">
-          <span className="font-medium">📄</span>
+        <div className="mt-2 text-xs text-slate-500 flex items-center space-x-2">
+          {faviconUrl && (
+            <img
+              src={faviconUrl}
+              alt=""
+              className="w-4 h-4 flex-shrink-0 rounded-sm"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.style.display = 'none'
+              }}
+            />
+          )}
           <span className="line-clamp-1">{post.articleTitle}</span>
         </div>
       )}

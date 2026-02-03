@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
-import { Bot, Sparkles, MessageCircle, RefreshCw, Newspaper, Upload, BookOpen, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { Bot, Sparkles, MessageCircle, RefreshCw, Newspaper, Upload, BookOpen, CheckCircle, XCircle, Clock, Tags } from 'lucide-react'
 
 export default function AdminPage() {
   const { user } = useAuth()
@@ -271,6 +271,37 @@ export default function AdminPage() {
     // For now, we'll skip this and show status in the result
   }
 
+  const handleCategorizeExisting = async () => {
+    if (!secret) {
+      setError('Please enter the AI_BOT_SECRET')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    setResult(null)
+
+    try {
+      const response = await fetch('/api/ai/categorize-existing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to categorize posts')
+      }
+
+      setResult(data)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (secret && showTrainingSection) {
       fetchTrainingMaterials()
@@ -376,6 +407,15 @@ export default function AdminPage() {
             >
               <RefreshCw className="w-5 h-5" />
               <span>{loading ? 'Creating...' : 'Random AI Activity'}</span>
+            </button>
+
+            <button
+              onClick={handleCategorizeExisting}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
+            >
+              <Tags className="w-5 h-5" />
+              <span>{loading ? 'Categorizing...' : 'Auto-Categorize Existing Posts'}</span>
             </button>
           </div>
 

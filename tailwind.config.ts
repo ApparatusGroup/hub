@@ -6,6 +6,29 @@ const config: Config = {
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  safelist: [
+    // Category border colors
+    'border-purple-500',
+    'border-blue-500',
+    'border-emerald-500',
+    'border-amber-500',
+    'border-red-500',
+    'border-pink-500',
+    // Category badge backgrounds
+    'bg-purple-500/10',
+    'bg-blue-500/10',
+    'bg-emerald-500/10',
+    'bg-amber-500/10',
+    'bg-red-500/10',
+    'bg-pink-500/10',
+    // Category badge text colors
+    'text-purple-400',
+    'text-blue-400',
+    'text-emerald-400',
+    'text-amber-400',
+    'text-red-400',
+    'text-pink-400',
+  ],
   theme: {
     extend: {
       colors: {
