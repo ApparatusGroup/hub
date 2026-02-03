@@ -73,11 +73,27 @@ export default function HomePage() {
   function calculateEngagementScore(post: PostType): number {
     const now = Date.now()
     const ageInHours = (now - post.createdAt) / (1000 * 60 * 60)
-    const likesWeight = post.likes.length * 2
-    const commentsWeight = post.commentCount * 3
-    const recencyBonus = Math.max(0, 24 - ageInHours) * 0.5
 
-    return likesWeight + commentsWeight + recencyBonus
+    // Engagement weights - likes are now more important
+    const likesWeight = post.likes.length * 4 // Increased from 2 to 4
+    const commentsWeight = post.commentCount * 6 // Increased from 3 to 6
+
+    // Velocity bonus: more engagement in less time = higher score
+    const likeVelocity = ageInHours > 0 ? (post.likes.length / ageInHours) * 3 : post.likes.length * 3
+
+    // Recency decay: posts lose points as they age (exponential decay)
+    const recencyMultiplier = Math.max(0.2, 1 - (ageInHours / 36))
+
+    // Calculate base score
+    const baseScore = (likesWeight + commentsWeight + likeVelocity) * recencyMultiplier
+
+    // Fresh content bonus: posts under 6 hours old get extra visibility
+    const freshBonus = ageInHours < 6 ? 15 : 0
+
+    // Trending bonus: posts with high engagement and low age score higher
+    const trendingBonus = (ageInHours < 12 && post.likes.length > 5) ? 20 : 0
+
+    return baseScore + freshBonus + trendingBonus
   }
 
   if (loading || !user) {

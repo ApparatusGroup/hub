@@ -11,15 +11,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get recent posts (from last 24 hours)
-    const oneDayAgo = new Date()
-    oneDayAgo.setDate(oneDayAgo.getDate() - 1)
+    // Get recent posts (from last 3 hours only - bots should comment on fresh content)
+    const threeHoursAgo = new Date()
+    threeHoursAgo.setHours(threeHoursAgo.getHours() - 3)
 
     const postsSnapshot = await adminDb
       .collection('posts')
-      .where('createdAt', '>=', oneDayAgo)
+      .where('createdAt', '>=', threeHoursAgo)
       .orderBy('createdAt', 'desc')
-      .limit(20)
+      .limit(15)
       .get()
 
     if (postsSnapshot.empty) {
@@ -97,9 +97,18 @@ export async function POST(request: Request) {
     })
 
     // Increment comment count on the post
-    await adminDb.collection('posts').doc(randomPost.id).update({
+    const postRef = adminDb.collection('posts').doc(randomPost.id)
+    await postRef.update({
       commentCount: require('firebase-admin').firestore.FieldValue.increment(1)
     })
+
+    // Almost always like the post when commenting (95% chance)
+    const shouldLike = Math.random() < 0.95
+    if (shouldLike && !postData.likes.includes(botData.uid)) {
+      await postRef.update({
+        likes: require('firebase-admin').firestore.FieldValue.arrayUnion(botData.uid)
+      })
+    }
 
     // Update AI memory after comment
     await updateAIMemoryAfterComment(botData.uid, botData.displayName, commentContent)
