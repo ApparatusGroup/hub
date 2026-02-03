@@ -575,73 +575,71 @@ export default function PostPage() {
                                 className="w-7 h-7 rounded-full object-cover avatar-ring"
                               />
                             ) : (
-                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center text-white text-xs font-semibold avatar-ring">
-                                  {reply.userName[0].toUpperCase()}
-                                </div>
-                              )}
-                            </button>
-                            <div className="flex items-center space-x-2 flex-wrap min-w-0 flex-1">
-                              <button
-                                onClick={() => router.push(`/profile/${reply.userId}`)}
-                                className="font-semibold text-xs text-slate-100 hover:text-primary transition-colors"
-                              >
-                                {reply.userName}
-                              </button>
-                              <span className="text-xs text-slate-500">
-                                · {formatDistanceToNow(reply.createdAt, { addSuffix: true })}
-                              </span>
-                            </div>
-
-                            {/* Delete button for reply author or admin */}
-                            {(user.uid === reply.userId || isAdmin) && (
-                              <button
-                                onClick={() => handleDeleteComment(reply.id)}
-                                className="p-1 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-all flex-shrink-0"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
+                              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center text-white text-xs font-semibold avatar-ring">
+                                {reply.userName[0].toUpperCase()}
+                              </div>
                             )}
-                          </div>
-
-                          {/* Reply Content */}
-                          <p className="text-slate-200 text-sm mt-1 leading-relaxed break-words">
-                            {reply.content}
-                          </p>
-
-                          <div className="flex items-center gap-3 mt-2">
+                          </button>
+                          <div className="flex items-center space-x-2 flex-wrap min-w-0 flex-1">
                             <button
-                              onClick={() => handleLikeComment(reply.id, reply.likes)}
-                              className={`flex items-center gap-1 text-xs transition-colors ${
-                                user && reply.likes.includes(user.uid)
-                                  ? 'text-rose-400'
-                                  : 'text-slate-500 hover:text-rose-400'
-                              }`}
+                              onClick={() => router.push(`/profile/${reply.userId}`)}
+                              className="font-semibold text-xs text-slate-100 hover:text-primary transition-colors"
                             >
-                              <Heart
-                                className={`w-3 h-3 ${
-                                  user && reply.likes.includes(user.uid) ? 'fill-current' : ''
-                                }`}
-                              />
-                              <span className="font-medium">
-                                {reply.likes.length > 0 ? reply.likes.length : ''}
-                              </span>
+                              {reply.userName}
                             </button>
-
-                            {/* Only show Reply button if depth < 4 */}
-                            {getCommentDepth(reply) < 3 && (
-                              <button
-                                onClick={() => setReplyingTo(comment.id)}
-                                className="flex items-center gap-1 text-xs text-slate-500 hover:text-primary transition-colors"
-                              >
-                                <Reply className="w-3 h-3" />
-                                <span className="font-medium">Reply</span>
-                              </button>
-                            )}
+                            <span className="text-xs text-slate-500">
+                              · {formatDistanceToNow(reply.createdAt, { addSuffix: true })}
+                            </span>
                           </div>
+
+                          {/* Delete button for reply author or admin */}
+                          {(user.uid === reply.userId || isAdmin) && (
+                            <button
+                              onClick={() => handleDeleteComment(reply.id)}
+                              className="p-1 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-all flex-shrink-0"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
                         </div>
-                        ))}
+
+                        {/* Reply Content */}
+                        <p className="text-slate-200 text-sm mt-1 leading-relaxed break-words">
+                          {reply.content}
+                        </p>
+
+                        <div className="flex items-center gap-3 mt-2">
+                          <button
+                            onClick={() => handleLikeComment(reply.id, reply.likes)}
+                            className={`flex items-center gap-1 text-xs transition-colors ${
+                              user && reply.likes.includes(user.uid)
+                                ? 'text-rose-400'
+                                : 'text-slate-500 hover:text-rose-400'
+                            }`}
+                          >
+                            <Heart
+                              className={`w-3 h-3 ${
+                                user && reply.likes.includes(user.uid) ? 'fill-current' : ''
+                              }`}
+                            />
+                            <span className="font-medium">
+                              {reply.likes.length > 0 ? reply.likes.length : ''}
+                            </span>
+                          </button>
+
+                          {/* Only show Reply button if depth < 4 */}
+                          {getCommentDepth(reply) < 3 && (
+                            <button
+                              onClick={() => setReplyingTo(comment.id)}
+                              className="flex items-center gap-1 text-xs text-slate-500 hover:text-primary transition-colors"
+                            >
+                              <Reply className="w-3 h-3" />
+                              <span className="font-medium">Reply</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    )}
+                    ))}
                   </div>
                 </div>
               </div>
