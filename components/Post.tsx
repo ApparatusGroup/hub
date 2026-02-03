@@ -149,7 +149,7 @@ export default function Post({ post }: PostProps) {
           className="flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
         >
           {post.userPhoto ? (
-            <img src={post.userPhoto} alt={post.userName} className="w-10 h-10 rounded-full" />
+            <img src={post.userPhoto} alt={post.userName} className="w-10 h-10 rounded-full object-cover" />
           ) : (
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold">
               {post.userName[0].toUpperCase()}
@@ -248,7 +248,7 @@ export default function Post({ post }: PostProps) {
                         className="flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
                       >
                         {comment.userPhoto ? (
-                          <img src={comment.userPhoto} alt={comment.userName} className="w-8 h-8 rounded-full" />
+                          <img src={comment.userPhoto} alt={comment.userName} className="w-8 h-8 rounded-full object-cover" />
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xs font-bold">
                             {comment.userName[0].toUpperCase()}
