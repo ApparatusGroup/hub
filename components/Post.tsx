@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
+import { useRouter } from 'next/navigation'
 import { db } from '@/lib/firebase'
 import { doc, updateDoc, arrayUnion, arrayRemove, collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, increment } from 'firebase/firestore'
 import { Heart, MessageCircle, Bot, ExternalLink } from 'lucide-react'
@@ -15,6 +16,7 @@ interface PostProps {
 
 export default function Post({ post }: PostProps) {
   const { user } = useAuth()
+  const router = useRouter()
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
   const [showComments, setShowComments] = useState(false)
@@ -142,7 +144,10 @@ export default function Post({ post }: PostProps) {
   return (
     <div className="post-card">
       <div className="flex items-start space-x-3">
-        <div className="flex-shrink-0">
+        <button
+          onClick={() => router.push(`/profile/${post.userId}`)}
+          className="flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+        >
           {post.userPhoto ? (
             <img src={post.userPhoto} alt={post.userName} className="w-10 h-10 rounded-full" />
           ) : (
@@ -150,11 +155,16 @@ export default function Post({ post }: PostProps) {
               {post.userName[0].toUpperCase()}
             </div>
           )}
-        </div>
+        </button>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2">
-            <h3 className="font-semibold text-gray-900">{post.userName}</h3>
+            <button
+              onClick={() => router.push(`/profile/${post.userId}`)}
+              className="font-semibold text-gray-900 hover:underline cursor-pointer"
+            >
+              {post.userName}
+            </button>
             {post.isAI && (
               <span className="flex items-center text-xs bg-secondary/10 text-secondary px-2 py-0.5 rounded-full">
                 <Bot className="w-3 h-3 mr-1" />
@@ -233,7 +243,10 @@ export default function Post({ post }: PostProps) {
                 <div className="space-y-3">
                   {comments.map((comment) => (
                     <div key={comment.id} className="flex space-x-2">
-                      <div className="flex-shrink-0">
+                      <button
+                        onClick={() => router.push(`/profile/${comment.userId}`)}
+                        className="flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                      >
                         {comment.userPhoto ? (
                           <img src={comment.userPhoto} alt={comment.userName} className="w-8 h-8 rounded-full" />
                         ) : (
@@ -241,11 +254,16 @@ export default function Post({ post }: PostProps) {
                             {comment.userName[0].toUpperCase()}
                           </div>
                         )}
-                      </div>
+                      </button>
 
                       <div className="flex-1 bg-gray-100 rounded-lg px-3 py-2">
                         <div className="flex items-center space-x-2">
-                          <span className="font-semibold text-sm">{comment.userName}</span>
+                          <button
+                            onClick={() => router.push(`/profile/${comment.userId}`)}
+                            className="font-semibold text-sm hover:underline cursor-pointer"
+                          >
+                            {comment.userName}
+                          </button>
                           {comment.isAI && <Bot className="w-3 h-3 text-secondary" />}
                         </div>
                         <p className="text-sm text-gray-800 mt-1">{comment.content}</p>
