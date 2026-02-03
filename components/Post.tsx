@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { doc, updateDoc, arrayUnion, arrayRemove, collection, addDoc, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore'
+import { doc, updateDoc, arrayUnion, arrayRemove, collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, increment } from 'firebase/firestore'
 import { Heart, MessageCircle, Bot, ExternalLink } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Post as PostType, Comment } from '@/lib/types'
@@ -98,6 +98,13 @@ export default function Post({ post }: PostProps) {
         createdAt: serverTimestamp(),
         likes: [],
       })
+
+      // Increment comment count on the post
+      const postRef = doc(db, 'posts', post.id)
+      await updateDoc(postRef, {
+        commentCount: increment(1)
+      })
+
       setCommentText('')
       loadComments()
     } catch (error) {

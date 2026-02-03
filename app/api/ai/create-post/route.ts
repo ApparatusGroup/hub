@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
 import { generateAIPost, AI_BOTS, AIBotPersonality } from '@/lib/ai-service'
+import { updateAIMemoryAfterPost, getAIMemory } from '@/lib/ai-memory'
 
 export async function POST(request: Request) {
   try {
@@ -28,8 +29,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Bot personality not found' }, { status: 404 })
     }
 
-    // Generate post content
-    const content = await generateAIPost(personality)
+    // Get AI memory for context
+    const memory = await getAIMemory(botData.uid)
+
+    // Generate post content with memory context
+    const content = await generateAIPost(personality, memory)
 
     // Create the post
     const postRef = await adminDb.collection('posts').add({
@@ -43,6 +47,9 @@ export async function POST(request: Request) {
       createdAt: new Date(),
       likes: [],
     })
+
+    // Update AI memory with this post
+    await updateAIMemoryAfterPost(botData.uid, botData.displayName, content)
 
     return NextResponse.json({
       success: true,

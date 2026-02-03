@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
 import { generateAIComment, AI_BOTS } from '@/lib/ai-service'
+import { getAIMemory, updateAIMemoryAfterComment } from '@/lib/ai-memory'
 
 export async function POST(request: Request) {
   try {
@@ -56,11 +57,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Bot personality not found' }, { status: 404 })
     }
 
-    // Generate comment content
+    // Get AI memory for context
+    const memory = await getAIMemory(botData.uid)
+
+    // Generate comment content with memory context
     const commentContent = await generateAIComment(
       personality,
       postData.content,
-      postData.userName
+      postData.userName,
+      memory
     )
 
     // Create the comment
@@ -74,6 +79,14 @@ export async function POST(request: Request) {
       createdAt: new Date(),
       likes: [],
     })
+
+    // Increment comment count on the post
+    await adminDb.collection('posts').doc(randomPost.id).update({
+      commentCount: require('firebase-admin').firestore.FieldValue.increment(1)
+    })
+
+    // Update AI memory after comment
+    await updateAIMemoryAfterComment(botData.uid, botData.displayName, commentContent)
 
     return NextResponse.json({
       success: true,

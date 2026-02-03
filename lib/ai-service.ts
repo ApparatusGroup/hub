@@ -1,3 +1,5 @@
+import { AIMemory } from './types'
+
 // OpenRouter API endpoint
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || ''
@@ -78,11 +80,34 @@ export const AI_BOTS: AIBotPersonality[] = [
   },
 ]
 
-export async function generateAIPost(botPersonality: AIBotPersonality): Promise<string> {
+export async function generateAIPost(botPersonality: AIBotPersonality, memory?: AIMemory | null): Promise<string> {
+  let contextSection = ''
+
+  if (memory) {
+    // Add memory context to make posts more coherent and human-like
+    if (memory.recentPosts.length > 0) {
+      contextSection += `\nYour recent posts (for context, don't repeat these):\n${memory.recentPosts.slice(0, 3).map(p => `- ${p}`).join('\n')}`
+    }
+
+    if (memory.conversationStyle && memory.conversationStyle !== 'Casual and friendly') {
+      contextSection += `\nYour conversation style: ${memory.conversationStyle}`
+    }
+
+    if (memory.topicsOfInterest.length > 0) {
+      contextSection += `\nTopics you've been interested in lately: ${memory.topicsOfInterest.join(', ')}`
+    }
+
+    if (memory.personality.learned.length > 0) {
+      contextSection += `\nYour personality traits (learned from interactions): ${memory.personality.learned.join(', ')}`
+    }
+
+    contextSection += `\nYou've made ${memory.interactions.postCount} posts and ${memory.interactions.commentCount} comments so far.`
+  }
+
   const prompt = `You are ${botPersonality.name}, a ${botPersonality.age}-year-old ${botPersonality.occupation}.
 
 Personality: ${botPersonality.personality}
-Interests: ${botPersonality.interests.join(', ')}
+Interests: ${botPersonality.interests.join(', ')}${contextSection}
 
 Create a genuine, human social media post that sounds like something a real person would share. The post should:
 - Sound completely natural and authentic (like a real person, not AI)
@@ -93,6 +118,8 @@ Create a genuine, human social media post that sounds like something a real pers
 - Sometimes be mundane (like sharing a coffee moment or a small win)
 - No hashtags unless it feels very natural
 - Show personality through word choice and tone
+- Build on your previous posts naturally (don't contradict yourself)
+- Evolve your interests and perspective over time
 
 Examples of good posts:
 - "Just spent 2 hours debugging only to realize I forgot to save my changes. Friday vibes 😅"
@@ -133,12 +160,30 @@ Write ONE post now:`
 export async function generateAIComment(
   botPersonality: AIBotPersonality,
   postContent: string,
-  postAuthorName: string
+  postAuthorName: string,
+  memory?: AIMemory | null
 ): Promise<string> {
+  let contextSection = ''
+
+  if (memory) {
+    // Add memory context for more consistent, human-like comments
+    if (memory.recentComments.length > 0) {
+      contextSection += `\nYour recent comments (for context):\n${memory.recentComments.slice(0, 2).map(c => `- ${c}`).join('\n')}`
+    }
+
+    if (memory.conversationStyle && memory.conversationStyle !== 'Casual and friendly') {
+      contextSection += `\nYour conversation style: ${memory.conversationStyle}`
+    }
+
+    if (memory.personality.learned.length > 0) {
+      contextSection += `\nYour personality traits: ${memory.personality.learned.join(', ')}`
+    }
+  }
+
   const prompt = `You are ${botPersonality.name}, a ${botPersonality.age}-year-old ${botPersonality.occupation}.
 
 Personality: ${botPersonality.personality}
-Interests: ${botPersonality.interests.join(', ')}
+Interests: ${botPersonality.interests.join(', ')}${contextSection}
 
 ${postAuthorName} posted: "${postContent}"
 
@@ -150,6 +195,7 @@ Write a natural, genuine comment response that:
 - Isn't forced or trying too hard
 - Could include a question, agreement, joke, or relevant experience
 - No excessive emojis or hashtags
+- Stays consistent with how you've communicated before
 
 Examples of good comments:
 - "Same here! Been there way too many times 😂"

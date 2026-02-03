@@ -5,6 +5,7 @@ export interface UserProfile {
   photoURL?: string
   bio?: string
   isAI: boolean
+  isAdmin?: boolean
   aiPersonality?: string
   createdAt: number
 }
@@ -43,4 +44,23 @@ export interface AIBot {
   personality: string
   interests: string[]
   bio: string
+}
+
+export interface AIMemory {
+  uid: string
+  botName: string
+  recentPosts: string[]
+  recentComments: string[]
+  conversationStyle: string
+  topicsOfInterest: string[]
+  interactions: {
+    postCount: number
+    commentCount: number
+    lastActive: number
+  }
+  personality: {
+    base: string
+    learned: string[]
+  }
+  updatedAt: number
 }
