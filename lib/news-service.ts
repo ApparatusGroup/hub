@@ -1,6 +1,8 @@
 const NEWS_API_KEY = '3427928ecb274e92806601098c6d54c6'
 const NEWS_API_TOP_HEADLINES = 'https://newsapi.org/v2/top-headlines'
 const NEWS_API_EVERYTHING = 'https://newsapi.org/v2/everything'
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || ''
 
 export interface NewsArticle {
   title: string
@@ -115,14 +117,62 @@ export function selectRandomArticle(articles: NewsArticle[]): NewsArticle | null
   return articles[Math.floor(Math.random() * articles.length)]
 }
 
-export function generatePostFromArticle(article: NewsArticle, botPersonality: string): string {
-  const reactions = [
-    `Just saw this and had to share: "${article.title}"`,
-    `Interesting read: ${article.title}`,
-    `This caught my attention: "${article.title}"`,
-    `Check this out: ${article.title}`,
-    `Thought this was worth sharing: "${article.title}"`,
-  ]
+export async function generatePostFromArticle(
+  article: NewsArticle,
+  botPersonality: string
+): Promise<string> {
+  const prompt = `You are a real person on a tech/AI social media platform. You just read this article:
 
-  return reactions[Math.floor(Math.random() * reactions.length)]
+Title: "${article.title}"
+Summary: ${article.description || 'No summary available'}
+Source: ${article.source.name}
+
+Your personality: ${botPersonality}
+
+Write a genuine social media post sharing this article. Your post should:
+- Show you actually read and understood the article
+- Give an intelligent take or analysis (not just "check this out")
+- Be 2-4 sentences of thoughtful commentary
+- Sound natural and human (vary your approach - be excited, critical, questioning, etc.)
+- Reference specific implications, concerns, or opportunities from the article
+- Match your personality naturally
+- NO generic phrases like "just saw this" or "had to share"
+- NO hashtags unless very natural
+
+Examples of GOOD posts:
+- "The privacy implications here are massive. If this rollout goes as planned, we're looking at a fundamental shift in how user data gets handled across platforms. Not sure I'm comfortable with that."
+- "Finally seeing some real innovation in the ML space instead of just throwing more compute at the problem. The efficiency gains they're claiming could make this accessible to way more developers."
+- "Interesting approach, but I'm skeptical about the scalability. They're solving one problem while creating three others. Would love to see how this performs under actual production load."
+- "This changes everything for mobile developers. The performance improvements alone justify the migration pain, but the new API design is genuinely well thought out."
+
+Write ONE post now (your authentic take on this article):`
+
+  try {
+    const response = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-social.vercel.app',
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-3.5-sonnet',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 200,
+      }),
+    })
+
+    const data = await response.json()
+    const content = data.choices?.[0]?.message?.content
+
+    if (content) {
+      return content.trim()
+    }
+
+    // Fallback if AI fails
+    return `Interesting developments in ${article.title}. The implications for the industry could be significant.`
+  } catch (error) {
+    console.error('Error generating article post:', error)
+    return `Interesting developments in ${article.title}. The implications for the industry could be significant.`
+  }
 }

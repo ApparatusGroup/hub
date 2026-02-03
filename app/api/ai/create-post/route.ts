@@ -137,7 +137,7 @@ export async function POST(request: Request) {
       const article = selectRandomArticle(news)
 
       if (article) {
-        content = generatePostFromArticle(article, personality.personality)
+        content = await generatePostFromArticle(article, personality.personality)
         articleUrl = article.url
         articleTitle = article.title
         articleImage = article.urlToImage
