@@ -223,20 +223,20 @@ export default function Post({ post }: PostProps) {
           </div>
 
           {showComments && (
-            <div className="mt-5 pt-5 border-t border-slate-200/60">
-              <form onSubmit={handleCommentSubmit} className="mb-5">
-                <div className="flex space-x-2.5">
+            <div className="mt-4 pt-4 border-t border-slate-200/60 bg-slate-900/[0.02] -mx-5 px-5 -mb-5 pb-5 rounded-b-2xl">
+              <form onSubmit={handleCommentSubmit} className="mb-3">
+                <div className="flex gap-2">
                   <input
                     type="text"
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
-                    placeholder="Write a comment..."
-                    className="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-slate-400"
+                    placeholder="Add a comment..."
+                    className="flex-1 px-3 py-2 text-sm bg-slate-800/90 text-white border border-slate-700/50 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-all placeholder:text-slate-400"
                   />
                   <button
                     type="submit"
                     disabled={!commentText.trim()}
-                    className="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-2 text-xs font-semibold bg-gradient-to-r from-primary to-primary-dark text-white rounded-lg hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     Post
                   </button>
@@ -244,50 +244,50 @@ export default function Post({ post }: PostProps) {
               </form>
 
               {loadingComments ? (
-                <p className="text-sm text-slate-500">Loading comments...</p>
+                <p className="text-xs text-slate-500 text-center py-3">Loading...</p>
               ) : (
-                <div className="space-y-3.5">
+                <div className="space-y-2">
                   {comments.map((comment) => (
-                    <div key={comment.id} className="flex space-x-2.5 animate-fade-in">
+                    <div key={comment.id} className="flex gap-2 animate-fade-in">
                       <button
                         onClick={() => router.push(`/profile/${comment.userId}`)}
-                        className="flex-shrink-0 cursor-pointer group"
+                        className="flex-shrink-0 cursor-pointer mt-0.5"
                       >
                         {comment.userPhoto ? (
                           <img
                             src={comment.userPhoto}
                             alt={comment.userName}
-                            className="w-9 h-9 rounded-full object-cover avatar-ring"
+                            className="w-7 h-7 rounded-full object-cover ring-1 ring-slate-700/30"
                           />
                         ) : (
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xs font-semibold avatar-ring">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white text-xs font-semibold ring-1 ring-slate-700/30">
                             {comment.userName[0].toUpperCase()}
                           </div>
                         )}
                       </button>
 
-                      <div className="flex-1 bg-slate-50/80 rounded-xl px-4 py-3 border border-slate-200/40">
-                        <div className="flex items-center space-x-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="bg-slate-800/90 rounded-lg px-3 py-2 border border-slate-700/50">
                           <button
                             onClick={() => router.push(`/profile/${comment.userId}`)}
-                            className="font-semibold text-sm hover:text-primary transition-colors"
+                            className="font-semibold text-xs text-white hover:text-primary transition-colors"
                           >
                             {comment.userName}
                           </button>
+                          <p className="text-sm text-slate-200 mt-0.5 leading-snug break-words">{comment.content}</p>
                         </div>
-                        <p className="text-sm text-slate-700 mt-1.5 leading-relaxed">{comment.content}</p>
-                        <div className="flex items-center space-x-4 mt-2.5">
+                        <div className="flex items-center gap-3 mt-1 px-1">
                           <button
                             onClick={() => handleLikeComment(comment.id, comment.likes)}
-                            className={`flex items-center space-x-1.5 text-xs transition-colors ${
-                              user && comment.likes.includes(user.uid) ? 'text-rose-500' : 'text-slate-500 hover:text-rose-500'
+                            className={`flex items-center gap-1 text-xs transition-colors ${
+                              user && comment.likes.includes(user.uid) ? 'text-rose-400' : 'text-slate-500 hover:text-rose-400'
                             }`}
                           >
-                            <Heart className={`w-3.5 h-3.5 ${user && comment.likes.includes(user.uid) ? 'fill-current' : ''}`} />
-                            <span className="font-medium">{comment.likes.length}</span>
+                            <Heart className={`w-3 h-3 ${user && comment.likes.includes(user.uid) ? 'fill-current' : ''}`} />
+                            <span className="font-medium">{comment.likes.length > 0 ? comment.likes.length : ''}</span>
                           </button>
                           <span className="text-xs text-slate-500">
-                            {comment.createdAt ? formatDistanceToNow(comment.createdAt, { addSuffix: true }) : 'Just now'}
+                            {comment.createdAt ? formatDistanceToNow(comment.createdAt, { addSuffix: true }) : 'now'}
                           </span>
                         </div>
                       </div>
