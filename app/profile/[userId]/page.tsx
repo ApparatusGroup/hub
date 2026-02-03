@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter, useParams } from 'next/navigation'
 import { db } from '@/lib/firebase'
@@ -8,8 +8,9 @@ import { doc, getDoc, setDoc, collection, query, where, orderBy, getDocs } from 
 import Navbar from '@/components/Navbar'
 import Post from '@/components/Post'
 import { UserProfile, Post as PostType } from '@/lib/types'
-import { Loader2, Bot, Calendar, Edit2, Save, X } from 'lucide-react'
+import { Loader2, Bot, Calendar, Edit2, Save, X, Upload } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { uploadImage, validateImageFile } from '@/lib/upload'
 
 export default function ProfilePage() {
   const { user } = useAuth()
@@ -23,8 +24,11 @@ export default function ProfilePage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [editForm, setEditForm] = useState({ displayName: '', bio: '', photoURL: '' })
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!user) {
@@ -108,6 +112,31 @@ export default function ProfilePage() {
     loadProfile()
   }, [userId, user, router])
 
+  const handlePhotoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setError('')
+
+    const validation = validateImageFile(file)
+    if (!validation.valid) {
+      setError(validation.error || 'Invalid file')
+      return
+    }
+
+    setPhotoFile(file)
+
+    // Create preview
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setPhotoPreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+
+    // Clear URL input if file is selected
+    setEditForm({ ...editForm, photoURL: '' })
+  }
+
   const handleSaveProfile = async () => {
     if (!isAdmin || !user) return
 
@@ -115,6 +144,19 @@ export default function ProfilePage() {
     setError('')
 
     try {
+      let finalPhotoURL = editForm.photoURL
+
+      // Upload photo file if selected
+      if (photoFile) {
+        try {
+          finalPhotoURL = await uploadImage(photoFile, 'profiles')
+        } catch (error) {
+          setError('Failed to upload profile photo')
+          setSaving(false)
+          return
+        }
+      }
+
       const token = await (user as any).getIdToken()
 
       const response = await fetch('/api/admin/update-profile', {
@@ -128,7 +170,7 @@ export default function ProfilePage() {
           updates: {
             displayName: editForm.displayName,
             bio: editForm.bio,
-            photoURL: editForm.photoURL || null,
+            photoURL: finalPhotoURL || null,
           },
         }),
       })
@@ -146,6 +188,11 @@ export default function ProfilePage() {
       }
 
       setEditMode(false)
+      setPhotoFile(null)
+      setPhotoPreview('')
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -183,30 +230,45 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex items-start space-x-4">
-            <div className="flex-shrink-0">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+            <div className="flex-shrink-0 mx-auto sm:mx-0">
               {editMode ? (
-                <div>
-                  <input
-                    type="url"
-                    value={editForm.photoURL}
-                    onChange={(e) => setEditForm({ ...editForm, photoURL: e.target.value })}
-                    placeholder="Profile image URL"
-                    className="input-field text-sm mb-2"
-                  />
-                  {editForm.photoURL ? (
+                <div className="w-full sm:w-auto space-y-2">
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Upload Photo</label>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoFileChange}
+                      disabled={!!editForm.photoURL}
+                      className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90 disabled:opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Or Paste URL</label>
+                    <input
+                      type="url"
+                      value={editForm.photoURL}
+                      onChange={(e) => setEditForm({ ...editForm, photoURL: e.target.value })}
+                      disabled={!!photoFile}
+                      placeholder="Photo URL"
+                      className="input-field text-xs w-full disabled:opacity-50"
+                    />
+                  </div>
+                  {(photoPreview || editForm.photoURL) ? (
                     <img
-                      src={editForm.photoURL}
+                      src={photoPreview || editForm.photoURL}
                       alt={editForm.displayName}
-                      className="w-20 h-20 rounded-full"
+                      className="w-20 h-20 rounded-full mx-auto sm:mx-0 object-cover"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement
                         target.style.display = 'none'
                       }}
                     />
                   ) : (
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold mx-auto sm:mx-0">
                       {editForm.displayName[0]?.toUpperCase() || '?'}
                     </div>
                   )}
@@ -215,7 +277,7 @@ export default function ProfilePage() {
                 <img
                   src={profile.photoURL}
                   alt={profile.displayName}
-                  className="w-20 h-20 rounded-full"
+                  className="w-20 h-20 rounded-full object-cover"
                 />
               ) : (
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold">
@@ -225,94 +287,96 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center space-x-2">
-                  {editMode ? (
-                    <input
-                      type="text"
-                      value={editForm.displayName}
-                      onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
-                      className="input-field text-xl font-bold"
-                      placeholder="Display name"
-                    />
-                  ) : (
-                    <h1 className="text-2xl font-bold text-gray-900">{profile.displayName}</h1>
-                  )}
-                  {profile.isAI && (
-                    <span className="flex items-center text-sm bg-secondary/10 text-secondary px-2 py-1 rounded-full">
-                      <Bot className="w-4 h-4 mr-1" />
-                      AI Bot
-                    </span>
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {editMode ? (
+                      <input
+                        type="text"
+                        value={editForm.displayName}
+                        onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
+                        className="input-field text-lg sm:text-xl font-bold flex-1 min-w-[150px]"
+                        placeholder="Display name"
+                      />
+                    ) : (
+                      <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{profile.displayName}</h1>
+                    )}
+                    {profile.isAI && (
+                      <span className="flex items-center text-xs sm:text-sm bg-secondary/10 text-secondary px-2 py-1 rounded-full whitespace-nowrap">
+                        <Bot className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                        AI Bot
+                      </span>
+                    )}
+                  </div>
+
+                  {isAdmin && (
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      {editMode ? (
+                        <>
+                          <button
+                            onClick={handleSaveProfile}
+                            disabled={saving}
+                            className="btn-primary flex items-center justify-center space-x-1 text-sm flex-1 sm:flex-initial"
+                          >
+                            <Save className="w-4 h-4" />
+                            <span>{saving ? 'Saving...' : 'Save'}</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditMode(false)
+                              setEditForm({
+                                displayName: profile.displayName || '',
+                                bio: profile.bio || '',
+                                photoURL: profile.photoURL || '',
+                              })
+                            }}
+                            disabled={saving}
+                            className="btn-secondary flex items-center justify-center space-x-1 text-sm flex-1 sm:flex-initial"
+                          >
+                            <X className="w-4 h-4" />
+                            <span>Cancel</span>
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => setEditMode(true)}
+                          className="btn-secondary flex items-center justify-center space-x-1 text-sm w-full sm:w-auto"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                          <span>Edit Profile</span>
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
 
-                {isAdmin && (
-                  <div className="flex items-center space-x-2">
-                    {editMode ? (
-                      <>
-                        <button
-                          onClick={handleSaveProfile}
-                          disabled={saving}
-                          className="btn-primary flex items-center space-x-1 text-sm"
-                        >
-                          <Save className="w-4 h-4" />
-                          <span>{saving ? 'Saving...' : 'Save'}</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditMode(false)
-                            setEditForm({
-                              displayName: profile.displayName || '',
-                              bio: profile.bio || '',
-                              photoURL: profile.photoURL || '',
-                            })
-                          }}
-                          disabled={saving}
-                          className="btn-secondary flex items-center space-x-1 text-sm"
-                        >
-                          <X className="w-4 h-4" />
-                          <span>Cancel</span>
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() => setEditMode(true)}
-                        className="btn-secondary flex items-center space-x-1 text-sm"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                        <span>Edit Profile</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <p className="text-gray-600 mt-1">{profile.email}</p>
+              <p className="text-gray-600 text-sm sm:text-base break-words">{profile.email}</p>
 
               {editMode ? (
                 <textarea
                   value={editForm.bio}
                   onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
                   placeholder="Bio"
-                  className="input-field mt-3 resize-none"
+                  className="input-field resize-none w-full"
                   rows={3}
                 />
               ) : profile.bio ? (
-                <p className="text-gray-800 mt-3">{profile.bio}</p>
+                <p className="text-gray-800 text-sm sm:text-base">{profile.bio}</p>
               ) : null}
 
-              <div className="flex items-center text-sm text-gray-500 mt-3">
-                <Calendar className="w-4 h-4 mr-1" />
+              <div className="flex items-center text-xs sm:text-sm text-gray-500">
+                <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
                 <span>
                   Joined {formatDistanceToNow(profile.createdAt, { addSuffix: true })}
                 </span>
               </div>
 
-              <div className="flex items-center space-x-6 mt-4 text-sm">
+              <div className="flex items-center space-x-6 text-sm">
                 <div>
                   <span className="font-bold text-gray-900">{posts.length}</span>
                   <span className="text-gray-600 ml-1">Posts</span>
                 </div>
+              </div>
               </div>
             </div>
           </div>
