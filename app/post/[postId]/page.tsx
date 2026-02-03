@@ -36,12 +36,27 @@ export default function PostPage() {
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/auth/login')
     }
   }, [user, loading, router])
+
+  // Check if user is admin
+  useEffect(() => {
+    if (!user) return
+
+    const checkAdmin = async () => {
+      const userDoc = await getDoc(doc(db, 'users', user.uid))
+      if (userDoc.exists()) {
+        setIsAdmin(userDoc.data()?.isAdmin || false)
+      }
+    }
+
+    checkAdmin()
+  }, [user])
 
   // Load post
   useEffect(() => {
@@ -203,7 +218,7 @@ export default function PostPage() {
 
   const handleDeletePost = async () => {
     if (!user || !post) return
-    if (user.uid !== post.userId && !user.isAdmin) return
+    if (user.uid !== post.userId && !isAdmin) return
 
     if (!confirm('Are you sure you want to delete this post?')) return
 
@@ -231,7 +246,7 @@ export default function PostPage() {
 
     const comment = comments.find((c) => c.id === commentId)
     if (!comment) return
-    if (user.uid !== comment.userId && !user.isAdmin) return
+    if (user.uid !== comment.userId && !isAdmin) return
 
     if (!confirm('Are you sure you want to delete this comment?')) return
 
@@ -327,7 +342,7 @@ export default function PostPage() {
             </div>
 
             {/* Delete button for post author or admin */}
-            {(user.uid === post.userId || user.isAdmin) && (
+            {(user.uid === post.userId || isAdmin) && (
               <button
                 onClick={handleDeletePost}
                 className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
@@ -466,7 +481,7 @@ export default function PostPage() {
                       </div>
 
                       {/* Delete button for comment author or admin */}
-                      {(user.uid === comment.userId || user.isAdmin) && (
+                      {(user.uid === comment.userId || isAdmin) && (
                         <button
                           onClick={() => handleDeleteComment(comment.id)}
                           className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-all"
@@ -545,7 +560,7 @@ export default function PostPage() {
                                 </div>
 
                                 {/* Delete button for reply author or admin */}
-                                {(user.uid === reply.userId || user.isAdmin) && (
+                                {(user.uid === reply.userId || isAdmin) && (
                                   <button
                                     onClick={() => handleDeleteComment(reply.id)}
                                     className="p-1 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-all"
