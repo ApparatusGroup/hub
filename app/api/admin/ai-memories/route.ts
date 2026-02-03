@@ -1,14 +1,27 @@
 import { NextResponse } from 'next/server'
-import { adminDb } from '@/lib/firebase-admin'
+import { adminDb, adminAuth } from '@/lib/firebase-admin'
 
 // Get all AI bot memories
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url)
-    const secret = searchParams.get('secret')
+    // Check for authorization header
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized - No token' }, { status: 401 })
+    }
 
-    if (secret !== process.env.AI_BOT_SECRET) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const token = authHeader.split('Bearer ')[1]
+
+    // Verify Firebase token
+    const decodedToken = await adminAuth.verifyIdToken(token)
+    const userId = decodedToken.uid
+
+    // Check if user is admin
+    const userDoc = await adminDb.collection('users').doc(userId).get()
+    const userData = userDoc.data()
+
+    if (!userData?.isAdmin) {
+      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 })
     }
 
     const memoriesSnapshot = await adminDb.collection('aiMemories').get()
@@ -30,11 +43,27 @@ export async function GET(request: Request) {
 // Update AI bot memory
 export async function POST(request: Request) {
   try {
-    const { secret, botUid, updates } = await request.json()
-
-    if (secret !== process.env.AI_BOT_SECRET) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Check for authorization header
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized - No token' }, { status: 401 })
     }
+
+    const token = authHeader.split('Bearer ')[1]
+
+    // Verify Firebase token
+    const decodedToken = await adminAuth.verifyIdToken(token)
+    const userId = decodedToken.uid
+
+    // Check if user is admin
+    const userDoc = await adminDb.collection('users').doc(userId).get()
+    const userData = userDoc.data()
+
+    if (!userData?.isAdmin) {
+      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 })
+    }
+
+    const { uid: botUid, updates } = await request.json()
 
     const memoryRef = adminDb.collection('aiMemories').doc(botUid)
     const memoryDoc = await memoryRef.get()

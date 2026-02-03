@@ -28,7 +28,18 @@ export default function AdminAIPage() {
     setError('')
 
     try {
-      const response = await fetch('/api/admin/ai-memories')
+      if (!user) {
+        throw new Error('Not authenticated')
+      }
+
+      // Get Firebase Auth token
+      const token = await (user as any).getIdToken()
+
+      const response = await fetch('/api/admin/ai-memories', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
       const data = await response.json()
 
       if (!response.ok) {
@@ -54,15 +65,21 @@ export default function AdminAIPage() {
   }
 
   const handleSave = async () => {
-    if (!editingBot || !editForm) return
+    if (!editingBot || !editForm || !user) return
 
     setSaving(true)
     setError('')
 
     try {
+      // Get Firebase Auth token
+      const token = await (user as any).getIdToken()
+
       const response = await fetch('/api/admin/ai-memories', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           uid: editingBot,
           updates: {
