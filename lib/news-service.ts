@@ -1,4 +1,4 @@
-const NEWS_API_KEY = 'c8a082978d104a9180dc1832ae19aa00'
+const NEWS_API_KEY = '3427928ecb274e92806601098c6d54c6'
 const NEWS_API_TOP_HEADLINES = 'https://newsapi.org/v2/top-headlines'
 const NEWS_API_EVERYTHING = 'https://newsapi.org/v2/everything'
 
