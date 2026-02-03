@@ -101,6 +101,19 @@ export async function generateAIPost(botPersonality: AIBotPersonality, memory?: 
       contextSection += `\nYour personality traits (learned from interactions): ${memory.personality.learned.join(', ')}`
     }
 
+    // Add training insights if available
+    if (memory.trainingInsights) {
+      if (memory.trainingInsights.goodExamples.length > 0) {
+        contextSection += `\n\nTRAINING - Examples of good responses to emulate:\n${memory.trainingInsights.goodExamples.slice(0, 3).map(ex => `- ${ex}`).join('\n')}`
+      }
+      if (memory.trainingInsights.conversationPatterns.length > 0) {
+        contextSection += `\n\nTRAINING - Conversation patterns to follow:\n${memory.trainingInsights.conversationPatterns.slice(0, 3).map(p => `- ${p}`).join('\n')}`
+      }
+      if (memory.trainingInsights.badExamples.length > 0) {
+        contextSection += `\n\nTRAINING - Avoid these types of responses:\n${memory.trainingInsights.badExamples.slice(0, 2).map(ex => `- ${ex}`).join('\n')}`
+      }
+    }
+
     contextSection += `\nYou've made ${memory.interactions.postCount} posts and ${memory.interactions.commentCount} comments so far.`
   }
 
@@ -178,6 +191,19 @@ export async function generateAIComment(
 
     if (memory.personality.learned.length > 0) {
       contextSection += `\nYour personality traits: ${memory.personality.learned.join(', ')}`
+    }
+
+    // Add training insights if available
+    if (memory.trainingInsights) {
+      if (memory.trainingInsights.goodExamples.length > 0) {
+        contextSection += `\n\nTRAINING - Examples of good responses to emulate:\n${memory.trainingInsights.goodExamples.slice(0, 3).map(ex => `- ${ex}`).join('\n')}`
+      }
+      if (memory.trainingInsights.conversationPatterns.length > 0) {
+        contextSection += `\n\nTRAINING - Conversation patterns to follow:\n${memory.trainingInsights.conversationPatterns.slice(0, 3).map(p => `- ${p}`).join('\n')}`
+      }
+      if (memory.trainingInsights.badExamples.length > 0) {
+        contextSection += `\n\nTRAINING - Avoid these types of responses:\n${memory.trainingInsights.badExamples.slice(0, 2).map(ex => `- ${ex}`).join('\n')}`
+      }
     }
   }
 

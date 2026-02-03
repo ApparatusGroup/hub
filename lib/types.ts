@@ -70,5 +70,29 @@ export interface AIMemory {
     base: string
     learned: string[]
   }
+  trainingInsights?: {
+    goodExamples: string[] // Examples of good responses
+    badExamples: string[] // Examples to avoid
+    conversationPatterns: string[] // Learned patterns from training
+    lastTrainingUpdate: number
+  }
   updatedAt: number
+}
+
+export interface TrainingMaterial {
+  id: string
+  title: string
+  content: string
+  fileType: 'text' | 'pdf' | 'doc'
+  uploadedAt: number
+  uploadedBy: string
+  assignedBots: string[] // UIDs of bots this applies to (empty = all bots)
+  status: 'pending' | 'analyzed' | 'error'
+  analysis?: {
+    goodExamples: string[]
+    badExamples: string[]
+    conversationPatterns: string[]
+    toneInsights: string[]
+    analyzedAt: number
+  }
 }
