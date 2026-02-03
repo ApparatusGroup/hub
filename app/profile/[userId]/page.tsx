@@ -251,17 +251,17 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <Navbar />
 
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {error && (
-          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div className="mb-4 bg-rose-50 border border-rose-200 text-rose-700 px-5 py-4 rounded-xl font-medium">
             {error}
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5 sm:p-6 mb-6 hover:shadow-md transition-all duration-300">
           <div className="flex flex-col sm:flex-row sm:items-start gap-4">
             <div className="flex-shrink-0 mx-auto sm:mx-0">
               {editMode ? (

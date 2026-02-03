@@ -143,43 +143,47 @@ export default function Post({ post }: PostProps) {
 
   return (
     <div className="post-card">
-      <div className="flex items-start space-x-3">
+      <div className="flex items-start space-x-3.5">
         <button
           onClick={() => router.push(`/profile/${post.userId}`)}
-          className="flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+          className="flex-shrink-0 cursor-pointer group"
         >
           {post.userPhoto ? (
-            <img src={post.userPhoto} alt={post.userName} className="w-10 h-10 rounded-full object-cover" />
+            <img
+              src={post.userPhoto}
+              alt={post.userName}
+              className="w-11 h-11 rounded-full object-cover avatar-ring"
+            />
           ) : (
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold">
+            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center text-white font-semibold shadow-sm avatar-ring">
               {post.userName[0].toUpperCase()}
             </div>
           )}
         </button>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 flex-wrap">
             <button
               onClick={() => router.push(`/profile/${post.userId}`)}
-              className="font-semibold text-gray-900 hover:underline cursor-pointer"
+              className="font-semibold text-slate-900 hover:text-primary transition-colors"
             >
               {post.userName}
             </button>
-            {post.isAI && (
-              <span className="flex items-center text-xs bg-secondary/10 text-secondary px-2 py-0.5 rounded-full">
-                <Bot className="w-3 h-3 mr-1" />
-                AI
-              </span>
-            )}
-            <span className="text-sm text-gray-500">
-              {formatDistanceToNow(post.createdAt, { addSuffix: true })}
+            <span className="text-sm text-slate-500">
+              · {formatDistanceToNow(post.createdAt, { addSuffix: true })}
             </span>
           </div>
 
-          <p className="mt-2 text-gray-800 whitespace-pre-wrap">{post.content}</p>
+          <p className="mt-2.5 text-slate-700 leading-relaxed whitespace-pre-wrap">{post.content}</p>
 
           {post.imageUrl && (
-            <img src={post.imageUrl} alt="Post" className="mt-3 rounded-lg max-h-96 w-full object-cover" />
+            <div className="mt-4 rounded-xl overflow-hidden border border-slate-200/60">
+              <img
+                src={post.imageUrl}
+                alt="Post"
+                className="w-full max-h-[500px] object-cover hover:scale-[1.02] transition-transform duration-500"
+              />
+            </div>
           )}
 
           {post.articleUrl && (
@@ -187,20 +191,22 @@ export default function Post({ post }: PostProps) {
               href={post.articleUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-3 flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              className="mt-4 flex items-center p-4 bg-gradient-to-br from-slate-50 to-indigo-50/30 border border-slate-200/60 rounded-xl hover:border-primary/30 hover:shadow-sm transition-all duration-200 group"
             >
-              <ExternalLink className="w-4 h-4 mr-2 text-primary" />
-              <span className="text-sm text-primary hover:underline truncate">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-white border border-slate-200/60 flex items-center justify-center group-hover:border-primary/30 transition-colors">
+                <ExternalLink className="w-4 h-4 text-primary" />
+              </div>
+              <span className="ml-3 text-sm text-slate-700 font-medium group-hover:text-primary truncate transition-colors">
                 {post.articleTitle || post.articleUrl}
               </span>
             </a>
           )}
 
-          <div className="mt-4 flex items-center space-x-6">
+          <div className="mt-5 flex items-center space-x-6">
             <button
               onClick={handleLike}
-              className={`flex items-center space-x-2 transition-colors ${
-                liked ? 'text-red-500' : 'text-gray-600 hover:text-red-500'
+              className={`flex items-center space-x-2 transition-all duration-200 smooth-interaction ${
+                liked ? 'text-rose-500' : 'text-slate-500 hover:text-rose-500'
               }`}
             >
               <Heart className={`w-5 h-5 ${liked ? 'fill-current' : ''}`} />
@@ -209,7 +215,7 @@ export default function Post({ post }: PostProps) {
 
             <button
               onClick={toggleComments}
-              className="flex items-center space-x-2 text-gray-600 hover:text-primary transition-colors"
+              className="flex items-center space-x-2 text-slate-500 hover:text-primary transition-all duration-200 smooth-interaction"
             >
               <MessageCircle className="w-5 h-5" />
               <span className="text-sm font-medium">{post.commentCount || comments.length}</span>
@@ -217,20 +223,20 @@ export default function Post({ post }: PostProps) {
           </div>
 
           {showComments && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <form onSubmit={handleCommentSubmit} className="mb-4">
-                <div className="flex space-x-2">
+            <div className="mt-5 pt-5 border-t border-slate-200/60">
+              <form onSubmit={handleCommentSubmit} className="mb-5">
+                <div className="flex space-x-2.5">
                   <input
                     type="text"
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     placeholder="Write a comment..."
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 placeholder:text-slate-400"
                   />
                   <button
                     type="submit"
                     disabled={!commentText.trim()}
-                    className="btn-primary text-sm disabled:opacity-50"
+                    className="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Post
                   </button>
@@ -238,46 +244,49 @@ export default function Post({ post }: PostProps) {
               </form>
 
               {loadingComments ? (
-                <p className="text-sm text-gray-500">Loading comments...</p>
+                <p className="text-sm text-slate-500">Loading comments...</p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3.5">
                   {comments.map((comment) => (
-                    <div key={comment.id} className="flex space-x-2">
+                    <div key={comment.id} className="flex space-x-2.5 animate-fade-in">
                       <button
                         onClick={() => router.push(`/profile/${comment.userId}`)}
-                        className="flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                        className="flex-shrink-0 cursor-pointer group"
                       >
                         {comment.userPhoto ? (
-                          <img src={comment.userPhoto} alt={comment.userName} className="w-8 h-8 rounded-full object-cover" />
+                          <img
+                            src={comment.userPhoto}
+                            alt={comment.userName}
+                            className="w-9 h-9 rounded-full object-cover avatar-ring"
+                          />
                         ) : (
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xs font-bold">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xs font-semibold avatar-ring">
                             {comment.userName[0].toUpperCase()}
                           </div>
                         )}
                       </button>
 
-                      <div className="flex-1 bg-gray-100 rounded-lg px-3 py-2">
+                      <div className="flex-1 bg-slate-50/80 rounded-xl px-4 py-3 border border-slate-200/40">
                         <div className="flex items-center space-x-2">
                           <button
                             onClick={() => router.push(`/profile/${comment.userId}`)}
-                            className="font-semibold text-sm hover:underline cursor-pointer"
+                            className="font-semibold text-sm hover:text-primary transition-colors"
                           >
                             {comment.userName}
                           </button>
-                          {comment.isAI && <Bot className="w-3 h-3 text-secondary" />}
                         </div>
-                        <p className="text-sm text-gray-800 mt-1">{comment.content}</p>
-                        <div className="flex items-center space-x-4 mt-2">
+                        <p className="text-sm text-slate-700 mt-1.5 leading-relaxed">{comment.content}</p>
+                        <div className="flex items-center space-x-4 mt-2.5">
                           <button
                             onClick={() => handleLikeComment(comment.id, comment.likes)}
-                            className={`flex items-center space-x-1 text-xs ${
-                              user && comment.likes.includes(user.uid) ? 'text-red-500' : 'text-gray-500'
+                            className={`flex items-center space-x-1.5 text-xs transition-colors ${
+                              user && comment.likes.includes(user.uid) ? 'text-rose-500' : 'text-slate-500 hover:text-rose-500'
                             }`}
                           >
-                            <Heart className={`w-3 h-3 ${user && comment.likes.includes(user.uid) ? 'fill-current' : ''}`} />
-                            <span>{comment.likes.length}</span>
+                            <Heart className={`w-3.5 h-3.5 ${user && comment.likes.includes(user.uid) ? 'fill-current' : ''}`} />
+                            <span className="font-medium">{comment.likes.length}</span>
                           </button>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-slate-500">
                             {comment.createdAt ? formatDistanceToNow(comment.createdAt, { addSuffix: true }) : 'Just now'}
                           </span>
                         </div>
