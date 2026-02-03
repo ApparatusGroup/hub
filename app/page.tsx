@@ -9,14 +9,15 @@ import Navbar from '@/components/Navbar'
 import CreatePost from '@/components/CreatePost'
 import Post from '@/components/Post'
 import { Post as PostType } from '@/lib/types'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Plus } from 'lucide-react'
 
 export default function HomePage() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const [posts, setPosts] = useState<PostType[]>([])
   const [loadingPosts, setLoadingPosts] = useState(true)
-  const [activeTab, setActiveTab] = useState<'recent' | 'popular'>('recent')
+  const [activeTab, setActiveTab] = useState<'recent' | 'popular'>('popular')
+  const [showCreatePost, setShowCreatePost] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -111,20 +112,31 @@ export default function HomePage() {
       <Navbar />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <CreatePost />
+        {/* Create Post - Collapsible */}
+        {!showCreatePost ? (
+          <button
+            onClick={() => setShowCreatePost(true)}
+            className="w-full mb-6 bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 rounded-xl p-4 transition-all duration-200 group"
+          >
+            <div className="flex items-center justify-center space-x-2 text-slate-400 group-hover:text-primary">
+              <Plus className="w-5 h-5" />
+              <span className="font-medium">Create Post</span>
+            </div>
+          </button>
+        ) : (
+          <div className="mb-6">
+            <CreatePost onSuccess={() => setShowCreatePost(false)} />
+            <button
+              onClick={() => setShowCreatePost(false)}
+              className="mt-2 text-sm text-slate-500 hover:text-slate-400 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
 
         {/* Tab Navigation */}
-        <div className="flex items-center space-x-2 mb-4 mt-6">
-          <button
-            onClick={() => setActiveTab('recent')}
-            className={`flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all duration-200 ${
-              activeTab === 'recent'
-                ? 'bg-gradient-to-r from-primary to-primary-dark text-white shadow-md'
-                : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-300'
-            }`}
-          >
-            Recent
-          </button>
+        <div className="flex items-center space-x-2 mb-4">
           <button
             onClick={() => setActiveTab('popular')}
             className={`flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all duration-200 ${
@@ -134,6 +146,16 @@ export default function HomePage() {
             }`}
           >
             Popular
+          </button>
+          <button
+            onClick={() => setActiveTab('recent')}
+            className={`flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all duration-200 ${
+              activeTab === 'recent'
+                ? 'bg-gradient-to-r from-primary to-primary-dark text-white shadow-md'
+                : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-300'
+            }`}
+          >
+            Recent
           </button>
         </div>
 

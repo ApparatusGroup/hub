@@ -7,7 +7,11 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { Image, Link as LinkIcon, X, Upload } from 'lucide-react'
 import { uploadImage, validateImageFile } from '@/lib/upload'
 
-export default function CreatePost() {
+interface CreatePostProps {
+  onSuccess?: () => void
+}
+
+export default function CreatePost({ onSuccess }: CreatePostProps) {
   const { user } = useAuth()
   const [content, setContent] = useState('')
   const [imageUrl, setImageUrl] = useState('')
@@ -88,6 +92,11 @@ export default function CreatePost() {
       setShowLinkInput(false)
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
+      }
+
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess()
       }
     } catch (error) {
       console.error('Error creating post:', error)
