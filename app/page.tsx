@@ -78,24 +78,40 @@ export default function HomePage() {
     const now = Date.now()
     const ageInHours = (now - post.createdAt) / (1000 * 60 * 60)
 
+    // Hard cutoff: posts older than 48 hours get minimal score
+    if (ageInHours > 48) {
+      return post.likes.length * 0.1 // 90% penalty for old posts
+    }
+
     // Engagement weights - likes are now more important
-    const likesWeight = post.likes.length * 4 // Increased from 2 to 4
-    const commentsWeight = post.commentCount * 6 // Increased from 3 to 6
+    const likesWeight = post.likes.length * 5 // Increased from 4 to 5
+    const commentsWeight = post.commentCount * 8 // Increased from 6 to 8
 
     // Velocity bonus: more engagement in less time = higher score
-    const likeVelocity = ageInHours > 0 ? (post.likes.length / ageInHours) * 3 : post.likes.length * 3
+    const likeVelocity = ageInHours > 0 ? (post.likes.length / ageInHours) * 5 : post.likes.length * 5
 
-    // Recency decay: posts lose points as they age (exponential decay)
-    const recencyMultiplier = Math.max(0.2, 1 - (ageInHours / 36))
+    // Aggressive recency decay: posts lose significant points as they age
+    // 0-12 hours: 100% multiplier
+    // 12-24 hours: 70% multiplier
+    // 24-36 hours: 40% multiplier
+    // 36-48 hours: 20% multiplier
+    let recencyMultiplier = 1.0
+    if (ageInHours > 36) {
+      recencyMultiplier = 0.2
+    } else if (ageInHours > 24) {
+      recencyMultiplier = 0.4
+    } else if (ageInHours > 12) {
+      recencyMultiplier = 0.7
+    }
 
     // Calculate base score
     const baseScore = (likesWeight + commentsWeight + likeVelocity) * recencyMultiplier
 
     // Fresh content bonus: posts under 6 hours old get extra visibility
-    const freshBonus = ageInHours < 6 ? 15 : 0
+    const freshBonus = ageInHours < 6 ? 25 : 0
 
     // Trending bonus: posts with high engagement and low age score higher
-    const trendingBonus = (ageInHours < 12 && post.likes.length > 5) ? 20 : 0
+    const trendingBonus = (ageInHours < 12 && post.likes.length > 10) ? 30 : 0
 
     return baseScore + freshBonus + trendingBonus
   }

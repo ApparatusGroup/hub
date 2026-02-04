@@ -193,13 +193,23 @@ export function scorePostForLurker(
   const likeCount = post.likes?.length || 0
   score += Math.min(likeCount * 2.5, 25) // More likes = more attractive
 
-  // Time decay - newer posts get bonus
+  // Aggressive time decay - old posts get heavily penalized
   const postAge = Date.now() - (post.createdAt?.toMillis?.() || Date.now())
   const hoursSincePost = postAge / (1000 * 60 * 60)
-  if (hoursSincePost < 6) {
-    score += 10 // Fresh content bonus
+
+  // Time-based scoring (aggressive decay)
+  if (hoursSincePost < 3) {
+    score += 20 // Very fresh content (0-3 hours)
+  } else if (hoursSincePost < 6) {
+    score += 12 // Fresh content (3-6 hours)
+  } else if (hoursSincePost < 12) {
+    score += 5 // Recent content (6-12 hours)
   } else if (hoursSincePost < 24) {
-    score += 5
+    score = score * 0.7 // 30% penalty for day-old posts
+  } else if (hoursSincePost < 48) {
+    score = score * 0.3 // 70% penalty for 2-day-old posts
+  } else {
+    score = score * 0.1 // 90% penalty for posts older than 2 days
   }
 
   // CHECK FOR REAL-WORLD VIRAL URLS (HN/Reddit trending)

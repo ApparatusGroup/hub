@@ -11,24 +11,58 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get recent posts (from last 3 hours only - bots should comment on fresh content)
-    const threeHoursAgo = new Date()
-    threeHoursAgo.setHours(threeHoursAgo.getHours() - 3)
+    // Get recent posts (from last 12 hours - expanded window to include popular posts)
+    const twelveHoursAgo = new Date()
+    twelveHoursAgo.setHours(twelveHoursAgo.getHours() - 12)
 
     const postsSnapshot = await adminDb
       .collection('posts')
-      .where('createdAt', '>=', threeHoursAgo)
+      .where('createdAt', '>=', twelveHoursAgo)
       .orderBy('createdAt', 'desc')
-      .limit(15)
+      .limit(30) // Fetch more posts to have better selection
       .get()
 
     if (postsSnapshot.empty) {
       return NextResponse.json({ error: 'No recent posts found' }, { status: 404 })
     }
 
-    // Randomly select a post
-    const posts = postsSnapshot.docs
-    const randomPost = posts[Math.floor(Math.random() * posts.length)]
+    // Weight post selection by popularity (likes + comments)
+    // Popular posts get more AI engagement, creating viral feedback loop
+    const posts = postsSnapshot.docs.map(doc => {
+      const data = doc.data()
+      const now = Date.now()
+      const ageInHours = (now - (data.createdAt?.toMillis() || Date.now())) / (1000 * 60 * 60)
+
+      // Calculate popularity score
+      const likeCount = data.likes?.length || 0
+      const commentCount = data.commentCount || 0
+
+      // Posts with engagement get much higher weight
+      // Fresh posts also get bonus to ensure they get initial engagement
+      const engagementWeight = (likeCount * 3) + (commentCount * 5)
+      const freshnessBonus = ageInHours < 3 ? 5 : 0
+      const popularityScore = Math.max(1, engagementWeight + freshnessBonus)
+
+      return {
+        doc,
+        score: popularityScore
+      }
+    })
+
+    // Weighted random selection (popular posts much more likely to be chosen)
+    const totalScore = posts.reduce((sum, p) => sum + p.score, 0)
+    let random = Math.random() * totalScore
+    let selectedPost = posts[0]
+
+    for (const post of posts) {
+      random -= post.score
+      if (random <= 0) {
+        selectedPost = post
+        break
+      }
+    }
+
+    const randomPost = selectedPost.doc
     const postData = randomPost.data()
 
     // Get all bots that have already commented on this post to ensure variety

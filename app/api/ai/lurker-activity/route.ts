@@ -32,15 +32,15 @@ export async function POST(request: Request) {
     const lurkers = lurkersSnapshot.docs.map(doc => doc.data() as LurkerBot)
     console.log(`  Found ${lurkers.length} lurker bots`)
 
-    // Get recent posts (last 24 hours)
-    const oneDayAgo = new Date()
-    oneDayAgo.setHours(oneDayAgo.getHours() - 24)
+    // Get recent posts (last 12 hours - focus on fresh content)
+    const twelveHoursAgo = new Date()
+    twelveHoursAgo.setHours(twelveHoursAgo.getHours() - 12)
 
     const postsSnapshot = await adminDb
       .collection('posts')
-      .where('createdAt', '>=', oneDayAgo)
+      .where('createdAt', '>=', twelveHoursAgo)
       .orderBy('createdAt', 'desc')
-      .limit(100) // Process last 100 posts
+      .limit(50) // Focus on last 50 posts for maximum engagement velocity
       .get()
 
     if (postsSnapshot.empty) {
