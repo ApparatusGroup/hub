@@ -82,55 +82,153 @@ function isHighQualityArticle(article: NewsArticle): boolean {
   return true
 }
 
-export async function getTopNews(category?: string): Promise<NewsArticle[]> {
+/**
+ * Get fresh news from Hacker News (always current, posted within hours)
+ */
+async function getHackerNewsStories(): Promise<NewsArticle[]> {
   try {
-    // Calculate date range: today or past 7 days
-    const today = new Date()
-    const sevenDaysAgo = new Date(today)
-    sevenDaysAgo.setDate(today.getDate() - 7)
+    // Get top story IDs
+    const topStoriesRes = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json')
+    const topStoryIds: number[] = await topStoriesRes.json()
 
-    // Format as ISO 8601 (YYYY-MM-DD)
-    const fromDate = sevenDaysAgo.toISOString().split('T')[0]
-
-    // Use top-headlines from reputable tech sources
-    // Only get articles from the past week to ensure freshness
-    const params = new URLSearchParams({
-      apiKey: NEWS_API_KEY,
-      sources: TECH_SOURCES,
-      language: 'en',
-      pageSize: '100',
-      from: fromDate, // Only articles from past 7 days
+    // Fetch details for top 50 stories
+    const storyPromises = topStoryIds.slice(0, 50).map(async (id) => {
+      const res = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)
+      return res.json()
     })
 
-    const response = await fetch(`${NEWS_API_TOP_HEADLINES}?${params.toString()}`)
+    const stories = await Promise.all(storyPromises)
 
-    if (!response.ok) {
-      throw new Error(`NewsAPI error: ${response.status}`)
+    // Convert HN stories to NewsArticle format
+    const articles: NewsArticle[] = stories
+      .filter((story: any) =>
+        story &&
+        story.type === 'story' &&
+        story.url &&
+        story.score > 20 && // Only popular stories
+        story.title
+      )
+      .map((story: any) => ({
+        title: story.title,
+        description: story.title, // HN doesn't have descriptions, use title
+        url: story.url,
+        urlToImage: null, // HN doesn't have images
+        publishedAt: new Date(story.time * 1000).toISOString(),
+        source: { name: 'Hacker News' }
+      }))
+
+    return articles
+  } catch (error) {
+    console.error('Error fetching Hacker News:', error)
+    return []
+  }
+}
+
+/**
+ * Get fresh news from Reddit tech subreddits (always current, posted within hours)
+ */
+async function getRedditStories(): Promise<NewsArticle[]> {
+  try {
+    const subreddits = ['technology', 'programming', 'artificial', 'MachineLearning']
+    const allArticles: NewsArticle[] = []
+
+    for (const subreddit of subreddits) {
+      try {
+        const res = await fetch(`https://www.reddit.com/r/${subreddit}/hot.json?limit=20`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; AlgosphereBot/1.0)'
+          }
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          const posts = data.data?.children || []
+
+          for (const post of posts) {
+            const postData = post.data
+            // Only external links with good engagement
+            if (postData.url && !postData.url.includes('reddit.com') && postData.score > 100) {
+              allArticles.push({
+                title: postData.title,
+                description: postData.selftext || postData.title,
+                url: postData.url,
+                urlToImage: postData.thumbnail && postData.thumbnail.startsWith('http') ? postData.thumbnail : null,
+                publishedAt: new Date(postData.created_utc * 1000).toISOString(),
+                source: { name: `r/${subreddit}` }
+              })
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`Error fetching r/${subreddit}:`, err)
+      }
     }
 
-    const data = await response.json()
-    const allArticles = data.articles || []
+    return allArticles
+  } catch (error) {
+    console.error('Error fetching Reddit:', error)
+    return []
+  }
+}
 
-    // Filter for high-quality articles with images and substantial content
-    const qualityArticles = allArticles.filter(isHighQualityArticle)
+export async function getTopNews(category?: string): Promise<NewsArticle[]> {
+  try {
+    // Use Hacker News + Reddit for guaranteed fresh content (posted within hours)
+    // These are free, real-time, and always current
+    const [hnArticles, redditArticles] = await Promise.all([
+      getHackerNewsStories(),
+      getRedditStories()
+    ])
 
-    // Sort by recency - prioritize today's articles heavily
+    // Combine and deduplicate by URL
+    const allArticles = [...hnArticles, ...redditArticles]
+    const uniqueUrls = new Map<string, NewsArticle>()
+
+    for (const article of allArticles) {
+      const normalized = article.url.toLowerCase().replace(/^https?:\/\//i, '').replace(/^www\./i, '')
+      if (!uniqueUrls.has(normalized)) {
+        uniqueUrls.set(normalized, article)
+      }
+    }
+
+    const uniqueArticles = Array.from(uniqueUrls.values())
+
+    // Filter for tech-related content
+    const techArticles = uniqueArticles.filter(article => {
+      const text = `${article.title} ${article.description || ''}`.toLowerCase()
+
+      // Must contain tech keywords
+      const techKeywords = [
+        'ai', 'artificial intelligence', 'machine learning', 'ml', 'neural',
+        'software', 'hardware', 'tech', 'technology', 'startup', 'app',
+        'computer', 'data', 'algorithm', 'code', 'programming', 'developer',
+        'cloud', 'api', 'cyber', 'digital', 'internet', 'web', 'mobile',
+        'robot', 'automation', 'innovation', 'processor', 'chip', 'semiconductor',
+        'gaming', 'video game', 'iphone', 'android', 'google', 'microsoft',
+        'meta', 'tesla', 'spacex', 'crypto', 'blockchain', 'bitcoin', 'openai',
+        'nvidia', 'amd', 'intel', 'aws', 'quantum'
+      ]
+
+      return techKeywords.some(keyword => text.includes(keyword))
+    })
+
+    // Sort by recency (HN and Reddit are already sorted by hotness, but we add recency boost)
     const now = new Date()
-    const sortedByRecency = qualityArticles
+    const sortedByRecency = techArticles
       .map((article: NewsArticle) => {
         const publishedDate = new Date(article.publishedAt)
         const hoursAgo = (now.getTime() - publishedDate.getTime()) / (1000 * 60 * 60)
 
-        // Heavy recency bias: today's articles get 10x weight
+        // HN/Reddit stories are typically < 24hrs old already
         let recencyScore = 0
-        if (hoursAgo < 24) {
-          recencyScore = 10 // Today's articles
+        if (hoursAgo < 6) {
+          recencyScore = 10 // Very fresh
+        } else if (hoursAgo < 24) {
+          recencyScore = 8 // Today
         } else if (hoursAgo < 48) {
           recencyScore = 3 // Yesterday
-        } else if (hoursAgo < 72) {
-          recencyScore = 1 // 2 days ago
         } else {
-          recencyScore = 0.2 // Older (only used if big event)
+          recencyScore = 1 // Older
         }
 
         return { article, recencyScore, hoursAgo }
@@ -138,6 +236,7 @@ export async function getTopNews(category?: string): Promise<NewsArticle[]> {
       .sort((a: { recencyScore: number }, b: { recencyScore: number }) => b.recencyScore - a.recencyScore)
       .map((item: { article: NewsArticle }) => item.article)
 
+    console.log(`✅ Fetched ${sortedByRecency.length} fresh articles from HN + Reddit`)
     return sortedByRecency
   } catch (error) {
     console.error('Error fetching news:', error)
