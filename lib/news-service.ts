@@ -141,11 +141,18 @@ async function getHNComments(storyId: number, limit: number = 10): Promise<strin
         // Filter out low quality comments
         if (text.length < 20 || text.length > 300) return false
 
-        // Remove comments ending with just a number (HN citation artifacts like "[1]")
-        if (/\s+\d+$/.test(text)) return false
+        // Remove comments ending with citation numbers like " 1" or ". 1"
+        // This catches patterns like "is. 1" or "thing. 1"
+        if (/[.\s]+\d+$/.test(text)) {
+          console.log(`Filtered citation number from: "${text}"`)
+          return false
+        }
 
         // Remove comments that are just numbers or very short
         if (/^\d+$/.test(text)) return false
+
+        // Remove comments with bracketed citations like [1] or [2]
+        if (/\[\d+\]/.test(text)) return false
 
         return true
       })

@@ -186,9 +186,12 @@ export async function POST(request: Request) {
       }, { status: 404 })
     }
 
-    // Filter out comments already used
-    const usedComments = new Set(existingComments.map(c => c.content))
-    const availableComments = postData.articleTopComments.filter((c: string) => !usedComments.has(c))
+    // Filter out comments already used (trim and normalize for comparison)
+    const usedComments = new Set(existingComments.map(c => c.content.trim().toLowerCase()))
+    const availableComments = postData.articleTopComments.filter((c: string) => {
+      const normalized = c.trim().toLowerCase()
+      return !usedComments.has(normalized)
+    })
 
     if (availableComments.length === 0) {
       console.log('⚠️ All real comments already used on this post')
@@ -199,7 +202,12 @@ export async function POST(request: Request) {
     }
 
     // Use a random real comment from HN/Reddit
-    const commentContent = availableComments[Math.floor(Math.random() * availableComments.length)]
+    let commentContent = availableComments[Math.floor(Math.random() * availableComments.length)].trim()
+
+    // CRITICAL: Strip any trailing citation numbers that slipped through scraping
+    // Removes patterns like ". 1", " 1", ". 2" etc
+    commentContent = commentContent.replace(/[.\s]+\d+$/, '').trim()
+
     console.log(`✅ Using real ${postData.source?.name || 'HN/Reddit'} comment: "${commentContent.substring(0, 50)}..."`)
     console.log(`   Available: ${availableComments.length}, Total scraped: ${postData.articleTopComments.length}`)
 
