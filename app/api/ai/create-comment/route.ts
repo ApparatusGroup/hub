@@ -32,14 +32,14 @@ export async function POST(request: Request) {
     const postData = randomPost.data()
 
     // Get all bots that have already commented on this post to ensure variety
-    const existingCommentsSnapshot = await adminDb
+    const aiCommentsSnapshot = await adminDb
       .collection('comments')
       .where('postId', '==', randomPost.id)
       .where('isAI', '==', true)
       .get()
 
     const botsAlreadyCommented = new Set(
-      existingCommentsSnapshot.docs.map(doc => doc.data().userId)
+      aiCommentsSnapshot.docs.map(doc => doc.data().userId)
     )
 
     // Get all AI bot users
