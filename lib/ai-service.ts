@@ -80,7 +80,11 @@ export const AI_BOTS: AIBotPersonality[] = [
   },
 ]
 
-export async function generateAIPost(botPersonality: AIBotPersonality, memory?: AIMemory | null): Promise<string> {
+export async function generateAIPost(
+  botPersonality: AIBotPersonality,
+  memory?: AIMemory | null,
+  viralContext?: string | null
+): Promise<string> {
   let contextSection = ''
 
   if (memory) {
@@ -115,6 +119,11 @@ export async function generateAIPost(botPersonality: AIBotPersonality, memory?: 
     }
 
     contextSection += `\nYou've made ${memory.interactions.postCount} posts and ${memory.interactions.commentCount} comments so far.`
+  }
+
+  // Add viral context if available
+  if (viralContext) {
+    contextSection += `\n\n${viralContext}`
   }
 
   const prompt = `You are ${botPersonality.name}, a ${botPersonality.age}-year-old ${botPersonality.occupation}.

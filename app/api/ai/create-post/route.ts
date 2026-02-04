@@ -4,6 +4,7 @@ import { generateAIPost, AI_BOTS, AIBotPersonality, generateImageDescription } f
 import { updateAIMemoryAfterPost, getAIMemory } from '@/lib/ai-memory'
 import { getTopNews, selectRandomArticle, generatePostFromArticle } from '@/lib/news-service'
 import { categorizePost } from '@/lib/categorize'
+import { getViralPatterns, generateViralContext } from '@/lib/viral-patterns'
 
 export async function POST(request: Request) {
   try {
@@ -121,6 +122,17 @@ export async function POST(request: Request) {
       }, { status: 429 })
     }
 
+    // Get viral patterns for inspiration (optional - doesn't block if unavailable)
+    let viralContext: string | null = null
+    try {
+      const viralPatterns = await getViralPatterns()
+      if (viralPatterns) {
+        viralContext = generateViralContext(viralPatterns)
+      }
+    } catch (error) {
+      console.log('Viral patterns unavailable, proceeding without them')
+    }
+
     // Mostly news articles (80%), some generated thoughts (20%)
     // This is a news/tech sharing platform
     const shouldPostNews = Math.random() < 0.8
@@ -146,11 +158,11 @@ export async function POST(request: Request) {
         // Don't use imageUrl for article posts - use articleImage instead
       } else {
         // Fallback to generated post if no news available
-        content = await generateAIPost(personality, memory)
+        content = await generateAIPost(personality, memory, viralContext)
       }
     } else {
-      // Generate original post content with memory context
-      content = await generateAIPost(personality, memory)
+      // Generate original post content with memory context and viral patterns
+      content = await generateAIPost(personality, memory, viralContext)
     }
 
     // Generate image description for AI bots if image is present

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
-import { Bot, Sparkles, MessageCircle, RefreshCw, Newspaper, Upload, BookOpen, CheckCircle, XCircle, Clock, Tags } from 'lucide-react'
+import { Bot, Sparkles, MessageCircle, RefreshCw, Newspaper, Upload, BookOpen, CheckCircle, XCircle, Clock, Tags, TrendingUp } from 'lucide-react'
 
 export default function AdminPage() {
   const { user } = useAuth()
@@ -302,6 +302,37 @@ export default function AdminPage() {
     }
   }
 
+  const handleScrapeViral = async () => {
+    if (!secret) {
+      setError('Please enter the AI_BOT_SECRET')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    setResult(null)
+
+    try {
+      const response = await fetch('/api/ai/scrape-viral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to scrape viral content')
+      }
+
+      setResult(data)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (secret && showTrainingSection) {
       fetchTrainingMaterials()
@@ -417,6 +448,15 @@ export default function AdminPage() {
               <Tags className="w-5 h-5" />
               <span>{loading ? 'Categorizing...' : 'Auto-Categorize Existing Posts'}</span>
             </button>
+
+            <button
+              onClick={handleScrapeViral}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
+            >
+              <TrendingUp className="w-5 h-5" />
+              <span>{loading ? 'Scraping...' : 'Scrape Viral Content Patterns'}</span>
+            </button>
           </div>
 
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -426,6 +466,7 @@ export default function AdminPage() {
               <li>Click &quot;Initialize AI Bots&quot; once after first deployment</li>
               <li>Use &quot;Create AI Post&quot; or &quot;Create AI Comment&quot; anytime to trigger AI activity</li>
               <li>Use &quot;Random AI Activity&quot; for spontaneous bot behavior</li>
+              <li>Use &quot;Scrape Viral Content Patterns&quot; to analyze trending topics from Twitter (requires Python + snscrape)</li>
             </ol>
           </div>
 
