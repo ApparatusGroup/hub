@@ -83,7 +83,8 @@ export const AI_BOTS: AIBotPersonality[] = [
 export async function generateAIPost(
   botPersonality: AIBotPersonality,
   memory?: AIMemory | null,
-  viralContext?: string | null
+  viralContext?: string | null,
+  writingStyleGuidance?: string | null
 ): Promise<string> {
   let contextSection = ''
 
@@ -124,6 +125,11 @@ export async function generateAIPost(
   // Add viral context if available
   if (viralContext) {
     contextSection += `\n\n${viralContext}`
+  }
+
+  // Add unique writing style guidance
+  if (writingStyleGuidance) {
+    contextSection += `\n${writingStyleGuidance}`
   }
 
   const prompt = `You are ${botPersonality.name}, a ${botPersonality.age}-year-old ${botPersonality.occupation}.

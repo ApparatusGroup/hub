@@ -5,6 +5,13 @@ import { updateAIMemoryAfterPost, getAIMemory } from '@/lib/ai-memory'
 import { getTopNews, selectRandomArticle, generatePostFromArticle } from '@/lib/news-service'
 import { categorizePost } from '@/lib/categorize'
 import { getViralPatterns, generateViralContext } from '@/lib/viral-patterns'
+import { analyzeViralPatterns } from '@/lib/viral-scraper'
+import {
+  getBotContentProfile,
+  updateBotProfile,
+  getCuratedContent,
+  getWritingStyleGuidance
+} from '@/lib/bot-content-curator'
 
 export async function POST(request: Request) {
   try {
@@ -122,9 +129,40 @@ export async function POST(request: Request) {
       }, { status: 429 })
     }
 
-    // Get viral patterns for inspiration (optional - doesn't block if unavailable)
+    // Get viral patterns for inspiration
+    // Auto-refresh if stale (>6 hours) to keep trending topics current
     let viralContext: string | null = null
     try {
+      // Check if patterns are stale
+      const viralDoc = await adminDb.collection('viralPatterns').doc('latest').get()
+      let needsRefresh = false
+
+      if (viralDoc.exists) {
+        const data = viralDoc.data()
+        const updatedAt = data?.updatedAt?.toDate?.() || new Date(data?.stats?.scraped_at || 0)
+        const hoursSinceUpdate = (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60)
+        needsRefresh = hoursSinceUpdate > 6
+      } else {
+        needsRefresh = true
+      }
+
+      // Refresh if needed (non-blocking, happens in background)
+      if (needsRefresh) {
+        console.log(`🔄 Viral patterns stale, refreshing...`)
+        analyzeViralPatterns()
+          .then(async (results) => {
+            if (results.success) {
+              await adminDb.collection('viralPatterns').doc('latest').set({
+                ...results,
+                updatedAt: new Date(),
+              })
+              console.log(`✅ Viral patterns auto-refreshed`)
+            }
+          })
+          .catch(err => console.error('⚠️  Auto-refresh failed:', err))
+      }
+
+      // Use current patterns (even if stale, refresh happens async)
       const viralPatterns = await getViralPatterns()
       if (viralPatterns) {
         viralContext = generateViralContext(viralPatterns)
@@ -135,6 +173,10 @@ export async function POST(request: Request) {
     } catch (error) {
       console.log(`⚠️  Viral patterns unavailable for ${botData.displayName}, proceeding without them`)
     }
+
+    // Get bot-specific content profile for personalized content
+    const botProfile = await getBotContentProfile(botData.uid, botData.displayName)
+    const writingStyleGuidance = getWritingStyleGuidance(botProfile)
 
     // Mostly news articles (80%), some generated thoughts (20%)
     // This is a news/tech sharing platform
@@ -148,12 +190,14 @@ export async function POST(request: Request) {
     let imageUrl: string | null = null
 
     if (shouldPostNews) {
-      // Fetch news and post an article
-      const news = await getTopNews()
-      const article = selectRandomArticle(news)
+      // Fetch curated news based on bot's unique interests
+      const curatedNews = await getCuratedContent(botData.uid)
+      const article = selectRandomArticle(curatedNews)
 
       if (article) {
-        content = await generatePostFromArticle(article, personality.personality)
+        // Pass personality AND writing style guidance
+        const fullPersonality = `${personality.personality}${writingStyleGuidance}`
+        content = await generatePostFromArticle(article, fullPersonality)
         articleUrl = article.url
         articleTitle = article.title
         articleImage = article.urlToImage
@@ -161,11 +205,11 @@ export async function POST(request: Request) {
         // Don't use imageUrl for article posts - use articleImage instead
       } else {
         // Fallback to generated post if no news available
-        content = await generateAIPost(personality, memory, viralContext)
+        content = await generateAIPost(personality, memory, viralContext, writingStyleGuidance)
       }
     } else {
-      // Generate original post content with memory context and viral patterns
-      content = await generateAIPost(personality, memory, viralContext)
+      // Generate original post content with memory context, viral patterns, and unique style
+      content = await generateAIPost(personality, memory, viralContext, writingStyleGuidance)
     }
 
     // Generate image description for AI bots if image is present
@@ -217,6 +261,25 @@ export async function POST(request: Request) {
         lastActive: now,
       }
     }, { merge: true })
+
+    // Update bot content profile to track unique personality development
+    // Extract topics from content for personalization
+    const topics: string[] = []
+    if (articleTitle) {
+      // Extract topics from article title
+      const titleWords = articleTitle.toLowerCase().split(/\s+/)
+      topics.push(...titleWords.filter(w => w.length > 4))
+    }
+    if (category) {
+      topics.push(category.toLowerCase())
+    }
+
+    await updateBotProfile(
+      botData.uid,
+      content,
+      articleUrl || undefined,
+      topics.length > 0 ? topics : undefined
+    )
 
     return NextResponse.json({
       success: true,

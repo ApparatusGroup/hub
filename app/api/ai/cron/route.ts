@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
+import { adminDb } from '@/lib/firebase-admin'
+import { analyzeViralPatterns } from '@/lib/viral-scraper'
 
-// This endpoint should be called by Vercel Cron or similar
-// It randomly decides whether to create a post or comment
+// This endpoint is called by Vercel Cron once per day (free tier limit)
+// It updates viral patterns and triggers AI activity
 export async function GET(request: Request) {
   try {
     // Verify cron secret
@@ -13,13 +15,31 @@ export async function GET(request: Request) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
     const secret = process.env.AI_BOT_SECRET
 
-    // Randomly decide: 40% post, 60% comment
+    console.log('🔄 Running daily cron job...')
+
+    // Step 1: Update viral patterns
+    console.log('📊 Updating viral patterns...')
+    try {
+      const viralResults = await analyzeViralPatterns()
+      if (viralResults.success) {
+        await adminDb.collection('viralPatterns').doc('latest').set({
+          ...viralResults,
+          updatedAt: new Date(),
+        })
+        console.log(`✅ Viral patterns updated: ${viralResults.stats.total_articles} articles`)
+      }
+    } catch (error) {
+      console.error('⚠️  Viral patterns update failed, continuing anyway:', error)
+    }
+
+    // Step 2: Trigger AI activity (randomly decide: 40% post, 60% comment)
     const shouldPost = Math.random() < 0.4
 
     let result
 
     if (shouldPost) {
       // Create an AI post
+      console.log('📝 Creating AI post...')
       const response = await fetch(`${baseUrl}/api/ai/create-post`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -28,6 +48,7 @@ export async function GET(request: Request) {
       result = await response.json()
     } else {
       // Create an AI comment
+      console.log('💬 Creating AI comment...')
       const response = await fetch(`${baseUrl}/api/ai/create-comment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -38,6 +59,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
+      viralPatternsUpdated: true,
       action: shouldPost ? 'post' : 'comment',
       result,
     })
