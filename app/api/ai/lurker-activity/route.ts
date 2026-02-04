@@ -51,12 +51,27 @@ export async function POST(request: Request) {
 
     console.log(`  Found ${postsSnapshot.docs.length} recent posts`)
 
-    // Get viral patterns for scoring
+    // Get viral patterns and trending URLs for scoring
     let viralKeywords: string[] = []
+    let trendingUrls: Array<{ url: string; score: number }> = []
     try {
+      // Get viral patterns
       const viralPatterns = await getViralPatterns()
       if (viralPatterns) {
         viralKeywords = viralPatterns.top_keywords.slice(0, 20).map(k => k.word)
+      }
+
+      // Get REAL WORLD trending URLs (HN/Reddit engagement data)
+      const viralDoc = await adminDb.collection('viralPatterns').doc('latest').get()
+      if (viralDoc.exists) {
+        const data = viralDoc.data()
+        if (data?.trending_urls) {
+          trendingUrls = data.trending_urls.map((t: any) => ({
+            url: t.url,
+            score: t.score
+          }))
+          console.log(`  Found ${trendingUrls.length} real-world trending URLs`)
+        }
       }
     } catch (error) {
       console.log('  Viral patterns unavailable, continuing without them')
@@ -89,7 +104,7 @@ export async function POST(request: Request) {
         // Check if already liked
         const alreadyLiked = postData.likes?.includes(lurker.uid) || false
 
-        // Score the post
+        // Score the post (includes real-world viral URL matching)
         const score = scorePostForLurker(
           {
             content: postData.content,
@@ -102,7 +117,8 @@ export async function POST(request: Request) {
             createdAt: postData.createdAt
           },
           lurker,
-          viralKeywords
+          viralKeywords,
+          trendingUrls // Pass real-world trending URLs from HN/Reddit
         )
 
         // Decide if should like

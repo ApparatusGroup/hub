@@ -99,9 +99,25 @@ export function generateLurkerBots(count: number = 200): Omit<LurkerBot, 'uid'>[
 }
 
 /**
+ * Normalize URL for matching (remove protocol, www, trailing slashes)
+ */
+function normalizeUrl(url: string): string {
+  try {
+    let normalized = url.toLowerCase()
+    normalized = normalized.replace(/^https?:\/\//i, '')
+    normalized = normalized.replace(/^www\./i, '')
+    normalized = normalized.replace(/\/+$/g, '')
+    return normalized
+  } catch {
+    return url.toLowerCase()
+  }
+}
+
+/**
  * Score a post for a specific lurker bot
- * Returns a score 0-100+ indicating how likely the bot should like it
+ * Returns a score 0-300+ indicating how likely the bot should like it
  * Article posts with links and images score MUCH higher than text-only
+ * URLs matching HN/Reddit trending posts get MASSIVE boosts (mirrors real-world sharing)
  */
 export function scorePostForLurker(
   post: {
@@ -115,7 +131,8 @@ export function scorePostForLurker(
     createdAt: any
   },
   lurker: LurkerBot,
-  viralKeywords?: string[]
+  viralKeywords?: string[],
+  trendingUrls?: Array<{ url: string; score: number }>
 ): number {
   let score = 0
 
@@ -185,6 +202,27 @@ export function scorePostForLurker(
     score += 5
   }
 
+  // CHECK FOR REAL-WORLD VIRAL URLS (HN/Reddit trending)
+  // If this exact URL is trending on HN or Reddit, give MASSIVE boost
+  let realWorldViralBonus = 0
+  if (isArticlePost && post.articleUrl && trendingUrls && trendingUrls.length > 0) {
+    const postUrlNormalized = normalizeUrl(post.articleUrl)
+
+    for (const trendingUrl of trendingUrls) {
+      const trendingNormalized = normalizeUrl(trendingUrl.url)
+
+      if (postUrlNormalized === trendingNormalized) {
+        // THIS URL IS ACTUALLY TRENDING IN THE REAL WORLD!
+        // Give massive bonus based on engagement score
+        realWorldViralBonus = Math.min(trendingUrl.score / 10, 150) // Up to +150 points
+        console.log(`🔥 VIRAL MATCH: ${post.articleUrl} has ${trendingUrl.score} upvotes! Bonus: +${realWorldViralBonus}`)
+        break
+      }
+    }
+  }
+
+  score += realWorldViralBonus
+
   // MASSIVE BONUSES FOR ARTICLE POSTS (this is what makes viral links dominate)
   if (isArticlePost) {
     // Base article bonus
@@ -209,12 +247,13 @@ export function scorePostForLurker(
     score = score * 0.6 // Text posts only get 60% of their base score
   }
 
-  return score // No cap - articles can score 150-200+
+  return score // No cap - real-world viral articles can score 300+
 }
 
 /**
  * Determine if lurker should like a post
  * Higher scores (especially for articles) increase like probability
+ * Real-world viral URLs get near-guaranteed likes
  */
 export function shouldLurkerLikePost(
   score: number,
@@ -225,14 +264,15 @@ export function shouldLurkerLikePost(
 
   // Normalize score to 0-1+ (articles can exceed 1.0, which is fine - means very high chance)
   // Use 100 as baseline, but allow scores to exceed for viral articles
-  const normalizedScore = Math.min(score / 100, 2.0) // Cap at 2.0 (200% of base)
+  // Real-world viral content (300+ score) should have near-certain engagement
+  const normalizedScore = Math.min(score / 100, 3.5) // Cap at 3.5 (350% of base)
 
   // Combine score with bot's base probability
   const finalProbability = normalizedScore * lurker.engagement.likeProbability
 
   // For very high scores (viral articles), boost probability even more
   const boostedProbability = finalProbability > 0.8
-    ? Math.min(finalProbability * 1.2, 0.95) // 95% max chance to like
+    ? Math.min(finalProbability * 1.3, 0.98) // 98% max chance for real-world viral content
     : finalProbability
 
   return Math.random() < boostedProbability

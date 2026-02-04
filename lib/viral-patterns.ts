@@ -1,9 +1,9 @@
 import { adminDb } from './firebase-admin'
 
 export interface ViralPattern {
-  top_keywords: Array<{ word: string; count: number }>
-  top_hashtags: Array<{ tag: string; count: number }>
-  top_phrases: Array<{ phrase: string; count: number }>
+  top_keywords: Array<{ word: string; count: number; engagement?: number }>
+  top_hashtags: Array<{ tag: string; count: number; engagement?: number }>
+  top_phrases: Array<{ phrase: string; count: number; engagement?: number }>
 }
 
 export interface ViralPatternsData {
@@ -61,29 +61,43 @@ export async function getViralPatterns(): Promise<ViralPattern | null> {
 
 /**
  * Get random viral keywords for AI post inspiration
+ * Weighted by engagement - highly shared content gets prioritized
  */
 export function getRandomViralKeywords(patterns: ViralPattern, count: number = 5): string[] {
-  const keywords = patterns.top_keywords.map(k => k.word)
-  const shuffled = keywords.sort(() => 0.5 - Math.random())
-  return shuffled.slice(0, count)
+  // Sort by engagement, then randomly sample from top results
+  const sorted = [...patterns.top_keywords].sort((a, b) => (b.engagement || 0) - (a.engagement || 0))
+  const topEngaged = sorted.slice(0, Math.min(count * 3, sorted.length))
+  const shuffled = topEngaged.sort(() => 0.5 - Math.random())
+  return shuffled.slice(0, count).map(k => k.word)
 }
 
 /**
- * Get random viral hashtags
+ * Get random viral hashtags weighted by engagement
  */
 export function getRandomViralHashtags(patterns: ViralPattern, count: number = 3): string[] {
-  const hashtags = patterns.top_hashtags.map(h => h.tag)
-  const shuffled = hashtags.sort(() => 0.5 - Math.random())
-  return shuffled.slice(0, count)
+  const sorted = [...patterns.top_hashtags].sort((a, b) => (b.engagement || 0) - (a.engagement || 0))
+  const topEngaged = sorted.slice(0, Math.min(count * 3, sorted.length))
+  const shuffled = topEngaged.sort(() => 0.5 - Math.random())
+  return shuffled.slice(0, count).map(h => h.tag)
 }
 
 /**
- * Get random viral phrases
+ * Get random viral phrases weighted by engagement
  */
 export function getRandomViralPhrases(patterns: ViralPattern, count: number = 3): string[] {
-  const phrases = patterns.top_phrases.map(p => p.phrase)
-  const shuffled = phrases.sort(() => 0.5 - Math.random())
-  return shuffled.slice(0, count)
+  const sorted = [...patterns.top_phrases].sort((a, b) => (b.engagement || 0) - (a.engagement || 0))
+  const topEngaged = sorted.slice(0, Math.min(count * 3, sorted.length))
+  const shuffled = topEngaged.sort(() => 0.5 - Math.random())
+  return shuffled.slice(0, count).map(p => p.phrase)
+}
+
+/**
+ * Get URLs with highest real-world sharing metrics
+ */
+export function getTrendingUrls(): string[] {
+  // This will be populated from Firestore trending_urls data
+  // Returns actual URLs that are being heavily shared
+  return []
 }
 
 /**
