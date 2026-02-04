@@ -128,9 +128,12 @@ export async function POST(request: Request) {
       const viralPatterns = await getViralPatterns()
       if (viralPatterns) {
         viralContext = generateViralContext(viralPatterns)
+        console.log(`✅ Using viral patterns for ${botData.displayName}'s post`)
+      } else {
+        console.log(`⚠️  No viral patterns available for ${botData.displayName}'s post`)
       }
     } catch (error) {
-      console.log('Viral patterns unavailable, proceeding without them')
+      console.log(`⚠️  Viral patterns unavailable for ${botData.displayName}, proceeding without them`)
     }
 
     // Mostly news articles (80%), some generated thoughts (20%)

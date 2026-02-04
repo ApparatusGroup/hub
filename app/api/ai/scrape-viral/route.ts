@@ -30,6 +30,8 @@ export async function POST(request: Request) {
     })
 
     console.log(`Analyzed ${results.stats.total_articles} articles from ${results.stats.sources.length} sources`)
+    console.log('Top 5 keywords:', results.patterns.top_keywords.slice(0, 5).map(k => k.word).join(', '))
+    console.log('Top 5 hashtags:', results.patterns.top_hashtags.slice(0, 5).map(h => h.tag).join(', '))
 
     return NextResponse.json({
       success: true,
@@ -38,6 +40,9 @@ export async function POST(request: Request) {
         keywords_count: results.patterns.top_keywords.length,
         hashtags_count: results.patterns.top_hashtags.length,
         phrases_count: results.patterns.top_phrases.length,
+        sample_keywords: results.patterns.top_keywords.slice(0, 10).map(k => k.word),
+        sample_hashtags: results.patterns.top_hashtags.slice(0, 10).map(h => h.tag),
+        sample_phrases: results.patterns.top_phrases.slice(0, 10).map(p => p.phrase),
       },
       message: 'Viral patterns updated successfully from news analysis'
     })
