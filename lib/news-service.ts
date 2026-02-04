@@ -14,6 +14,7 @@ export interface NewsArticle {
     name: string
   }
   topComments?: string[] // Real comments from HN/Reddit
+  submissionTitle?: string // The actual title real people used when posting to HN/Reddit
 }
 
 // High-quality tech news sources
@@ -210,7 +211,8 @@ async function getHackerNewsStories(): Promise<NewsArticle[]> {
             urlToImage: null,
             publishedAt: new Date(story.time * 1000).toISOString(),
             source: { name: 'Hacker News' },
-            topComments: topComments
+            topComments: topComments,
+            submissionTitle: story.title // What real HN users wrote when posting
           })
         } else {
           console.log(`⚠️ Skipping HN story ${story.id} - no comments scraped`)
@@ -328,7 +330,8 @@ async function getRedditStories(): Promise<NewsArticle[]> {
                     urlToImage: postData.thumbnail && postData.thumbnail.startsWith('http') ? postData.thumbnail : null,
                     publishedAt: new Date(postData.created_utc * 1000).toISOString(),
                     source: { name: `r/${subreddit}` },
-                    topComments: topComments
+                    topComments: topComments,
+                    submissionTitle: postData.title // What real Reddit users wrote when posting
                   })
                 } else {
                   console.log(`⚠️ Skipping Reddit post ${postData.id} - no comments scraped`)

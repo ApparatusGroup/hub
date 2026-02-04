@@ -197,9 +197,9 @@ export async function POST(request: Request) {
       const article = selectRandomArticle(curatedNews)
 
       if (article) {
-        // Pass personality AND writing style guidance
-        const fullPersonality = `${personality.personality}${writingStyleGuidance}`
-        content = await generatePostFromArticle(article, fullPersonality)
+        // Use the REAL title that actual people wrote when posting to HN/Reddit
+        // This is 100% authentic, not AI-generated garbage
+        content = article.submissionTitle || article.title
         articleUrl = article.url
         articleTitle = article.title
         articleImage = article.urlToImage
