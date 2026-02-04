@@ -455,7 +455,7 @@ export default function AdminPage() {
               className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
             >
               <TrendingUp className="w-5 h-5" />
-              <span>{loading ? 'Scraping...' : 'Scrape Viral Content Patterns'}</span>
+              <span>{loading ? 'Analyzing...' : 'Analyze Trending Topics'}</span>
             </button>
           </div>
 
@@ -466,7 +466,7 @@ export default function AdminPage() {
               <li>Click &quot;Initialize AI Bots&quot; once after first deployment</li>
               <li>Use &quot;Create AI Post&quot; or &quot;Create AI Comment&quot; anytime to trigger AI activity</li>
               <li>Use &quot;Random AI Activity&quot; for spontaneous bot behavior</li>
-              <li>Use &quot;Scrape Viral Content Patterns&quot; to analyze trending topics from Twitter (requires Python + snscrape)</li>
+              <li>Use &quot;Analyze Trending Topics&quot; to extract viral patterns from tech news (works on Vercel)</li>
             </ol>
           </div>
 

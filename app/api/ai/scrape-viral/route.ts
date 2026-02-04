@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
-import { exec } from 'child_process'
-import { promisify } from 'util'
-import path from 'path'
-
-const execAsync = promisify(exec)
+import { analyzeViralPatterns } from '@/lib/viral-scraper'
 
 export async function POST(request: Request) {
   try {
@@ -14,45 +10,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Path to Python script
-    const scriptPath = path.join(process.cwd(), 'scripts', 'scrape_viral_content.py')
+    console.log('Analyzing viral patterns from news articles...')
 
-    // Check if Python and snscrape are available
-    try {
-      await execAsync('python3 --version')
-    } catch (error) {
-      return NextResponse.json({
-        error: 'Python3 not found. Please install Python 3.x'
-      }, { status: 500 })
-    }
-
-    // Check if snscrape is installed
-    try {
-      await execAsync('python3 -c "import snscrape"')
-    } catch (error) {
-      return NextResponse.json({
-        error: 'snscrape not installed. Run: pip install snscrape',
-        install_command: 'pip install snscrape==0.7.0.20230622'
-      }, { status: 500 })
-    }
-
-    // Run the Python scraper
-    console.log('Running viral content scraper...')
-    const { stdout, stderr } = await execAsync(`python3 "${scriptPath}"`, {
-      timeout: 120000, // 2 minute timeout
-    })
-
-    if (stderr) {
-      console.error('Scraper stderr:', stderr)
-    }
-
-    // Parse the JSON output from Python script
-    const results = JSON.parse(stdout)
+    // Run the Node.js viral pattern analyzer
+    const results = await analyzeViralPatterns()
 
     if (!results.success) {
       return NextResponse.json({
-        error: 'Scraping failed',
-        details: results.error
+        error: 'Analysis failed',
+        details: 'Failed to analyze news articles'
       }, { status: 500 })
     }
 
@@ -63,7 +29,7 @@ export async function POST(request: Request) {
       updatedAt: new Date(),
     })
 
-    console.log(`Scraped ${results.stats.total_tweets} viral tweets`)
+    console.log(`Analyzed ${results.stats.total_articles} articles from ${results.stats.sources.length} sources`)
 
     return NextResponse.json({
       success: true,
@@ -73,14 +39,14 @@ export async function POST(request: Request) {
         hashtags_count: results.patterns.top_hashtags.length,
         phrases_count: results.patterns.top_phrases.length,
       },
-      message: 'Viral patterns updated successfully'
+      message: 'Viral patterns updated successfully from news analysis'
     })
 
   } catch (error: any) {
-    console.error('Error scraping viral content:', error)
+    console.error('Error analyzing viral patterns:', error)
     return NextResponse.json(
       {
-        error: 'Failed to scrape viral content',
+        error: 'Failed to analyze viral patterns',
         details: error.message
       },
       { status: 500 }
