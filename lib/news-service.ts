@@ -185,14 +185,26 @@ async function getHackerNewsStories(): Promise<NewsArticle[]> {
     const stories = await Promise.all(storyPromises)
 
     // Filter stories first - only popular stories with comments
-    const filteredStories = stories.filter((story: any) =>
-      story &&
-      story.type === 'story' &&
-      story.url &&
-      story.score > 50 && // Higher threshold - only very popular stories
-      story.descendants > 10 && // Must have at least 10 comments (shows engagement)
-      story.title
-    )
+    const filteredStories = stories.filter((story: any) => {
+      if (!story || story.type !== 'story' || !story.url || !story.title) return false
+      if (story.score <= 50 || story.descendants <= 10) return false
+
+      const titleLower = story.title.toLowerCase()
+
+      // Filter out Show HN posts (project showcases, not news)
+      if (titleLower.startsWith('show hn:') || titleLower.startsWith('show hn ')) return false
+
+      // Filter out Ask HN posts (questions, not news)
+      if (titleLower.startsWith('ask hn:') || titleLower.startsWith('ask hn ')) return false
+
+      // Filter out SDK/library announcements (not relevant news)
+      if (titleLower.includes(' sdk') || titleLower.includes('-sdk')) return false
+
+      // Filter out hiring/job posts
+      if (titleLower.includes('hiring') || titleLower.includes('who is hiring')) return false
+
+      return true
+    })
 
     // Fetch comments for each story (with delay to avoid rate limiting)
     const articlesWithComments: NewsArticle[] = []
@@ -309,12 +321,25 @@ async function getRedditStories(): Promise<NewsArticle[]> {
 
           for (const post of posts) {
             const postData = post.data
+            const titleLower = postData.title?.toLowerCase() || ''
+
+            // Filter out irrelevant content
+            const isIrrelevant =
+              titleLower.includes(' sdk') ||
+              titleLower.includes('-sdk') ||
+              titleLower.startsWith('[hiring]') ||
+              titleLower.startsWith('hiring:') ||
+              titleLower.includes('i made') ||
+              titleLower.includes('i built') ||
+              titleLower.includes('i created')
+
             // Only external links with VERY good engagement
             if (
               postData.url &&
               !postData.url.includes('reddit.com') &&
               postData.score > 200 && // Higher threshold - only viral posts
-              postData.num_comments > 20 // Must have active discussion
+              postData.num_comments > 20 && // Must have active discussion
+              !isIrrelevant // Not a project showcase or SDK announcement
             ) {
               try {
                 // Fetch top comments for this post
