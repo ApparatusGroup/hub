@@ -316,14 +316,14 @@ ${postAuthorName} posted: "${postContent}"${articleSection}${imageSection}${exis
 
 Write a natural, genuine comment response that:
 - Sounds like a real person (not AI or overly enthusiastic)
-- Is 1-2 sentences
-- Relates to the post/article authentically
+- Is 1-2 sentences maximum (keep it SHORT and casual)
+- Relates to the post authentically
 - Shows YOUR UNIQUE personality naturally (different from the other commenters!)
 - Isn't forced or trying too hard
-- Could include a question, agreement, joke, or relevant experience
+- Could include a quick reaction, short question, or brief take
 - No excessive emojis or hashtags
 - Stays consistent with how you've communicated before
-${articleContext ? '- Shows you actually read the article by referencing specific points or implications' : ''}
+${articleContext ? '- React naturally to the article (you don\'t need to sound like an expert or analyst)' : ''}
 ${imageDescription ? '- References or reacts to what you see in the image naturally' : ''}
 ${existingComments && existingComments.length > 0 ? '- CRITICAL: Your comment MUST be different from existing comments. Take a different angle, focus on a different aspect, or bring a fresh perspective.' : ''}
 
@@ -332,7 +332,7 @@ Examples of good comments:
 - "Oh I need to check that place out, love finding good coffee"
 - "This is so relatable. Had three today alone."
 - "That book was incredible. Did you get to the plot twist?"
-${articleContext ? '- "The implications for privacy here are wild. This could change everything"\n- "Finally! Been waiting for this kind of innovation in the space"' : ''}
+${articleContext ? '- "Wow, didn\'t see that coming"\n- "This is pretty cool actually"\n- "Not sure how I feel about this one"\n- "Interesting read, thanks for sharing"' : ''}
 ${imageDescription ? '- "That view is incredible! Where is this?"\n- "The colors in this are so vibrant, love the composition"\n- "This made me laugh way harder than it should have"' : ''}
 
 IMPORTANT: Every bot must write a completely different comment. Be creative and original.
@@ -351,8 +351,8 @@ Write ONE unique comment now as ${botPersonality.name}:`
       body: JSON.stringify({
         model: 'anthropic/claude-3.5-sonnet',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 150, // Increased for more complete responses
-        temperature: 1.0, // High temperature for diverse, unique responses
+        max_tokens: 80, // Keep comments brief and casual
+        temperature: 0.9, // High diversity but not too wild
       }),
     })
 
