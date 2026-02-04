@@ -335,7 +335,10 @@ Examples of good comments:
 ${articleContext ? '- "The implications for privacy here are wild. This could change everything"\n- "Finally! Been waiting for this kind of innovation in the space"' : ''}
 ${imageDescription ? '- "That view is incredible! Where is this?"\n- "The colors in this are so vibrant, love the composition"\n- "This made me laugh way harder than it should have"' : ''}
 
-Write ONE comment now (make it unique based on YOUR personality):`
+IMPORTANT: Every bot must write a completely different comment. Be creative and original.
+Random seed: ${Math.random().toString(36).substring(7)}
+
+Write ONE unique comment now as ${botPersonality.name}:`
 
   try {
     const response = await fetch(OPENROUTER_API_URL, {
@@ -348,19 +351,51 @@ Write ONE comment now (make it unique based on YOUR personality):`
       body: JSON.stringify({
         model: 'anthropic/claude-3.5-sonnet',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 100,
+        max_tokens: 150, // Increased for more complete responses
+        temperature: 1.0, // High temperature for diverse, unique responses
       }),
     })
+
+    if (!response.ok) {
+      console.error(`OpenRouter API error: ${response.status} ${response.statusText}`)
+      const errorText = await response.text()
+      console.error('Error details:', errorText)
+    }
 
     const data = await response.json()
     const content = data.choices?.[0]?.message?.content
 
+    if (!content) {
+      console.error('No content in response:', JSON.stringify(data))
+    }
+
     if (content) {
       return content.trim()
     }
-    return 'Totally get this!'
+
+    // Fallback with diverse options (should rarely be used)
+    const fallbacks = [
+      'Interesting perspective on this.',
+      'This resonates with me.',
+      'Makes sense to me.',
+      'Good point here.',
+      'I can see where you\'re coming from.',
+      'This is worth thinking about.',
+      'Fair take on this.',
+      'Appreciate this insight.',
+    ]
+    return fallbacks[Math.floor(Math.random() * fallbacks.length)]
   } catch (error) {
     console.error('Error generating AI comment:', error)
-    return 'Totally get this!'
+    // Diverse error fallbacks
+    const errorFallbacks = [
+      'Interesting perspective on this.',
+      'This resonates with me.',
+      'Makes sense to me.',
+      'Good point here.',
+      'I can see where you\'re coming from.',
+      'This is worth thinking about.',
+    ]
+    return errorFallbacks[Math.floor(Math.random() * errorFallbacks.length)]
   }
 }
