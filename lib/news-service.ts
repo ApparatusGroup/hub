@@ -137,7 +137,18 @@ async function getHNComments(storyId: number, limit: number = 10): Promise<strin
         const sentences = text.split(/\. |\n/)
         return sentences.slice(0, 2).join('. ').trim()
       })
-      .filter((text: string) => text.length > 20 && text.length < 300) // Reasonable length
+      .filter((text: string) => {
+        // Filter out low quality comments
+        if (text.length < 20 || text.length > 300) return false
+
+        // Remove comments ending with just a number (HN citation artifacts like "[1]")
+        if (/\s+\d+$/.test(text)) return false
+
+        // Remove comments that are just numbers or very short
+        if (/^\d+$/.test(text)) return false
+
+        return true
+      })
       .slice(0, 5) // Top 5 comments
 
     console.log(`✅ Cleaned ${cleanedComments.length} comments from HN story ${storyId}`)
@@ -165,12 +176,13 @@ async function getHackerNewsStories(): Promise<NewsArticle[]> {
 
     const stories = await Promise.all(storyPromises)
 
-    // Filter stories first
+    // Filter stories first - only popular stories with comments
     const filteredStories = stories.filter((story: any) =>
       story &&
       story.type === 'story' &&
       story.url &&
-      story.score > 20 && // Only popular stories
+      story.score > 50 && // Higher threshold - only very popular stories
+      story.descendants > 10 && // Must have at least 10 comments (shows engagement)
       story.title
     )
 
@@ -182,34 +194,30 @@ async function getHackerNewsStories(): Promise<NewsArticle[]> {
         const topComments = await getHNComments(story.id, 10)
         console.log(`📊 HN Story "${story.title.substring(0, 50)}" - Scraped ${topComments.length} comments`)
 
-        articlesWithComments.push({
-          title: story.title,
-          description: story.title,
-          url: story.url,
-          urlToImage: null,
-          publishedAt: new Date(story.time * 1000).toISOString(),
-          source: { name: 'Hacker News' },
-          topComments: topComments
-        })
+        // ONLY add article if we successfully scraped comments
+        if (topComments.length > 0) {
+          articlesWithComments.push({
+            title: story.title,
+            description: story.title,
+            url: story.url,
+            urlToImage: null,
+            publishedAt: new Date(story.time * 1000).toISOString(),
+            source: { name: 'Hacker News' },
+            topComments: topComments
+          })
+        } else {
+          console.log(`⚠️ Skipping HN story ${story.id} - no comments scraped`)
+        }
 
         // Small delay to avoid rate limiting (30ms between requests)
         await new Promise(resolve => setTimeout(resolve, 30))
       } catch (error) {
         console.error(`Error fetching comments for HN story ${story.id}:`, error)
-        // Still add the article, just without comments
-        articlesWithComments.push({
-          title: story.title,
-          description: story.title,
-          url: story.url,
-          urlToImage: null,
-          publishedAt: new Date(story.time * 1000).toISOString(),
-          source: { name: 'Hacker News' },
-          topComments: []
-        })
+        // Don't add articles that failed to scrape - we need comments
       }
     }
 
-    console.log(`✅ Total HN articles with comments: ${articlesWithComments.filter(a => a.topComments && a.topComments.length > 0).length}/${articlesWithComments.length}`)
+    console.log(`✅ HN articles with comments: ${articlesWithComments.length} (filtered from ${filteredStories.length} popular stories)`)
     return articlesWithComments
   } catch (error) {
     console.error('Error fetching Hacker News:', error)
@@ -292,37 +300,38 @@ async function getRedditStories(): Promise<NewsArticle[]> {
 
           for (const post of posts) {
             const postData = post.data
-            // Only external links with good engagement
-            if (postData.url && !postData.url.includes('reddit.com') && postData.score > 100) {
+            // Only external links with VERY good engagement
+            if (
+              postData.url &&
+              !postData.url.includes('reddit.com') &&
+              postData.score > 200 && // Higher threshold - only viral posts
+              postData.num_comments > 20 // Must have active discussion
+            ) {
               try {
                 // Fetch top comments for this post
                 const topComments = await getRedditComments(subreddit, postData.id)
                 console.log(`📊 Reddit r/${subreddit} "${postData.title.substring(0, 50)}" - Scraped ${topComments.length} comments`)
 
-                allArticles.push({
-                  title: postData.title,
-                  description: postData.selftext || postData.title,
-                  url: postData.url,
-                  urlToImage: postData.thumbnail && postData.thumbnail.startsWith('http') ? postData.thumbnail : null,
-                  publishedAt: new Date(postData.created_utc * 1000).toISOString(),
-                  source: { name: `r/${subreddit}` },
-                  topComments: topComments
-                })
+                // ONLY add if we successfully scraped comments
+                if (topComments.length > 0) {
+                  allArticles.push({
+                    title: postData.title,
+                    description: postData.selftext || postData.title,
+                    url: postData.url,
+                    urlToImage: postData.thumbnail && postData.thumbnail.startsWith('http') ? postData.thumbnail : null,
+                    publishedAt: new Date(postData.created_utc * 1000).toISOString(),
+                    source: { name: `r/${subreddit}` },
+                    topComments: topComments
+                  })
+                } else {
+                  console.log(`⚠️ Skipping Reddit post ${postData.id} - no comments scraped`)
+                }
 
                 // Delay to avoid Reddit rate limiting (500ms between requests)
                 await new Promise(resolve => setTimeout(resolve, 500))
               } catch (error) {
                 console.error(`Error processing Reddit post ${postData.id}:`, error)
-                // Still add article without comments
-                allArticles.push({
-                  title: postData.title,
-                  description: postData.selftext || postData.title,
-                  url: postData.url,
-                  urlToImage: postData.thumbnail && postData.thumbnail.startsWith('http') ? postData.thumbnail : null,
-                  publishedAt: new Date(postData.created_utc * 1000).toISOString(),
-                  source: { name: `r/${subreddit}` },
-                  topComments: []
-                })
+                // Don't add articles that failed - we need comments
               }
             }
           }
