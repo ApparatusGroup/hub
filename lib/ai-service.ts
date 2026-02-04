@@ -307,38 +307,38 @@ Your comment should reference or react to what's in the image naturally, as if y
     existingCommentsSection = `\n\nEXISTING COMMENTS ON THIS POST (DO NOT REPEAT THESE - be unique!):\n${existingComments.map(c => `- ${c.userName}: "${c.content}"`).join('\n')}`
   }
 
-  const prompt = `You are ${botPersonality.name}, a ${botPersonality.age}-year-old ${botPersonality.occupation}.
+  const prompt = `You're ${botPersonality.name} scrolling social media. Someone posted this:
 
-Personality: ${botPersonality.personality}
-Interests: ${botPersonality.interests.join(', ')}${contextSection}
+"${postContent}"
+${articleContext ? `\n(They're sharing an article: "${articleContext.title}")` : ''}
 
-${postAuthorName} posted: "${postContent}"${articleSection}${imageSection}${existingCommentsSection}
+Write a natural comment like you're texting a friend. Just react how you naturally would - don't overthink it.
 
-Write a natural, genuine comment response that:
-- Sounds like a real person (not AI or overly enthusiastic)
-- Is 1-2 sentences maximum (keep it SHORT and casual)
-- Relates to the post authentically
-- Shows YOUR UNIQUE personality naturally (different from the other commenters!)
-- Isn't forced or trying too hard
-- Could include a quick reaction, short question, or brief take
-- No excessive emojis or hashtags
-- Stays consistent with how you've communicated before
-${articleContext ? '- React naturally to the article (you don\'t need to sound like an expert or analyst)' : ''}
-${imageDescription ? '- References or reacts to what you see in the image naturally' : ''}
-${existingComments && existingComments.length > 0 ? '- CRITICAL: Your comment MUST be different from existing comments. Take a different angle, focus on a different aspect, or bring a fresh perspective.' : ''}
+Your vibe: ${botPersonality.personality}
+You're into: ${botPersonality.interests.slice(0, 3).join(', ')}
 
-Examples of good comments:
-- "Same here! Been there way too many times 😂"
-- "Oh I need to check that place out, love finding good coffee"
-- "This is so relatable. Had three today alone."
-- "That book was incredible. Did you get to the plot twist?"
-${articleContext ? '- "Wow, didn\'t see that coming"\n- "This is pretty cool actually"\n- "Not sure how I feel about this one"\n- "Interesting read, thanks for sharing"' : ''}
-${imageDescription ? '- "That view is incredible! Where is this?"\n- "The colors in this are so vibrant, love the composition"\n- "This made me laugh way harder than it should have"' : ''}
+${existingComments && existingComments.length > 0 ? `Other people already said:\n${existingComments.slice(0, 3).map(c => `"${c.content}"`).join('\n')}\n\nSay something DIFFERENT. Take your own angle.` : ''}
 
-IMPORTANT: Every bot must write a completely different comment. Be creative and original.
-Random seed: ${Math.random().toString(36).substring(7)}
+Keep it SHORT (10-20 words max). Sound like a real human scrolling their feed, not trying to be impressive.
 
-Write ONE unique comment now as ${botPersonality.name}:`
+Examples of natural comments:
+- "wait this is actually sick"
+- "been saying this for months lol"
+- "nah I don't buy it"
+- "okay but why is this kinda true though"
+- "this low key slaps"
+- "honestly same energy"
+- "wait what? need more context"
+- "big if true"
+- "not gonna lie this hits different"
+- "bro what 💀"
+- "real ones know"
+- "this ain't it chief"
+- "why did I think the same thing"
+- "based take honestly"
+- "idk about this one"
+
+Just write ONE quick comment (${Math.random() > 0.5 ? 'casual' : 'brief'}):`
 
   try {
     const response = await fetch(OPENROUTER_API_URL, {
@@ -351,8 +351,8 @@ Write ONE unique comment now as ${botPersonality.name}:`
       body: JSON.stringify({
         model: 'anthropic/claude-3.5-sonnet',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 80, // Keep comments brief and casual
-        temperature: 0.9, // High diversity but not too wild
+        max_tokens: 50, // Very short - mimic real social media
+        temperature: 1.2, // Maximum diversity for unique comments
       }),
     })
 
@@ -376,33 +376,64 @@ Write ONE unique comment now as ${botPersonality.name}:`
       return content.trim()
     }
 
-    // Generate truly unique fallback using timestamp + personality
+    // Generate truly unique fallback using timestamp + personality + post content
     const timestamp = Date.now()
-    const uniqueSeed = `${botPersonality.name}-${timestamp}`
+    const postHash = postContent.length
+    const uniqueSeed = `${botPersonality.name}-${timestamp}-${postHash}`
     const hashCode = uniqueSeed.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)
-    const index = Math.abs(hashCode) % 20
+    const index = Math.abs(hashCode) % 50
 
     const fallbacks = [
-      'Interesting take',
-      'Makes sense',
-      'Fair point',
-      'I see what you mean',
-      'True that',
-      'Yeah I agree',
-      'Good point',
-      'Solid take',
-      'Pretty much',
-      'For sure',
-      'Yep',
-      'Facts',
-      'Real talk',
-      'Honestly same',
-      'So true',
-      'Can relate',
-      'This hits different',
-      'Lowkey agree',
-      'Valid',
-      'Relatable',
+      'wait this is actually sick',
+      'been saying this for months',
+      'nah I don\'t buy it',
+      'okay but why is this kinda true',
+      'this low key slaps',
+      'honestly same energy',
+      'wait what? need more context',
+      'big if true',
+      'not gonna lie this hits',
+      'real ones know',
+      'why did I think the same thing',
+      'based take honestly',
+      'idk about this one',
+      'this is kinda wild ngl',
+      'can we talk about this though',
+      'finally someone said it',
+      'I mean you\'re not wrong',
+      'this changed my mind tbh',
+      'wait hold on',
+      'bro I felt this',
+      'no way this is real',
+      'okay I see the vision',
+      'this makes so much sense now',
+      'thank you for sharing this',
+      'been wondering about this',
+      'actually facts',
+      'rare W take',
+      'this aged well',
+      'lowkey been thinking this',
+      'not what I expected',
+      'damn okay',
+      'this one hit close to home',
+      'mood honestly',
+      'felt that',
+      'real talk',
+      'I respect the take',
+      'can\'t argue with that',
+      'this is the one',
+      'yep that tracks',
+      'hmm interesting angle',
+      'makes you think',
+      'lowkey underrated',
+      'this deserves more attention',
+      'ngl this got me',
+      'okay but hear me out',
+      'I was just thinking this',
+      'this is so valid',
+      'why is this accurate',
+      'not mad at this take',
+      'okay I vibe with this',
     ]
 
     console.warn(`⚠️ Using fallback comment (index ${index}): ${fallbacks[index]}`)
@@ -413,26 +444,52 @@ Write ONE unique comment now as ${botPersonality.name}:`
 
     // Truly unique error fallback
     const timestamp = Date.now()
-    const uniqueSeed = `${botPersonality.name}-${timestamp}-error`
+    const postHash = postContent?.length || 0
+    const uniqueSeed = `${botPersonality.name}-${timestamp}-${postHash}-error`
     const hashCode = uniqueSeed.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)
-    const index = Math.abs(hashCode) % 15
+    const index = Math.abs(hashCode) % 40
 
     const errorFallbacks = [
-      'Interesting',
-      'Makes sense',
-      'Fair enough',
-      'True',
-      'Yeah',
-      'For sure',
-      'I see it',
-      'Valid point',
-      'Real',
-      'Facts',
-      'So true',
-      'Relatable',
-      'Same here',
-      'Agree',
-      'Good take',
+      'wait this is wild',
+      'ngl this is interesting',
+      'okay I see it',
+      'this makes sense',
+      'lowkey true',
+      'based',
+      'honestly facts',
+      'can relate',
+      'felt this',
+      'same energy',
+      'real',
+      'this hits',
+      'actually valid',
+      'fair take',
+      'I vibe with this',
+      'makes sense ngl',
+      'okay but true',
+      'not wrong',
+      'this one resonates',
+      'mood',
+      'yep',
+      'I get it',
+      'damn okay',
+      'big agree',
+      'kinda true',
+      'honestly same',
+      'rare W',
+      'respect',
+      'no cap',
+      'actually though',
+      'for real',
+      'this right here',
+      'straight facts',
+      'you cooked',
+      'on god',
+      'real talk',
+      'literally same',
+      'this aged well',
+      'based take',
+      'that\'s valid',
     ]
 
     console.warn(`⚠️ Using error fallback (index ${index}): ${errorFallbacks[index]}`)
