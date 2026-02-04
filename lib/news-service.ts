@@ -13,6 +13,7 @@ export interface NewsArticle {
   source: {
     name: string
   }
+  topComments?: string[] // Real comments from HN/Reddit
 }
 
 // High-quality tech news sources
@@ -83,6 +84,53 @@ function isHighQualityArticle(article: NewsArticle): boolean {
 }
 
 /**
+ * Fetch top comments from a Hacker News story
+ */
+async function getHNComments(storyId: number, limit: number = 10): Promise<string[]> {
+  try {
+    const storyRes = await fetch(`https://hacker-news.firebaseio.com/v0/item/${storyId}.json`)
+    const story = await storyRes.json()
+
+    if (!story || !story.kids || story.kids.length === 0) {
+      return []
+    }
+
+    // Fetch top comments (kids are comment IDs)
+    const commentPromises = story.kids.slice(0, limit).map(async (commentId: number) => {
+      const res = await fetch(`https://hacker-news.firebaseio.com/v0/item/${commentId}.json`)
+      return res.json()
+    })
+
+    const comments = await Promise.all(commentPromises)
+
+    // Filter and clean comments
+    return comments
+      .filter((c: any) => c && c.text && !c.deleted && !c.dead)
+      .map((c: any) => {
+        // Remove HTML tags and decode entities
+        let text = c.text
+          .replace(/<p>/g, '\n')
+          .replace(/<[^>]*>/g, '')
+          .replace(/&quot;/g, '"')
+          .replace(/&#x27;/g, "'")
+          .replace(/&amp;/g, '&')
+          .replace(/&gt;/g, '>')
+          .replace(/&lt;/g, '<')
+          .trim()
+
+        // Keep only first 2 sentences for brevity
+        const sentences = text.split(/\. |\n/)
+        return sentences.slice(0, 2).join('. ').trim()
+      })
+      .filter((text: string) => text.length > 20 && text.length < 300) // Reasonable length
+      .slice(0, 5) // Top 5 comments
+  } catch (error) {
+    console.error('Error fetching HN comments:', error)
+    return []
+  }
+}
+
+/**
  * Get fresh news from Hacker News (always current, posted within hours)
  */
 async function getHackerNewsStories(): Promise<NewsArticle[]> {
@@ -91,35 +139,75 @@ async function getHackerNewsStories(): Promise<NewsArticle[]> {
     const topStoriesRes = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json')
     const topStoryIds: number[] = await topStoriesRes.json()
 
-    // Fetch details for top 50 stories
-    const storyPromises = topStoryIds.slice(0, 50).map(async (id) => {
+    // Fetch details for top 30 stories (reduced to avoid rate limits with comments)
+    const storyPromises = topStoryIds.slice(0, 30).map(async (id) => {
       const res = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)
       return res.json()
     })
 
     const stories = await Promise.all(storyPromises)
 
-    // Convert HN stories to NewsArticle format
-    const articles: NewsArticle[] = stories
-      .filter((story: any) =>
-        story &&
-        story.type === 'story' &&
-        story.url &&
-        story.score > 20 && // Only popular stories
-        story.title
-      )
-      .map((story: any) => ({
-        title: story.title,
-        description: story.title, // HN doesn't have descriptions, use title
-        url: story.url,
-        urlToImage: null, // HN doesn't have images
-        publishedAt: new Date(story.time * 1000).toISOString(),
-        source: { name: 'Hacker News' }
-      }))
+    // Filter stories first
+    const filteredStories = stories.filter((story: any) =>
+      story &&
+      story.type === 'story' &&
+      story.url &&
+      story.score > 20 && // Only popular stories
+      story.title
+    )
 
-    return articles
+    // Fetch comments for each story
+    const articlesWithComments = await Promise.all(
+      filteredStories.map(async (story: any) => {
+        const topComments = await getHNComments(story.id, 10)
+        return {
+          title: story.title,
+          description: story.title, // HN doesn't have descriptions, use title
+          url: story.url,
+          urlToImage: null, // HN doesn't have images
+          publishedAt: new Date(story.time * 1000).toISOString(),
+          source: { name: 'Hacker News' },
+          topComments: topComments
+        }
+      })
+    )
+
+    return articlesWithComments
   } catch (error) {
     console.error('Error fetching Hacker News:', error)
+    return []
+  }
+}
+
+/**
+ * Fetch top comments from a Reddit post
+ */
+async function getRedditComments(subreddit: string, postId: string): Promise<string[]> {
+  try {
+    const res = await fetch(`https://www.reddit.com/r/${subreddit}/comments/${postId}.json?limit=10`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; AlgosphereBot/1.0)'
+      }
+    })
+
+    if (!res.ok) return []
+
+    const data = await res.json()
+    const comments = data[1]?.data?.children || []
+
+    return comments
+      .filter((c: any) => c.kind === 't1' && c.data && c.data.body)
+      .map((c: any) => c.data.body.trim())
+      .filter((text: string) =>
+        text.length > 20 &&
+        text.length < 300 &&
+        !text.startsWith('[deleted]') &&
+        !text.startsWith('[removed]') &&
+        !text.includes('I am a bot')
+      )
+      .slice(0, 5) // Top 5 comments
+  } catch (error) {
+    console.error('Error fetching Reddit comments:', error)
     return []
   }
 }
@@ -134,7 +222,7 @@ async function getRedditStories(): Promise<NewsArticle[]> {
 
     for (const subreddit of subreddits) {
       try {
-        const res = await fetch(`https://www.reddit.com/r/${subreddit}/hot.json?limit=20`, {
+        const res = await fetch(`https://www.reddit.com/r/${subreddit}/hot.json?limit=15`, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (compatible; AlgosphereBot/1.0)'
           }
@@ -148,13 +236,17 @@ async function getRedditStories(): Promise<NewsArticle[]> {
             const postData = post.data
             // Only external links with good engagement
             if (postData.url && !postData.url.includes('reddit.com') && postData.score > 100) {
+              // Fetch top comments for this post
+              const topComments = await getRedditComments(subreddit, postData.id)
+
               allArticles.push({
                 title: postData.title,
                 description: postData.selftext || postData.title,
                 url: postData.url,
                 urlToImage: postData.thumbnail && postData.thumbnail.startsWith('http') ? postData.thumbnail : null,
                 publishedAt: new Date(postData.created_utc * 1000).toISOString(),
-                source: { name: `r/${subreddit}` }
+                source: { name: `r/${subreddit}` },
+                topComments: topComments
               })
             }
           }

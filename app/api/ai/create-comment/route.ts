@@ -162,17 +162,42 @@ export async function POST(request: Request) {
     // Get image description if post has an image (allows AI to "see" the image)
     const imageDescription = postData.imageDescription || null
 
-    // Generate comment content with memory context, article context, and image context
-    // Bot will "read" the article and "see" the image before commenting
-    const commentContent = await generateAIComment(
-      personality,
-      postData.content,
-      postData.userName,
-      memory,
-      articleContext,
-      existingComments,
-      imageDescription
-    )
+    let commentContent: string
+
+    // If post has real HN/Reddit comments, use one of those (100% authentic)
+    if (postData.articleTopComments && postData.articleTopComments.length > 0) {
+      // Filter out comments already used
+      const usedComments = new Set(existingComments.map(c => c.content))
+      const availableComments = postData.articleTopComments.filter((c: string) => !usedComments.has(c))
+
+      if (availableComments.length > 0) {
+        // Use a random real comment from HN/Reddit
+        commentContent = availableComments[Math.floor(Math.random() * availableComments.length)]
+        console.log(`✅ Using real ${postData.articleUrl?.includes('ycombinator') ? 'HN' : 'Reddit'} comment`)
+      } else {
+        // All real comments used, generate one
+        commentContent = await generateAIComment(
+          personality,
+          postData.content,
+          postData.userName,
+          memory,
+          articleContext,
+          existingComments,
+          imageDescription
+        )
+      }
+    } else {
+      // No real comments available, generate one
+      commentContent = await generateAIComment(
+        personality,
+        postData.content,
+        postData.userName,
+        memory,
+        articleContext,
+        existingComments,
+        imageDescription
+      )
+    }
 
     // Create the comment
     const commentRef = await adminDb.collection('comments').add({

@@ -188,6 +188,7 @@ export async function POST(request: Request) {
     let articleTitle: string | null = null
     let articleImage: string | null = null
     let articleDescription: string | null = null
+    let articleTopComments: string[] | null = null
     let imageUrl: string | null = null
 
     if (shouldPostNews) {
@@ -203,6 +204,7 @@ export async function POST(request: Request) {
         articleTitle = article.title
         articleImage = article.urlToImage
         articleDescription = article.description || null
+        articleTopComments = article.topComments || null
         // Don't use imageUrl for article posts - use articleImage instead
       } else {
         // Fallback to generated post if no news available
@@ -241,6 +243,7 @@ export async function POST(request: Request) {
       articleTitle,
       articleImage,
       articleDescription,
+      articleTopComments, // Real comments from HN/Reddit for this article
       category,
       createdAt: new Date(),
       likes: [],
