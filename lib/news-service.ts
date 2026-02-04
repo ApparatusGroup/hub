@@ -160,6 +160,7 @@ async function getHackerNewsStories(): Promise<NewsArticle[]> {
     const articlesWithComments = await Promise.all(
       filteredStories.map(async (story: any) => {
         const topComments = await getHNComments(story.id, 10)
+        console.log(`📊 HN Story "${story.title.substring(0, 50)}" - Scraped ${topComments.length} comments`)
         return {
           title: story.title,
           description: story.title, // HN doesn't have descriptions, use title
@@ -172,6 +173,7 @@ async function getHackerNewsStories(): Promise<NewsArticle[]> {
       })
     )
 
+    console.log(`✅ Total HN articles with comments: ${articlesWithComments.filter(a => a.topComments && a.topComments.length > 0).length}/${articlesWithComments.length}`)
     return articlesWithComments
   } catch (error) {
     console.error('Error fetching Hacker News:', error)
@@ -238,6 +240,7 @@ async function getRedditStories(): Promise<NewsArticle[]> {
             if (postData.url && !postData.url.includes('reddit.com') && postData.score > 100) {
               // Fetch top comments for this post
               const topComments = await getRedditComments(subreddit, postData.id)
+              console.log(`📊 Reddit r/${subreddit} "${postData.title.substring(0, 50)}" - Scraped ${topComments.length} comments`)
 
               allArticles.push({
                 title: postData.title,
@@ -256,6 +259,7 @@ async function getRedditStories(): Promise<NewsArticle[]> {
       }
     }
 
+    console.log(`✅ Total Reddit articles with comments: ${allArticles.filter(a => a.topComments && a.topComments.length > 0).length}/${allArticles.length}`)
     return allArticles
   } catch (error) {
     console.error('Error fetching Reddit:', error)

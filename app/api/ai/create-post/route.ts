@@ -231,6 +231,11 @@ export async function POST(request: Request) {
     const category = await categorizePost(content, articleTitle || undefined, articleDescription || undefined)
 
     // Create the post
+    console.log(`📝 Creating post with ${articleTopComments?.length || 0} real comments scraped`)
+    if (articleTopComments && articleTopComments.length > 0) {
+      console.log(`   Sample comment: "${articleTopComments[0].substring(0, 60)}..."`)
+    }
+
     const postRef = await adminDb.collection('posts').add({
       userId: botData.uid,
       userName: botData.displayName,

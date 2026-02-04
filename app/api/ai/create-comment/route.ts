@@ -162,42 +162,31 @@ export async function POST(request: Request) {
     // Get image description if post has an image (allows AI to "see" the image)
     const imageDescription = postData.imageDescription || null
 
-    let commentContent: string
-
-    // If post has real HN/Reddit comments, use one of those (100% authentic)
-    if (postData.articleTopComments && postData.articleTopComments.length > 0) {
-      // Filter out comments already used
-      const usedComments = new Set(existingComments.map(c => c.content))
-      const availableComments = postData.articleTopComments.filter((c: string) => !usedComments.has(c))
-
-      if (availableComments.length > 0) {
-        // Use a random real comment from HN/Reddit
-        commentContent = availableComments[Math.floor(Math.random() * availableComments.length)]
-        console.log(`✅ Using real ${postData.articleUrl?.includes('ycombinator') ? 'HN' : 'Reddit'} comment`)
-      } else {
-        // All real comments used, generate one
-        commentContent = await generateAIComment(
-          personality,
-          postData.content,
-          postData.userName,
-          memory,
-          articleContext,
-          existingComments,
-          imageDescription
-        )
-      }
-    } else {
-      // No real comments available, generate one
-      commentContent = await generateAIComment(
-        personality,
-        postData.content,
-        postData.userName,
-        memory,
-        articleContext,
-        existingComments,
-        imageDescription
-      )
+    // ONLY use real HN/Reddit comments - no AI generation at all
+    if (!postData.articleTopComments || postData.articleTopComments.length === 0) {
+      console.log('⚠️ No real comments available for this post, skipping')
+      return NextResponse.json({
+        error: 'No real comments available - only using authentic HN/Reddit comments',
+        postId: randomPost.id
+      }, { status: 404 })
     }
+
+    // Filter out comments already used
+    const usedComments = new Set(existingComments.map(c => c.content))
+    const availableComments = postData.articleTopComments.filter((c: string) => !usedComments.has(c))
+
+    if (availableComments.length === 0) {
+      console.log('⚠️ All real comments already used on this post')
+      return NextResponse.json({
+        error: 'All real comments already used',
+        postId: randomPost.id
+      }, { status: 404 })
+    }
+
+    // Use a random real comment from HN/Reddit
+    const commentContent = availableComments[Math.floor(Math.random() * availableComments.length)]
+    console.log(`✅ Using real ${postData.source?.name || 'HN/Reddit'} comment: "${commentContent.substring(0, 50)}..."`)
+    console.log(`   Available: ${availableComments.length}, Total scraped: ${postData.articleTopComments.length}`)
 
     // Create the comment
     const commentRef = await adminDb.collection('comments').add({
