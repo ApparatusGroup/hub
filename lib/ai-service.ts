@@ -170,13 +170,72 @@ Write ONE post now:`
   }
 }
 
+export async function generateImageDescription(imageUrl: string): Promise<string> {
+  const prompt = `Analyze this image thoroughly and provide a detailed, objective description that will help AI assistants understand and comment on it. Include:
+
+- What the image shows (objects, people, scenery, text, etc.)
+- The context and setting
+- Notable details, colors, composition
+- Any text visible in the image
+- The mood, tone, or feeling it conveys
+- Technical aspects if relevant (screenshot, diagram, photo, etc.)
+- What someone might find interesting, funny, or worth discussing about it
+
+Be thorough and factual. This description will be used by AI bots to generate authentic comments.`
+
+  try {
+    const response = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-social.vercel.app',
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-3.5-sonnet',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'url',
+                  url: imageUrl,
+                },
+              },
+              {
+                type: 'text',
+                text: prompt,
+              },
+            ],
+          },
+        ],
+        max_tokens: 500,
+      }),
+    })
+
+    const data = await response.json()
+    const content = data.choices?.[0]?.message?.content
+
+    if (content) {
+      return content.trim()
+    }
+    return ''
+  } catch (error) {
+    console.error('Error generating image description:', error)
+    return ''
+  }
+}
+
 export async function generateAIComment(
   botPersonality: AIBotPersonality,
   postContent: string,
   postAuthorName: string,
   memory?: AIMemory | null,
   articleContext?: { title: string; description: string } | null,
-  existingComments?: Array<{ userName: string; content: string; isAI: boolean }> | null
+  existingComments?: Array<{ userName: string; content: string; isAI: boolean }> | null,
+  imageDescription?: string | null
 ): Promise<string> {
   let contextSection = ''
 
@@ -218,6 +277,15 @@ Summary: ${articleContext.description}
 Your comment should show you've read and understood the article. Comment on the actual content/implications of the article, not just the post text.`
   }
 
+  // Add image context if the post has an image
+  let imageSection = ''
+  if (imageDescription) {
+    imageSection = `\n\nThis post includes an image. Here's what it shows:
+${imageDescription}
+
+Your comment should reference or react to what's in the image naturally, as if you can see it yourself.`
+  }
+
   // Add existing comments to ensure uniqueness
   let existingCommentsSection = ''
   if (existingComments && existingComments.length > 0) {
@@ -229,7 +297,7 @@ Your comment should show you've read and understood the article. Comment on the 
 Personality: ${botPersonality.personality}
 Interests: ${botPersonality.interests.join(', ')}${contextSection}
 
-${postAuthorName} posted: "${postContent}"${articleSection}${existingCommentsSection}
+${postAuthorName} posted: "${postContent}"${articleSection}${imageSection}${existingCommentsSection}
 
 Write a natural, genuine comment response that:
 - Sounds like a real person (not AI or overly enthusiastic)
@@ -241,6 +309,7 @@ Write a natural, genuine comment response that:
 - No excessive emojis or hashtags
 - Stays consistent with how you've communicated before
 ${articleContext ? '- Shows you actually read the article by referencing specific points or implications' : ''}
+${imageDescription ? '- References or reacts to what you see in the image naturally' : ''}
 ${existingComments && existingComments.length > 0 ? '- CRITICAL: Your comment MUST be different from existing comments. Take a different angle, focus on a different aspect, or bring a fresh perspective.' : ''}
 
 Examples of good comments:
@@ -249,6 +318,7 @@ Examples of good comments:
 - "This is so relatable. Had three today alone."
 - "That book was incredible. Did you get to the plot twist?"
 ${articleContext ? '- "The implications for privacy here are wild. This could change everything"\n- "Finally! Been waiting for this kind of innovation in the space"' : ''}
+${imageDescription ? '- "That view is incredible! Where is this?"\n- "The colors in this are so vibrant, love the composition"\n- "This made me laugh way harder than it should have"' : ''}
 
 Write ONE comment now (make it unique based on YOUR personality):`
 

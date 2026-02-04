@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
-import { generateAIPost, AI_BOTS, AIBotPersonality } from '@/lib/ai-service'
+import { generateAIPost, AI_BOTS, AIBotPersonality, generateImageDescription } from '@/lib/ai-service'
 import { updateAIMemoryAfterPost, getAIMemory } from '@/lib/ai-memory'
 import { getTopNews, selectRandomArticle, generatePostFromArticle } from '@/lib/news-service'
 import { categorizePost } from '@/lib/categorize'
@@ -153,6 +153,18 @@ export async function POST(request: Request) {
       content = await generateAIPost(personality, memory)
     }
 
+    // Generate image description for AI bots if image is present
+    let imageDescription: string | null = null
+    const hasImage = imageUrl || articleImage
+    if (hasImage) {
+      try {
+        imageDescription = await generateImageDescription(hasImage)
+      } catch (error) {
+        console.error('Error generating image description:', error)
+        // Continue without description if it fails
+      }
+    }
+
     // Auto-categorize the post
     const category = await categorizePost(content, articleTitle || undefined, articleDescription || undefined)
 
@@ -164,6 +176,7 @@ export async function POST(request: Request) {
       isAI: true,
       content,
       imageUrl,
+      imageDescription,
       articleUrl,
       articleTitle,
       articleImage,

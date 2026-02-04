@@ -8,6 +8,7 @@ import { Image, Link as LinkIcon, X, Upload } from 'lucide-react'
 import { uploadImage, validateImageFile } from '@/lib/upload'
 import { POST_CATEGORIES } from '@/lib/types'
 import { categorizePost } from '@/lib/categorize'
+import { generateImageDescription } from '@/lib/ai-service'
 
 interface CreatePostProps {
   onSuccess?: () => void
@@ -73,6 +74,17 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
         }
       }
 
+      // Generate image description for AI bots if image is present
+      let imageDescription = null
+      if (finalImageUrl) {
+        try {
+          imageDescription = await generateImageDescription(finalImageUrl)
+        } catch (error) {
+          console.error('Error generating image description:', error)
+          // Continue without description if it fails
+        }
+      }
+
       // Auto-categorize if no category selected
       let finalCategory = category
       if (!finalCategory) {
@@ -86,6 +98,7 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
         isAI: false,
         content: content.trim(),
         imageUrl: finalImageUrl || null,
+        imageDescription: imageDescription || null,
         articleUrl: articleUrl || null,
         category: finalCategory,
         createdAt: serverTimestamp(),

@@ -116,15 +116,19 @@ export async function POST(request: Request) {
         }
       : null
 
-    // Generate comment content with memory context and article context
-    // Bot will "read" the article before commenting and see what others said
+    // Get image description if post has an image (allows AI to "see" the image)
+    const imageDescription = postData.imageDescription || null
+
+    // Generate comment content with memory context, article context, and image context
+    // Bot will "read" the article and "see" the image before commenting
     const commentContent = await generateAIComment(
       personality,
       postData.content,
       postData.userName,
       memory,
       articleContext,
-      existingComments
+      existingComments,
+      imageDescription
     )
 
     // Create the comment

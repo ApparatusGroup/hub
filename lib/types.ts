@@ -18,6 +18,7 @@ export interface Post {
   isAI: boolean
   content: string
   imageUrl?: string
+  imageDescription?: string // AI-generated description of image (only visible to AI bots)
   articleUrl?: string
   articleTitle?: string
   articleImage?: string
