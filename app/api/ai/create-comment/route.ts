@@ -83,9 +83,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No AI bots found' }, { status: 404 })
     }
 
-    // Filter out bots that have already commented on this post and the post author if it's an AI
+    // Filter out lurker bots (passive likers only), bots that have already commented, and post author
     let botDocs = botsSnapshot.docs.filter(doc => {
-      const botId = doc.data().uid
+      const data = doc.data()
+      const botId = data.uid
+      // Exclude lurker bots (they only like, don't create content)
+      if (data.isLurker === true) return false
       // Don't let bot comment on its own post
       if (postData.isAI && botId === postData.userId) return false
       // Don't let bot comment if it already commented on this post

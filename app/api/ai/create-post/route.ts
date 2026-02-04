@@ -46,8 +46,9 @@ export async function POST(request: Request) {
       botPostCounts.set(postData.userId, count + 1)
     })
 
+    // Exclude lurker bots (they only like, don't create content)
     // Calculate weights for bot selection (bots with fewer posts get higher weight)
-    const botDocs = botsSnapshot.docs
+    const botDocs = botsSnapshot.docs.filter(doc => doc.data().isLurker !== true)
     const botWeights = botDocs.map(doc => {
       const postCount = botPostCounts.get(doc.data().uid) || 0
       // Higher weight for bots that haven't posted recently
