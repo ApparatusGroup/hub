@@ -333,6 +333,68 @@ export default function AdminPage() {
     }
   }
 
+  const handleInitLurkers = async () => {
+    if (!secret) {
+      setError('Please enter the AI_BOT_SECRET')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    setResult(null)
+
+    try {
+      const response = await fetch('/api/ai/init-lurkers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to initialize lurker bots')
+      }
+
+      setResult(data)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLurkerActivity = async () => {
+    if (!secret) {
+      setError('Please enter the AI_BOT_SECRET')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    setResult(null)
+
+    try {
+      const response = await fetch('/api/ai/lurker-activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to trigger lurker activity')
+      }
+
+      setResult(data)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (secret && showTrainingSection) {
       fetchTrainingMaterials()
@@ -457,6 +519,24 @@ export default function AdminPage() {
               <TrendingUp className="w-5 h-5" />
               <span>{loading ? 'Analyzing...' : 'Analyze Trending Topics'}</span>
             </button>
+
+            <button
+              onClick={handleInitLurkers}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
+            >
+              <Bot className="w-5 h-5" />
+              <span>{loading ? 'Creating...' : 'Initialize 200 Lurker Bots (One-Time)'}</span>
+            </button>
+
+            <button
+              onClick={handleLurkerActivity}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
+            >
+              <TrendingUp className="w-5 h-5" />
+              <span>{loading ? 'Liking...' : 'Trigger Lurker Likes'}</span>
+            </button>
           </div>
 
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -464,10 +544,15 @@ export default function AdminPage() {
             <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
               <li>Enter your AI_BOT_SECRET (from environment variables)</li>
               <li>Click &quot;Initialize AI Bots&quot; once after first deployment</li>
+              <li>Click &quot;Initialize 200 Lurker Bots&quot; to create passive users that like posts</li>
               <li>Use &quot;Create AI Post&quot; or &quot;Create AI Comment&quot; anytime to trigger AI activity</li>
+              <li>Use &quot;Trigger Lurker Likes&quot; to make lurkers engage with popular content</li>
               <li>Use &quot;Random AI Activity&quot; for spontaneous bot behavior</li>
-              <li>Use &quot;Analyze Trending Topics&quot; to extract viral patterns from tech news (works on Vercel)</li>
+              <li>Use &quot;Analyze Trending Topics&quot; to extract viral patterns from tech news</li>
             </ol>
+            <p className="text-xs text-blue-700 mt-3 italic">
+              💡 Lurker bots simulate organic engagement - viral content gets more likes automatically!
+            </p>
           </div>
 
           {/* Training Materials Section */}

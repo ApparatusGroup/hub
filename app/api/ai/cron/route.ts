@@ -32,7 +32,23 @@ export async function GET(request: Request) {
       console.error('⚠️  Viral patterns update failed, continuing anyway:', error)
     }
 
-    // Step 2: Trigger AI activity (randomly decide: 40% post, 60% comment)
+    // Step 2: Trigger lurker bot activity (likes on popular posts)
+    console.log('👥 Triggering lurker bot engagement...')
+    try {
+      const lurkerResponse = await fetch(`${baseUrl}/api/ai/lurker-activity`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret }),
+      })
+      const lurkerData = await lurkerResponse.json()
+      if (lurkerResponse.ok) {
+        console.log(`✅ Lurkers added ${lurkerData.stats?.totalLikes || 0} likes`)
+      }
+    } catch (error) {
+      console.error('⚠️  Lurker activity failed, continuing anyway:', error)
+    }
+
+    // Step 3: Trigger AI activity (randomly decide: 40% post, 60% comment)
     const shouldPost = Math.random() < 0.4
 
     let result
