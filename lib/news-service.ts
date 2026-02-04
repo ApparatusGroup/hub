@@ -89,22 +89,37 @@ function isHighQualityArticle(article: NewsArticle): boolean {
 async function getHNComments(storyId: number, limit: number = 10): Promise<string[]> {
   try {
     const storyRes = await fetch(`https://hacker-news.firebaseio.com/v0/item/${storyId}.json`)
-    const story = await storyRes.json()
 
-    if (!story || !story.kids || story.kids.length === 0) {
+    if (!storyRes.ok) {
+      console.error(`HN API error for story ${storyId}: ${storyRes.status}`)
       return []
     }
+
+    const story = await storyRes.json()
+
+    if (!story) {
+      console.log(`No data for HN story ${storyId}`)
+      return []
+    }
+
+    if (!story.kids || story.kids.length === 0) {
+      console.log(`HN story ${storyId} has no comments`)
+      return []
+    }
+
+    console.log(`Fetching ${Math.min(limit, story.kids.length)} comments for HN story ${storyId}`)
 
     // Fetch top comments (kids are comment IDs)
     const commentPromises = story.kids.slice(0, limit).map(async (commentId: number) => {
       const res = await fetch(`https://hacker-news.firebaseio.com/v0/item/${commentId}.json`)
+      if (!res.ok) return null
       return res.json()
     })
 
     const comments = await Promise.all(commentPromises)
 
     // Filter and clean comments
-    return comments
+    const cleanedComments = comments
       .filter((c: any) => c && c.text && !c.deleted && !c.dead)
       .map((c: any) => {
         // Remove HTML tags and decode entities
@@ -124,8 +139,11 @@ async function getHNComments(storyId: number, limit: number = 10): Promise<strin
       })
       .filter((text: string) => text.length > 20 && text.length < 300) // Reasonable length
       .slice(0, 5) // Top 5 comments
+
+    console.log(`✅ Cleaned ${cleanedComments.length} comments from HN story ${storyId}`)
+    return cleanedComments
   } catch (error) {
-    console.error('Error fetching HN comments:', error)
+    console.error(`Error fetching HN comments for story ${storyId}:`, error)
     return []
   }
 }
@@ -156,22 +174,40 @@ async function getHackerNewsStories(): Promise<NewsArticle[]> {
       story.title
     )
 
-    // Fetch comments for each story
-    const articlesWithComments = await Promise.all(
-      filteredStories.map(async (story: any) => {
+    // Fetch comments for each story (with delay to avoid rate limiting)
+    const articlesWithComments: NewsArticle[] = []
+
+    for (const story of filteredStories) {
+      try {
         const topComments = await getHNComments(story.id, 10)
         console.log(`📊 HN Story "${story.title.substring(0, 50)}" - Scraped ${topComments.length} comments`)
-        return {
+
+        articlesWithComments.push({
           title: story.title,
-          description: story.title, // HN doesn't have descriptions, use title
+          description: story.title,
           url: story.url,
-          urlToImage: null, // HN doesn't have images
+          urlToImage: null,
           publishedAt: new Date(story.time * 1000).toISOString(),
           source: { name: 'Hacker News' },
           topComments: topComments
-        }
-      })
-    )
+        })
+
+        // Small delay to avoid rate limiting (30ms between requests)
+        await new Promise(resolve => setTimeout(resolve, 30))
+      } catch (error) {
+        console.error(`Error fetching comments for HN story ${story.id}:`, error)
+        // Still add the article, just without comments
+        articlesWithComments.push({
+          title: story.title,
+          description: story.title,
+          url: story.url,
+          urlToImage: null,
+          publishedAt: new Date(story.time * 1000).toISOString(),
+          source: { name: 'Hacker News' },
+          topComments: []
+        })
+      }
+    }
 
     console.log(`✅ Total HN articles with comments: ${articlesWithComments.filter(a => a.topComments && a.topComments.length > 0).length}/${articlesWithComments.length}`)
     return articlesWithComments
@@ -186,18 +222,35 @@ async function getHackerNewsStories(): Promise<NewsArticle[]> {
  */
 async function getRedditComments(subreddit: string, postId: string): Promise<string[]> {
   try {
-    const res = await fetch(`https://www.reddit.com/r/${subreddit}/comments/${postId}.json?limit=10`, {
+    const url = `https://www.reddit.com/r/${subreddit}/comments/${postId}.json?limit=10`
+    const res = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; AlgosphereBot/1.0)'
       }
     })
 
-    if (!res.ok) return []
+    if (!res.ok) {
+      console.error(`Reddit API error for r/${subreddit}/${postId}: ${res.status}`)
+      return []
+    }
 
     const data = await res.json()
+
+    if (!data || !Array.isArray(data) || data.length < 2) {
+      console.log(`No comment data for Reddit post r/${subreddit}/${postId}`)
+      return []
+    }
+
     const comments = data[1]?.data?.children || []
 
-    return comments
+    if (comments.length === 0) {
+      console.log(`Reddit post r/${subreddit}/${postId} has no comments`)
+      return []
+    }
+
+    console.log(`Fetching comments from Reddit post r/${subreddit}/${postId}`)
+
+    const cleanedComments = comments
       .filter((c: any) => c.kind === 't1' && c.data && c.data.body)
       .map((c: any) => c.data.body.trim())
       .filter((text: string) =>
@@ -208,8 +261,11 @@ async function getRedditComments(subreddit: string, postId: string): Promise<str
         !text.includes('I am a bot')
       )
       .slice(0, 5) // Top 5 comments
+
+    console.log(`✅ Cleaned ${cleanedComments.length} comments from Reddit r/${subreddit}/${postId}`)
+    return cleanedComments
   } catch (error) {
-    console.error('Error fetching Reddit comments:', error)
+    console.error(`Error fetching Reddit comments for r/${subreddit}/${postId}:`, error)
     return []
   }
 }
@@ -238,19 +294,36 @@ async function getRedditStories(): Promise<NewsArticle[]> {
             const postData = post.data
             // Only external links with good engagement
             if (postData.url && !postData.url.includes('reddit.com') && postData.score > 100) {
-              // Fetch top comments for this post
-              const topComments = await getRedditComments(subreddit, postData.id)
-              console.log(`📊 Reddit r/${subreddit} "${postData.title.substring(0, 50)}" - Scraped ${topComments.length} comments`)
+              try {
+                // Fetch top comments for this post
+                const topComments = await getRedditComments(subreddit, postData.id)
+                console.log(`📊 Reddit r/${subreddit} "${postData.title.substring(0, 50)}" - Scraped ${topComments.length} comments`)
 
-              allArticles.push({
-                title: postData.title,
-                description: postData.selftext || postData.title,
-                url: postData.url,
-                urlToImage: postData.thumbnail && postData.thumbnail.startsWith('http') ? postData.thumbnail : null,
-                publishedAt: new Date(postData.created_utc * 1000).toISOString(),
-                source: { name: `r/${subreddit}` },
-                topComments: topComments
-              })
+                allArticles.push({
+                  title: postData.title,
+                  description: postData.selftext || postData.title,
+                  url: postData.url,
+                  urlToImage: postData.thumbnail && postData.thumbnail.startsWith('http') ? postData.thumbnail : null,
+                  publishedAt: new Date(postData.created_utc * 1000).toISOString(),
+                  source: { name: `r/${subreddit}` },
+                  topComments: topComments
+                })
+
+                // Delay to avoid Reddit rate limiting (500ms between requests)
+                await new Promise(resolve => setTimeout(resolve, 500))
+              } catch (error) {
+                console.error(`Error processing Reddit post ${postData.id}:`, error)
+                // Still add article without comments
+                allArticles.push({
+                  title: postData.title,
+                  description: postData.selftext || postData.title,
+                  url: postData.url,
+                  urlToImage: postData.thumbnail && postData.thumbnail.startsWith('http') ? postData.thumbnail : null,
+                  publishedAt: new Date(postData.created_utc * 1000).toISOString(),
+                  source: { name: `r/${subreddit}` },
+                  topComments: []
+                })
+              }
             }
           }
         }

@@ -26,9 +26,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No recent posts found' }, { status: 404 })
     }
 
+    // FILTER: Only select posts that have real HN/Reddit comments
+    const postsWithComments = postsSnapshot.docs.filter(doc => {
+      const data = doc.data()
+      return data.articleTopComments && data.articleTopComments.length > 0
+    })
+
+    console.log(`🔍 Found ${postsWithComments.length} posts with real comments out of ${postsSnapshot.docs.length} total posts`)
+
+    if (postsWithComments.length === 0) {
+      return NextResponse.json({
+        error: 'No posts with real HN/Reddit comments available',
+        hint: 'Need to scrape more articles with comments'
+      }, { status: 404 })
+    }
+
     // Weight post selection by popularity (likes + comments)
     // Popular posts get more AI engagement, creating viral feedback loop
-    const posts = postsSnapshot.docs.map(doc => {
+    const posts = postsWithComments.map(doc => {
       const data = doc.data()
       const now = Date.now()
       const ageInHours = (now - (data.createdAt?.toMillis() || Date.now())) / (1000 * 60 * 60)
