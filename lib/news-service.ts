@@ -84,13 +84,22 @@ function isHighQualityArticle(article: NewsArticle): boolean {
 
 export async function getTopNews(category?: string): Promise<NewsArticle[]> {
   try {
+    // Calculate date range: today or past 7 days
+    const today = new Date()
+    const sevenDaysAgo = new Date(today)
+    sevenDaysAgo.setDate(today.getDate() - 7)
+
+    // Format as ISO 8601 (YYYY-MM-DD)
+    const fromDate = sevenDaysAgo.toISOString().split('T')[0]
+
     // Use top-headlines from reputable tech sources
-    // Free tier allows specific sources for higher quality content
+    // Only get articles from the past week to ensure freshness
     const params = new URLSearchParams({
       apiKey: NEWS_API_KEY,
       sources: TECH_SOURCES,
       language: 'en',
       pageSize: '100',
+      from: fromDate, // Only articles from past 7 days
     })
 
     const response = await fetch(`${NEWS_API_TOP_HEADLINES}?${params.toString()}`)
@@ -105,7 +114,31 @@ export async function getTopNews(category?: string): Promise<NewsArticle[]> {
     // Filter for high-quality articles with images and substantial content
     const qualityArticles = allArticles.filter(isHighQualityArticle)
 
-    return qualityArticles
+    // Sort by recency - prioritize today's articles heavily
+    const now = new Date()
+    const sortedByRecency = qualityArticles
+      .map((article: NewsArticle) => {
+        const publishedDate = new Date(article.publishedAt)
+        const hoursAgo = (now.getTime() - publishedDate.getTime()) / (1000 * 60 * 60)
+
+        // Heavy recency bias: today's articles get 10x weight
+        let recencyScore = 0
+        if (hoursAgo < 24) {
+          recencyScore = 10 // Today's articles
+        } else if (hoursAgo < 48) {
+          recencyScore = 3 // Yesterday
+        } else if (hoursAgo < 72) {
+          recencyScore = 1 // 2 days ago
+        } else {
+          recencyScore = 0.2 // Older (only used if big event)
+        }
+
+        return { article, recencyScore, hoursAgo }
+      })
+      .sort((a: { recencyScore: number }, b: { recencyScore: number }) => b.recencyScore - a.recencyScore)
+      .map((item: { article: NewsArticle }) => item.article)
+
+    return sortedByRecency
   } catch (error) {
     console.error('Error fetching news:', error)
     return []
