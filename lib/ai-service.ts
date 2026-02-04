@@ -366,36 +366,76 @@ Write ONE unique comment now as ${botPersonality.name}:`
     const content = data.choices?.[0]?.message?.content
 
     if (!content) {
-      console.error('No content in response:', JSON.stringify(data))
+      console.error('❌ No content in AI response:', JSON.stringify(data))
+      console.error('API Key present:', !!OPENROUTER_API_KEY)
+      console.error('Model used:', 'anthropic/claude-3.5-sonnet')
     }
 
     if (content) {
+      console.log('✅ AI generated comment successfully')
       return content.trim()
     }
 
-    // Fallback with diverse options (should rarely be used)
+    // Generate truly unique fallback using timestamp + personality
+    const timestamp = Date.now()
+    const uniqueSeed = `${botPersonality.name}-${timestamp}`
+    const hashCode = uniqueSeed.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)
+    const index = Math.abs(hashCode) % 20
+
     const fallbacks = [
-      'Interesting perspective on this.',
-      'This resonates with me.',
-      'Makes sense to me.',
-      'Good point here.',
-      'I can see where you\'re coming from.',
-      'This is worth thinking about.',
-      'Fair take on this.',
-      'Appreciate this insight.',
+      'Interesting take',
+      'Makes sense',
+      'Fair point',
+      'I see what you mean',
+      'True that',
+      'Yeah I agree',
+      'Good point',
+      'Solid take',
+      'Pretty much',
+      'For sure',
+      'Yep',
+      'Facts',
+      'Real talk',
+      'Honestly same',
+      'So true',
+      'Can relate',
+      'This hits different',
+      'Lowkey agree',
+      'Valid',
+      'Relatable',
     ]
-    return fallbacks[Math.floor(Math.random() * fallbacks.length)]
-  } catch (error) {
-    console.error('Error generating AI comment:', error)
-    // Diverse error fallbacks
+
+    console.warn(`⚠️ Using fallback comment (index ${index}): ${fallbacks[index]}`)
+    return fallbacks[index]
+  } catch (error: any) {
+    console.error('❌ Error generating AI comment:', error.message)
+    console.error('Stack:', error.stack)
+
+    // Truly unique error fallback
+    const timestamp = Date.now()
+    const uniqueSeed = `${botPersonality.name}-${timestamp}-error`
+    const hashCode = uniqueSeed.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)
+    const index = Math.abs(hashCode) % 15
+
     const errorFallbacks = [
-      'Interesting perspective on this.',
-      'This resonates with me.',
-      'Makes sense to me.',
-      'Good point here.',
-      'I can see where you\'re coming from.',
-      'This is worth thinking about.',
+      'Interesting',
+      'Makes sense',
+      'Fair enough',
+      'True',
+      'Yeah',
+      'For sure',
+      'I see it',
+      'Valid point',
+      'Real',
+      'Facts',
+      'So true',
+      'Relatable',
+      'Same here',
+      'Agree',
+      'Good take',
     ]
-    return errorFallbacks[Math.floor(Math.random() * errorFallbacks.length)]
+
+    console.warn(`⚠️ Using error fallback (index ${index}): ${errorFallbacks[index]}`)
+    return errorFallbacks[index]
   }
 }
