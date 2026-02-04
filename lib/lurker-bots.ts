@@ -100,13 +100,16 @@ export function generateLurkerBots(count: number = 200): Omit<LurkerBot, 'uid'>[
 
 /**
  * Score a post for a specific lurker bot
- * Returns a score 0-100 indicating how likely the bot should like it
+ * Returns a score 0-100+ indicating how likely the bot should like it
+ * Article posts with links and images score MUCH higher than text-only
  */
 export function scorePostForLurker(
   post: {
     content: string
     articleTitle?: string | null
     articleDescription?: string | null
+    articleUrl?: string | null
+    articleImage?: string | null
     category?: string | null
     likes?: string[]
     createdAt: any
@@ -119,9 +122,15 @@ export function scorePostForLurker(
   const fullText = `${post.content} ${post.articleTitle || ''} ${post.articleDescription || ''}`.toLowerCase()
   const contentLength = post.content.length
 
-  // Length preference
-  if (contentLength < lurker.preferences.minLength || contentLength > lurker.preferences.maxLength) {
-    return 0 // Hard pass if length doesn't match
+  // Check if this is an article post (link with metadata)
+  const isArticlePost = !!(post.articleUrl && post.articleTitle)
+  const hasImage = !!post.articleImage
+
+  // Length preference (more lenient for article posts)
+  if (!isArticlePost) {
+    if (contentLength < lurker.preferences.minLength || contentLength > lurker.preferences.maxLength) {
+      return 0 // Hard pass for text-only posts outside length range
+    }
   }
 
   // Keyword matching (40 points max)
@@ -133,7 +142,7 @@ export function scorePostForLurker(
   }
   score += Math.min((keywordMatches / lurker.preferences.keywords.length) * 40, 40)
 
-  // Viral pattern matching (30 points max)
+  // Viral pattern matching (30 points max) - CRITICAL for article posts
   if (viralKeywords && viralKeywords.length > 0) {
     let viralMatches = 0
     for (const keyword of viralKeywords) {
@@ -141,7 +150,13 @@ export function scorePostForLurker(
         viralMatches++
       }
     }
-    score += Math.min((viralMatches / viralKeywords.length) * 30, 30)
+    const viralScore = Math.min((viralMatches / viralKeywords.length) * 30, 30)
+    score += viralScore
+
+    // Extra viral bonus for articles with strong matches
+    if (isArticlePost && viralMatches >= 3) {
+      score += 20 // Articles matching multiple viral keywords get huge boost
+    }
   }
 
   // Sentiment matching (15 points max)
@@ -157,9 +172,9 @@ export function scorePostForLurker(
     score += 10 // Any sentiment is fine, give partial points
   }
 
-  // Existing engagement boost (15 points max)
+  // Existing engagement boost (25 points max - increased from 15)
   const likeCount = post.likes?.length || 0
-  score += Math.min(likeCount * 2, 15) // More likes = more attractive
+  score += Math.min(likeCount * 2.5, 25) // More likes = more attractive
 
   // Time decay - newer posts get bonus
   const postAge = Date.now() - (post.createdAt?.toMillis?.() || Date.now())
@@ -170,11 +185,36 @@ export function scorePostForLurker(
     score += 5
   }
 
-  return Math.min(score, 100)
+  // MASSIVE BONUSES FOR ARTICLE POSTS (this is what makes viral links dominate)
+  if (isArticlePost) {
+    // Base article bonus
+    score += 40 // Articles automatically get +40 points
+
+    // Image bonus (articles with images are WAY more engaging)
+    if (hasImage) {
+      score += 30 // +30 for having an image
+    }
+
+    // Viral article multiplier - if article has good viral matches, multiply the score
+    if (score > 60) {
+      score = score * 1.5 // 50% bonus for high-scoring articles
+    }
+
+    // Super viral articles get another multiplier
+    if (score > 100) {
+      score = score * 1.2 // Another 20% for truly viral content
+    }
+  } else {
+    // Text-only posts get penalized (reduced chance to compete with articles)
+    score = score * 0.6 // Text posts only get 60% of their base score
+  }
+
+  return score // No cap - articles can score 150-200+
 }
 
 /**
  * Determine if lurker should like a post
+ * Higher scores (especially for articles) increase like probability
  */
 export function shouldLurkerLikePost(
   score: number,
@@ -183,11 +223,17 @@ export function shouldLurkerLikePost(
 ): boolean {
   if (alreadyLiked) return false
 
-  // Normalize score to 0-1
-  const normalizedScore = score / 100
+  // Normalize score to 0-1+ (articles can exceed 1.0, which is fine - means very high chance)
+  // Use 100 as baseline, but allow scores to exceed for viral articles
+  const normalizedScore = Math.min(score / 100, 2.0) // Cap at 2.0 (200% of base)
 
   // Combine score with bot's base probability
   const finalProbability = normalizedScore * lurker.engagement.likeProbability
 
-  return Math.random() < finalProbability
+  // For very high scores (viral articles), boost probability even more
+  const boostedProbability = finalProbability > 0.8
+    ? Math.min(finalProbability * 1.2, 0.95) // 95% max chance to like
+    : finalProbability
+
+  return Math.random() < boostedProbability
 }

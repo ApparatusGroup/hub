@@ -65,16 +65,21 @@ export async function POST(request: Request) {
     // Track engagement stats
     let totalLikes = 0
     let postsEngaged = 0
-    const postEngagement: Array<{ postId: string; likes: number }> = []
+    let articleLikes = 0
+    let textPostLikes = 0
+    const postEngagement: Array<{ postId: string; likes: number; isArticle: boolean }> = []
 
     // Process each post
     for (const postDoc of postsSnapshot.docs) {
       const postData = postDoc.data()
       const postId = postDoc.id
       let likesForThisPost = 0
+      const isArticle = !!(postData.articleUrl && postData.articleTitle)
 
       // Randomly sample lurkers (don't have all 200 evaluate every post)
-      const sampleSize = Math.floor(lurkers.length * 0.3) // 30% sample
+      // Use larger sample for articles (50%) vs text posts (30%)
+      const sampleRate = isArticle ? 0.5 : 0.3
+      const sampleSize = Math.floor(lurkers.length * sampleRate)
       const sampledLurkers = lurkers
         .sort(() => 0.5 - Math.random())
         .slice(0, sampleSize)
@@ -90,6 +95,8 @@ export async function POST(request: Request) {
             content: postData.content,
             articleTitle: postData.articleTitle,
             articleDescription: postData.articleDescription,
+            articleUrl: postData.articleUrl,
+            articleImage: postData.articleImage,
             category: postData.category,
             likes: postData.likes || [],
             createdAt: postData.createdAt
@@ -109,6 +116,13 @@ export async function POST(request: Request) {
             totalLikes++
             likesForThisPost++
 
+            // Track article vs text post engagement
+            if (isArticle) {
+              articleLikes++
+            } else {
+              textPostLikes++
+            }
+
             // Update local data to avoid duplicate likes in same batch
             postData.likes = [...(postData.likes || []), lurker.uid]
 
@@ -120,12 +134,14 @@ export async function POST(request: Request) {
 
       if (likesForThisPost > 0) {
         postsEngaged++
-        postEngagement.push({ postId, likes: likesForThisPost })
+        postEngagement.push({ postId, likes: likesForThisPost, isArticle })
       }
     }
 
     console.log(`✅ Lurker activity complete:`)
     console.log(`   Total likes added: ${totalLikes}`)
+    console.log(`   Article likes: ${articleLikes} (${((articleLikes/totalLikes)*100).toFixed(1)}%)`)
+    console.log(`   Text post likes: ${textPostLikes} (${((textPostLikes/totalLikes)*100).toFixed(1)}%)`)
     console.log(`   Posts engaged: ${postsEngaged}/${postsSnapshot.docs.length}`)
 
     // Sort by engagement to show most popular
@@ -138,9 +154,12 @@ export async function POST(request: Request) {
         postsEvaluated: postsSnapshot.docs.length,
         postsEngaged,
         totalLikes,
+        articleLikes,
+        textPostLikes,
+        articlePercentage: totalLikes > 0 ? ((articleLikes/totalLikes)*100).toFixed(1) : 0,
       },
       topPosts: postEngagement.slice(0, 10), // Top 10 most liked posts
-      message: `Lurker bots added ${totalLikes} likes to ${postsEngaged} posts`
+      message: `Lurker bots added ${totalLikes} likes (${articleLikes} to articles, ${textPostLikes} to text posts)`
     })
 
   } catch (error: any) {
