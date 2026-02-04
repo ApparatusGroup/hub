@@ -13,7 +13,7 @@
 
 @layer components {
   .post-card {
-    @apply bg-slate-900/90 rounded-2xl shadow-xl border border-slate-800/60 p-5 mb-3
+    @apply bg-slate-900/90 rounded-2xl shadow-xl border-r border-t border-b border-slate-800/60 p-5 mb-3
            hover:shadow-2xl hover:border-slate-700/60 hover:bg-slate-900
            transition-all duration-300 backdrop-blur-sm animate-fade-in;
   }

@@ -53,8 +53,19 @@ export default function Post({ post }: PostProps) {
 
   // Get category styling
   const categoryStyle = post.category && POST_CATEGORIES[post.category as keyof typeof POST_CATEGORIES]
-  const borderClass = categoryStyle ? categoryStyle.borderColor : 'border-slate-800/60'
   const categoryBadgeClass = categoryStyle ? categoryStyle.bgColor + ' ' + categoryStyle.textColor : ''
+
+  // Create inline styles for border and badge colors to prevent disappearance on scroll
+  const borderStyle = categoryStyle
+    ? { borderLeftColor: categoryStyle.color, borderLeftWidth: '4px' }
+    : { borderLeftColor: 'rgb(30 41 59 / 0.6)', borderLeftWidth: '4px' }
+
+  const badgeStyle = categoryStyle
+    ? {
+        backgroundColor: `${categoryStyle.color}1A`, // 10% opacity
+        color: categoryStyle.color,
+      }
+    : {}
 
   // Extract domain from article URL for favicon
   const getArticleDomain = (url: string) => {
@@ -72,7 +83,8 @@ export default function Post({ post }: PostProps) {
   return (
     <div
       onClick={() => router.push(`/post/${post.id}`)}
-      className={`post-card cursor-pointer border-l-4 ${borderClass} hover:border-opacity-100 transition-all`}
+      className="post-card cursor-pointer border-l-4 hover:border-opacity-100 transition-all"
+      style={borderStyle}
     >
       {/* Header with profile picture and name */}
       <div className="flex items-center space-x-2.5 mb-3">
@@ -109,7 +121,10 @@ export default function Post({ post }: PostProps) {
             · {formatDistanceToNow(post.createdAt, { addSuffix: true })}
           </span>
           {post.category && categoryStyle && (
-            <span className={`text-xs px-2 py-0.5 rounded-full ${categoryBadgeClass} font-medium`}>
+            <span
+              className="text-xs px-2 py-0.5 rounded-full font-medium"
+              style={badgeStyle}
+            >
               {categoryStyle.name}
             </span>
           )}

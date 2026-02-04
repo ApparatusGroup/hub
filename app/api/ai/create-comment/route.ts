@@ -31,6 +31,17 @@ export async function POST(request: Request) {
     const randomPost = posts[Math.floor(Math.random() * posts.length)]
     const postData = randomPost.data()
 
+    // Get all bots that have already commented on this post to ensure variety
+    const existingCommentsSnapshot = await adminDb
+      .collection('comments')
+      .where('postId', '==', randomPost.id)
+      .where('isAI', '==', true)
+      .get()
+
+    const botsAlreadyCommented = new Set(
+      existingCommentsSnapshot.docs.map(doc => doc.data().userId)
+    )
+
     // Get all AI bot users
     const botsSnapshot = await adminDb.collection('users').where('isAI', '==', true).get()
 
@@ -38,14 +49,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No AI bots found' }, { status: 404 })
     }
 
-    // Randomly select a bot (make sure it's not the post author if it's an AI)
-    let botDocs = botsSnapshot.docs
-    if (postData.isAI) {
-      botDocs = botDocs.filter(doc => doc.data().uid !== postData.userId)
-    }
+    // Filter out bots that have already commented on this post and the post author if it's an AI
+    let botDocs = botsSnapshot.docs.filter(doc => {
+      const botId = doc.data().uid
+      // Don't let bot comment on its own post
+      if (postData.isAI && botId === postData.userId) return false
+      // Don't let bot comment if it already commented on this post
+      if (botsAlreadyCommented.has(botId)) return false
+      return true
+    })
 
     if (botDocs.length === 0) {
-      return NextResponse.json({ error: 'No suitable bots found' }, { status: 404 })
+      return NextResponse.json({ error: 'No suitable bots found (all bots have already commented)' }, { status: 404 })
     }
 
     const randomBot = botDocs[Math.floor(Math.random() * botDocs.length)]
@@ -75,15 +90,6 @@ export async function POST(request: Request) {
 
     // Get AI memory for context
     const memory = await getAIMemory(botData.uid)
-
-    // Check if bot has already commented on this post (prevent duplicates)
-    const commentedPostIds = memory?.commentedPostIds || []
-    if (commentedPostIds.includes(randomPost.id)) {
-      return NextResponse.json({
-        error: 'Bot has already commented on this post',
-        botName: botData.displayName
-      }, { status: 400 })
-    }
 
     // Check if post has enough context for meaningful comment
     if (!postData.content || postData.content.length < 10) {
@@ -159,13 +165,6 @@ export async function POST(request: Request) {
 
     // Update AI memory after comment
     await updateAIMemoryAfterComment(botData.uid, botData.displayName, commentContent)
-
-    // Track that this bot commented on this post
-    const memoryRef = adminDb.collection('aiMemory').doc(botData.uid)
-    const updatedCommentedPosts = [...commentedPostIds, randomPost.id].slice(-50) // Keep last 50
-    await memoryRef.set({
-      commentedPostIds: updatedCommentedPosts
-    }, { merge: true })
 
     return NextResponse.json({
       success: true,

@@ -19,7 +19,7 @@ import {
   arrayRemove,
   deleteDoc,
 } from 'firebase/firestore'
-import { Post as PostType, Comment } from '@/lib/types'
+import { Post as PostType, Comment, POST_CATEGORIES } from '@/lib/types'
 import Navbar from '@/components/Navbar'
 import { Heart, MessageCircle, ExternalLink, Trash2, ArrowLeft, Reply } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
@@ -312,6 +312,21 @@ export default function PostPage() {
     )
   }
 
+  // Get category styling
+  const categoryStyle = post.category && POST_CATEGORIES[post.category as keyof typeof POST_CATEGORIES]
+
+  // Create inline styles for border and badge colors to prevent disappearance on scroll
+  const borderStyle = categoryStyle
+    ? { borderLeftColor: categoryStyle.color, borderLeftWidth: '4px' }
+    : { borderLeftColor: 'rgb(30 41 59 / 0.6)', borderLeftWidth: '4px' }
+
+  const badgeStyle = categoryStyle
+    ? {
+        backgroundColor: `${categoryStyle.color}1A`, // 10% opacity
+        color: categoryStyle.color,
+      }
+    : {}
+
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -327,7 +342,7 @@ export default function PostPage() {
         </button>
 
         {/* Post */}
-        <div className="post-card mb-6">
+        <div className="post-card mb-6 border-l-4" style={borderStyle}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center space-x-2.5">
               <button
@@ -346,13 +361,23 @@ export default function PostPage() {
                   </div>
                 )}
               </button>
-              <div>
-                <button
-                  onClick={() => router.push(`/profile/${post.userId}`)}
-                  className="font-semibold text-slate-100 hover:text-primary transition-colors block"
-                >
-                  {post.userName}
-                </button>
+              <div className="flex flex-col">
+                <div className="flex items-center space-x-2 flex-wrap">
+                  <button
+                    onClick={() => router.push(`/profile/${post.userId}`)}
+                    className="font-semibold text-slate-100 hover:text-primary transition-colors"
+                  >
+                    {post.userName}
+                  </button>
+                  {post.category && categoryStyle && (
+                    <span
+                      className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      style={badgeStyle}
+                    >
+                      {categoryStyle.name}
+                    </span>
+                  )}
+                </div>
                 <span className="text-xs text-slate-500">
                   {formatDistanceToNow(post.createdAt, { addSuffix: true })}
                 </span>
