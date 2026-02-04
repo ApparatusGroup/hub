@@ -116,7 +116,7 @@ export async function analyzeViralPatterns(): Promise<ViralPatternsData> {
 
     // Analyze each article
     for (const article of articles) {
-      const text = `${article.title} ${article.description || ''} ${article.content || ''}`
+      const text = `${article.title} ${article.description || ''}`
 
       // Extract patterns
       allKeywords.push(...extractKeywords(text))
