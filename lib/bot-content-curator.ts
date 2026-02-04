@@ -6,7 +6,6 @@
 
 import { adminDb } from './firebase-admin'
 import { getTopNews, NewsArticle } from './news-service'
-import { AIMemory } from './ai-memory'
 
 export interface BotContentProfile {
   botId: string
