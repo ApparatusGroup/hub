@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
-import { getTopNews } from '@/lib/news-service'
 
 /**
- * Background article scraper - runs every 30 minutes
- * Scrapes HN/Reddit articles with comments and stores in database
- * This allows instant post creation without timeout issues
+ * MASTER SCRAPER - Triggers all 3 specialized scrapers + cleanup
+ * Can also be used for just cleanup if scrapers run independently
+ *
+ * Recommended: Run the 3 scrapers independently on separate schedules:
+ * - /api/cron/scrape-hackernews?secret=X (every 20 min)
+ * - /api/cron/scrape-reddit?secret=X (every 25 min)
+ * - /api/cron/scrape-lobsters?secret=X (every 30 min)
+ *
+ * This master endpoint can run less frequently (every 2 hours) for cleanup
  *
  * URL: /api/cron/scrape-articles?secret=YOUR_SECRET
  */
@@ -19,70 +24,39 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log('🔄 Starting background article scraping...')
+    const mode = searchParams.get('mode') || 'all' // 'all', 'cleanup', or 'scrape'
 
-    // Scrape fresh articles from HN + Reddit
-    const articles = await getTopNews()
-    console.log(`📰 Scraped ${articles.length} articles from HN + Reddit`)
+    console.log(`🔄 Starting master scraper (mode: ${mode})...`)
 
-    if (articles.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: 'No new articles found',
-        articlesAdded: 0
-      })
-    }
+    let totalArticlesAdded = 0
 
-    // Get existing articles to check for duplicates
-    const existingSnapshot = await adminDb
-      .collection('scrapedArticles')
-      .get()
+    // Optionally trigger all 3 scrapers (if mode=all or mode=scrape)
+    if (mode === 'all' || mode === 'scrape') {
+      console.log('📡 Triggering all 3 scrapers...')
 
-    const existingUrls = new Set(
-      existingSnapshot.docs.map(doc => doc.data().url)
-    )
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-gray-six.vercel.app'
 
-    let articlesAdded = 0
-    const batch = adminDb.batch()
+      try {
+        const [hnRes, redditRes, lobstersRes] = await Promise.all([
+          fetch(`${baseUrl}/api/cron/scrape-hackernews?secret=${secret}`),
+          fetch(`${baseUrl}/api/cron/scrape-reddit?secret=${secret}`),
+          fetch(`${baseUrl}/api/cron/scrape-lobsters?secret=${secret}`)
+        ])
 
-    // Add new articles to database
-    for (const article of articles) {
-      // Skip if already in database
-      if (existingUrls.has(article.url)) {
-        console.log(`⏭️  Skipping duplicate: ${article.title.substring(0, 50)}...`)
-        continue
+        const hnData = await hnRes.json()
+        const redditData = await redditRes.json()
+        const lobstersData = await lobstersRes.json()
+
+        totalArticlesAdded =
+          (hnData.articlesAdded || 0) +
+          (redditData.articlesAdded || 0) +
+          (lobstersData.articlesAdded || 0)
+
+        console.log(`✅ All scrapers completed: ${totalArticlesAdded} total articles`)
+      } catch (error) {
+        console.error('⚠️  Error triggering scrapers:', error)
+        // Continue to cleanup even if scraping fails
       }
-
-      // Calculate popularity score for ranking
-      // Based on: source engagement, comment count, recency
-      const sourceScore = article.source.name === 'Hacker News' ? 1.0 : 0.8
-      const commentScore = Math.min((article.topComments?.length || 0) / 5, 1.0)
-      const popularityScore = (sourceScore * 50) + (commentScore * 50)
-
-      const articleRef = adminDb.collection('scrapedArticles').doc()
-      batch.set(articleRef, {
-        url: article.url,
-        title: article.title,
-        submissionTitle: article.submissionTitle || article.title,
-        description: article.description,
-        source: article.source.name,
-        urlToImage: article.urlToImage,
-        topComments: article.topComments || [],
-        commentCount: article.topComments?.length || 0,
-        popularityScore,
-        scrapedAt: new Date(),
-        used: false,
-        usedAt: null,
-      })
-
-      articlesAdded++
-      console.log(`✅ Added: ${article.title.substring(0, 50)}... (score: ${popularityScore.toFixed(1)})`)
-    }
-
-    // Commit new articles
-    if (articlesAdded > 0) {
-      await batch.commit()
-      console.log(`💾 Committed ${articlesAdded} new articles to database`)
     }
 
     // Cleanup: Remove old articles (>7 days) or used articles (>3 days)
@@ -133,11 +107,15 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      articlesAdded,
+      mode,
+      articlesAdded: totalArticlesAdded,
       deletedCount,
       totalArticles: currentSnapshot.docs.length,
       unusedArticles: unusedCount,
-      message: `Scraped ${articlesAdded} new articles, cleaned up ${deletedCount} old articles`
+      message: mode === 'cleanup'
+        ? `Cleaned up ${deletedCount} old articles`
+        : `Scraped ${totalArticlesAdded} new articles, cleaned up ${deletedCount} old articles`,
+      recommendation: 'For best performance, run the 3 scrapers independently: /api/cron/scrape-{hackernews,reddit,lobsters}'
     })
   } catch (error: any) {
     console.error('❌ Error scraping articles:', error)

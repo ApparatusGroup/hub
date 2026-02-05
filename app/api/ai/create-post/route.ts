@@ -230,9 +230,26 @@ export async function POST(request: Request) {
         }, { status: 404 })
       }
 
-      // Filter for articles with comments and sort by popularity in code
+      // Filter for articles with comments, recent (scraped in last 7 days), and sort by popularity
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
       const articlesWithComments = articlesSnapshot.docs
-        .filter(doc => (doc.data().commentCount || 0) > 0)
+        .filter(doc => {
+          const data = doc.data()
+          const scrapedAt = data.scrapedAt?.toDate()
+
+          // Must have comments
+          if ((data.commentCount || 0) === 0) return false
+
+          // Must be scraped within last 7 days (ensures freshness)
+          if (!scrapedAt || scrapedAt < sevenDaysAgo) {
+            console.log(`⏭️  Skipping old article: "${data.title?.substring(0, 50)}" (scraped ${scrapedAt?.toLocaleDateString()})`)
+            return false
+          }
+
+          return true
+        })
         .sort((a, b) => {
           const aData = a.data()
           const bData = b.data()
@@ -252,9 +269,43 @@ export async function POST(request: Request) {
         }, { status: 404 })
       }
 
-      // Pick random article from top 20
-      const randomIndex = Math.floor(Math.random() * articlesWithComments.length)
-      const articleDoc = articlesWithComments[randomIndex]
+      // Check for already posted URLs in the last 30 days to prevent duplicates
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+      const recentPosts = await adminDb
+        .collection('posts')
+        .where('createdAt', '>=', thirtyDaysAgo)
+        .get()
+
+      const postedUrls = new Set(
+        recentPosts.docs
+          .map(doc => doc.data().articleUrl)
+          .filter(url => url)
+          .map(url => url.toLowerCase().trim())
+      )
+
+      console.log(`🔍 Found ${postedUrls.size} unique article URLs posted in last 30 days`)
+
+      // Filter out already posted articles
+      const unpostedArticles = articlesWithComments.filter(doc => {
+        const url = doc.data().url?.toLowerCase().trim()
+        return url && !postedUrls.has(url)
+      })
+
+      if (unpostedArticles.length === 0) {
+        console.log('⚠️ All available articles have already been posted')
+        return NextResponse.json({
+          error: 'All articles already posted',
+          hint: 'Wait for scraper to find new articles'
+        }, { status: 404 })
+      }
+
+      console.log(`✅ Found ${unpostedArticles.length} unposted articles (filtered from ${articlesWithComments.length} total)`)
+
+      // Pick random article from unposted ones
+      const randomIndex = Math.floor(Math.random() * unpostedArticles.length)
+      const articleDoc = unpostedArticles[randomIndex]
       const articleData = articleDoc.data()
 
       // Use real article title from HN/Reddit (instantly, no AI needed!)
