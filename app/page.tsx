@@ -96,7 +96,6 @@ export default function HomePage() {
   }
 
   const featuredStories = [...posts]
-    .filter(post => post.articleImage || post.imageUrl)
     .sort((a, b) => calculateEngagementScore(b) - calculateEngagementScore(a))
     .slice(0, 6)
 

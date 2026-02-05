@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
-import { generateAIComment, AI_BOTS, AIBotPersonality } from '@/lib/ai-service'
+import { generateAIComment, AI_BOTS, AIBotPersonality, VoiceModel } from '@/lib/ai-service'
 import { getAIMemory, updateAIMemoryAfterComment } from '@/lib/ai-memory'
 
 export async function POST(request: Request) {
@@ -26,24 +26,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No recent posts found' }, { status: 404 })
     }
 
-    // FILTER: Only select posts that have real HN/Reddit comments
-    const postsWithComments = postsSnapshot.docs.filter(doc => {
-      const data = doc.data()
-      return data.articleTopComments && data.articleTopComments.length > 0
-    })
-
-    console.log(`🔍 Found ${postsWithComments.length} posts with real comments out of ${postsSnapshot.docs.length} total posts`)
-
-    if (postsWithComments.length === 0) {
-      return NextResponse.json({
-        error: 'No posts with real HN/Reddit comments available',
-        hint: 'Need to scrape more articles with comments'
-      }, { status: 404 })
-    }
-
     // Weight post selection by popularity (likes + comments)
     // Popular posts get more AI engagement, creating viral feedback loop
-    const posts = postsWithComments.map(doc => {
+    const posts = postsSnapshot.docs.map(doc => {
       const data = doc.data()
       const now = Date.now()
       const ageInHours = (now - (data.createdAt?.toMillis() || Date.now())) / (1000 * 60 * 60)
@@ -121,23 +106,25 @@ export async function POST(request: Request) {
     // Build personality from database or fall back to hardcoded config
     let personality: AIBotPersonality
 
-    if (botData.aiPersonality && botData.aiInterests) {
-      // Use personality from database (editable by admin)
+    // Try hardcoded personality first (has rich voice model), fall back to database
+    const hardcodedPersonality = AI_BOTS.find(b => b.name === botData.displayName)
+
+    if (hardcodedPersonality) {
+      personality = hardcodedPersonality
+    } else if (botData.aiPersonality && botData.aiInterests) {
+      // Use personality from database with default voice
+      const { DEFAULT_VOICE } = await import('@/lib/ai-service')
       personality = {
         name: botData.displayName,
         personality: botData.aiPersonality,
         interests: botData.aiInterests,
         bio: botData.bio || '',
-        age: 30, // Default values
-        occupation: 'AI Assistant',
+        age: 30,
+        occupation: botData.occupation || 'AI Assistant',
+        voice: DEFAULT_VOICE,
       }
     } else {
-      // Fall back to hardcoded config
-      const hardcodedPersonality = AI_BOTS.find(b => b.name === botData.displayName)
-      if (!hardcodedPersonality) {
-        return NextResponse.json({ error: 'Bot personality not found' }, { status: 404 })
-      }
-      personality = hardcodedPersonality
+      return NextResponse.json({ error: 'Bot personality not found' }, { status: 404 })
     }
 
     // Get AI memory for context
@@ -177,81 +164,31 @@ export async function POST(request: Request) {
     // Get image description if post has an image (allows AI to "see" the image)
     const imageDescription = postData.imageDescription || null
 
-    // ONLY use real HN/Reddit comments - no AI generation at all
-    if (!postData.articleTopComments || postData.articleTopComments.length === 0) {
-      console.log('⚠️ No real comments available for this post, skipping')
-      return NextResponse.json({
-        error: 'No real comments available - only using authentic HN/Reddit comments',
-        postId: randomPost.id
-      }, { status: 404 })
+    // Extract scraped comments as inspiration material (not for verbatim copying)
+    let scrapedInspirations: string[] = []
+    if (postData.articleTopComments && postData.articleTopComments.length > 0) {
+      scrapedInspirations = postData.articleTopComments.map((c: any) => {
+        const text = typeof c === 'string' ? c : c.text
+        return text.trim().replace(/[.\s]+\d+$/, '').trim()
+      }).filter((t: string) => t.length > 10)
+      console.log(`📝 Found ${scrapedInspirations.length} scraped comments as inspiration`)
     }
 
-    // CRITICAL: Check for duplicates across ALL recent comments, not just this post
-    // This prevents the same comment from appearing on different posts by different bots
-    const oneDayAgo = new Date()
-    oneDayAgo.setHours(oneDayAgo.getHours() - 24)
-
-    const allRecentComments = await adminDb
-      .collection('comments')
-      .where('createdAt', '>=', oneDayAgo)
-      .get()
-
-    // Build set of ALL recently used comments (normalized)
-    const globallyUsedComments = new Set(
-      allRecentComments.docs.map(doc => doc.data().content.trim().toLowerCase())
+    // Generate AI comment using the bot's unique voice, with scraped comments as inspiration
+    const commentContent = await generateAIComment(
+      personality,
+      postData.content,
+      postData.userName,
+      memory,
+      articleContext,
+      existingComments,
+      imageDescription,
+      scrapedInspirations.length > 0 ? scrapedInspirations : null
     )
 
-    // Also include comments on this specific post
-    const usedComments = new Set(existingComments.map(c => c.content.trim().toLowerCase()))
-    usedComments.forEach(c => globallyUsedComments.add(c))
+    console.log(`✅ Generated AI comment as ${botData.displayName}: "${commentContent.substring(0, 80)}..."`)
 
-    // Filter out ANY comment that's been used anywhere in last 24 hours
-    // Handle both old format (string[]) and new format (CommentWithScore[])
-    const availableComments = postData.articleTopComments.filter((c: any) => {
-      const text = typeof c === 'string' ? c : c.text
-      const normalized = text.trim().toLowerCase()
-      return !globallyUsedComments.has(normalized)
-    })
-
-    console.log(`🔍 Global duplicate check: ${globallyUsedComments.size} comments used in last 24h`)
-
-    if (availableComments.length === 0) {
-      console.log('⚠️ All real comments already used on this post')
-      return NextResponse.json({
-        error: 'All real comments already used',
-        postId: randomPost.id
-      }, { status: 404 })
-    }
-
-    // Use a random real comment from HN/Reddit
-    const selectedComment = availableComments[Math.floor(Math.random() * availableComments.length)]
-    let commentContent = typeof selectedComment === 'string' ? selectedComment : selectedComment.text
-    const sourceScore = typeof selectedComment === 'string' ? 0 : (selectedComment.sourceScore || 0)
-
-    // CRITICAL: Strip any trailing citation numbers that slipped through scraping
-    // Removes patterns like ". 1", " 1", ". 2" etc
-    commentContent = commentContent.trim().replace(/[.\s]+\d+$/, '').trim()
-
-    console.log(`✅ Using real ${postData.source?.name || 'HN/Reddit'} comment: "${commentContent.substring(0, 50)}..."`)
-    console.log(`   Available: ${availableComments.length}, Total scraped: ${postData.articleTopComments.length}`)
-    console.log(`   Source score: ${sourceScore} (will seed initial votes)`)
-
-    // Pre-populate votes based on source popularity
-    // Higher scored comments on HN/Reddit get more initial votes
-    // Scale: 0-5 votes for score 0-10, 5-15 votes for score 10-50, 15-30 votes for score 50+
-    const initialVoteCount = Math.min(30, Math.floor(Math.sqrt(sourceScore) * 2))
-
-    // Get lurker bots to be the initial voters (they don't post/comment, just vote)
-    const lurkerBotsSnapshot = await adminDb
-      .collection('users')
-      .where('isAI', '==', true)
-      .where('isLurker', '==', true)
-      .limit(initialVoteCount)
-      .get()
-
-    const initialVoters = lurkerBotsSnapshot.docs.map(doc => doc.data().uid).slice(0, initialVoteCount)
-
-    // Create the comment with initial votes
+    // Create the comment
     const commentRef = await adminDb.collection('comments').add({
       postId: randomPost.id,
       userId: botData.uid,
@@ -260,11 +197,10 @@ export async function POST(request: Request) {
       isAI: true,
       content: commentContent,
       createdAt: new Date(),
-      likes: initialVoters,
-      sourceScore: sourceScore, // Store for potential future use
+      likes: [],
     })
 
-    console.log(`🎉 Comment created with ${initialVoters.length} initial votes (based on source score ${sourceScore})`)
+    console.log(`🎉 AI comment created for post by ${postData.userName}`)
 
     // Increment comment count on the post
     const postRef = adminDb.collection('posts').doc(randomPost.id)

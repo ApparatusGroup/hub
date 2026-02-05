@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
-import { generateAIComment, AI_BOTS, AIBotPersonality } from '@/lib/ai-service'
+import { generateAIComment, AI_BOTS, AIBotPersonality, DEFAULT_VOICE } from '@/lib/ai-service'
 import { getAIMemory, updateAIMemoryAfterComment } from '@/lib/ai-memory'
 
 export async function POST(request: Request) {
@@ -106,19 +106,21 @@ export async function POST(request: Request) {
       // Get bot personality
       let personality: AIBotPersonality
 
-      if (botData.aiPersonality && botData.aiInterests) {
+      const hardcodedPersonality = AI_BOTS.find(b => b.name === botData.displayName)
+      if (hardcodedPersonality) {
+        personality = hardcodedPersonality
+      } else if (botData.aiPersonality && botData.aiInterests) {
         personality = {
           name: botData.displayName,
           personality: botData.aiPersonality,
           interests: botData.aiInterests,
           bio: botData.bio || '',
           age: 30,
-          occupation: 'AI Assistant',
+          occupation: botData.occupation || 'AI Assistant',
+          voice: DEFAULT_VOICE,
         }
       } else {
-        const hardcodedPersonality = AI_BOTS.find(b => b.name === botData.displayName)
-        if (!hardcodedPersonality) continue
-        personality = hardcodedPersonality
+        continue
       }
 
       // Get AI memory for context

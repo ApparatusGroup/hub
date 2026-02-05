@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
-import { generateAIPost, AI_BOTS, AIBotPersonality, generateImageDescription, generateArticleCommentary } from '@/lib/ai-service'
+import { generateAIPost, AI_BOTS, AIBotPersonality, generateImageDescription, generateArticleCommentary, DEFAULT_VOICE } from '@/lib/ai-service'
 import { updateAIMemoryAfterPost, getAIMemory } from '@/lib/ai-memory'
 import { getTopNews, selectRandomArticle, generatePostFromArticle } from '@/lib/news-service'
 import { categorizePost } from '@/lib/categorize'
@@ -12,7 +12,7 @@ import {
   getCuratedContent,
   getWritingStyleGuidance
 } from '@/lib/bot-content-curator'
-import { generatePostCommentary, generateCommentInspiredPost } from '@/lib/post-commentary'
+// post-commentary templates replaced by AI-generated commentary via generateArticleCommentary
 
 export async function POST(request: Request) {
   try {
@@ -107,23 +107,24 @@ export async function POST(request: Request) {
     // Build personality from database or fall back to hardcoded config
     let personality: AIBotPersonality
 
-    if (botData.aiPersonality && botData.aiInterests) {
-      // Use personality from database (editable by admin)
+    // Try hardcoded personality first (has rich voice model), fall back to database
+    const hardcodedPersonality = AI_BOTS.find(b => b.name === botData.displayName)
+
+    if (hardcodedPersonality) {
+      personality = hardcodedPersonality
+    } else if (botData.aiPersonality && botData.aiInterests) {
+      // Use personality from database with default voice
       personality = {
         name: botData.displayName,
         personality: botData.aiPersonality,
         interests: botData.aiInterests,
         bio: botData.bio || '',
-        age: 30, // Default values
-        occupation: 'AI Assistant',
+        age: 30,
+        occupation: botData.occupation || 'AI Assistant',
+        voice: DEFAULT_VOICE,
       }
     } else {
-      // Fall back to hardcoded config
-      const hardcodedPersonality = AI_BOTS.find(b => b.name === botData.displayName)
-      if (!hardcodedPersonality) {
-        return NextResponse.json({ error: 'Bot personality not found' }, { status: 404 })
-      }
-      personality = hardcodedPersonality
+      return NextResponse.json({ error: 'Bot personality not found' }, { status: 404 })
     }
 
     // Get AI memory for context
@@ -382,20 +383,20 @@ export async function POST(request: Request) {
       articleTopComments = articleData.topComments || []
       articleCategory = articleData.category || null
 
-      // Generate engaging commentary (not just the article title!)
-      // 30% chance to use comment-inspired post, 70% original take
-      const topCommentText = articleTopComments && articleTopComments.length > 0
-        ? (typeof articleTopComments[0] === 'string' ? articleTopComments[0] : articleTopComments[0].text)
-        : undefined
+      // Generate AI-powered commentary using the bot's unique voice
+      const aiCommentary = await generateArticleCommentary(
+        articleTitle || 'this article',
+        articleDescription,
+        personality
+      )
 
-      if (topCommentText && Math.random() < 0.3) {
-        content = generateCommentInspiredPost(articleTitle || 'this article', topCommentText)
+      // If AI generation succeeds, use it; otherwise fall back to a simple take
+      if (aiCommentary && aiCommentary.length > 0) {
+        content = aiCommentary
       } else {
-        content = generatePostCommentary({
-          articleTitle: articleTitle || 'article',
-          category: articleCategory || undefined,
-          topCommentText
-        })
+        // Minimal fallback — just a short take using personality quirks
+        const quirk = personality.voice?.verbalQuirks?.[0] || 'interesting'
+        content = `${quirk} — ${articleTitle}`
       }
 
       // Mark article as used

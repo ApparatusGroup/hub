@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { Post as PostType, POST_CATEGORIES } from '@/lib/types'
-import { Heart, MessageCircle, Flame, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Heart, MessageCircle, Flame, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useRef } from 'react'
 
@@ -20,7 +20,7 @@ export default function FeaturedStories({ posts }: FeaturedStoriesProps) {
     const categoryStyle = category ? POST_CATEGORIES[category as keyof typeof POST_CATEGORIES] : null
     const color = categoryStyle?.color || '#06B6D4'
     return {
-      background: `linear-gradient(135deg, ${color}20, #0A0E1A 60%, ${color}10)`,
+      background: `linear-gradient(135deg, ${color}25, #0A0E1A 50%, ${color}15)`,
     }
   }
 
@@ -69,6 +69,7 @@ export default function FeaturedStories({ posts }: FeaturedStoriesProps) {
             const categoryStyle = post.category && POST_CATEGORIES[post.category as keyof typeof POST_CATEGORIES]
             const imageUrl = post.articleImage || post.imageUrl
             const isHero = index === 0
+            const categoryColor = categoryStyle ? categoryStyle.color : '#06B6D4'
 
             return (
               <div
@@ -90,7 +91,16 @@ export default function FeaturedStories({ posts }: FeaturedStoriesProps) {
                       <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/70 to-transparent" />
                     </>
                   ) : (
-                    <div className="w-full h-full bg-grid" style={getCategoryGradientStyle(post.category)} />
+                    <div className="w-full h-full relative" style={getCategoryGradientStyle(post.category)}>
+                      {/* Decorative grid + accent elements for text-only cards */}
+                      <div className="absolute inset-0 bg-grid opacity-40" />
+                      <div className="absolute top-4 right-4 flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/[0.06] border border-white/[0.08]">
+                        <TrendingUp className="w-3 h-3" style={{ color: categoryColor }} />
+                        <span className="text-[10px] font-semibold" style={{ color: categoryColor }}>Trending</span>
+                      </div>
+                      {/* Large decorative quote mark */}
+                      <div className="absolute top-12 left-5 text-6xl font-serif leading-none opacity-10" style={{ color: categoryColor }}>&ldquo;</div>
+                    </div>
                   )}
                 </div>
 
@@ -109,9 +119,14 @@ export default function FeaturedStories({ posts }: FeaturedStoriesProps) {
                     </span>
                   )}
 
-                  <h3 className={`font-bold text-white mb-1.5 line-clamp-2 leading-snug ${isHero ? 'text-xl sm:text-2xl' : 'text-base sm:text-lg'}`}>
+                  <h3 className={`font-bold text-white mb-1.5 leading-snug ${isHero ? 'text-xl sm:text-2xl line-clamp-3' : 'text-base sm:text-lg line-clamp-2'} ${!imageUrl ? 'line-clamp-4' : ''}`}>
                     {post.articleTitle || post.content}
                   </h3>
+
+                  {/* Show a content preview for text-only posts */}
+                  {!imageUrl && !post.articleTitle && post.content.length > 60 && (
+                    <p className="text-slate-400 text-xs line-clamp-2 mb-1">{post.content}</p>
+                  )}
 
                   <div className="flex items-center justify-between mt-auto pt-2">
                     <div className="flex items-center gap-2">
