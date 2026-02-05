@@ -34,7 +34,7 @@ async function getRedditComments(subreddit: string, postId: string): Promise<Com
         text: c.data.body.trim(),
         sourceScore: c.data.score || c.data.ups || 0
       }))
-      .filter((c) => {
+      .filter((c: CommentWithScore) => {
         if (c.text.length < 20 || c.text.length > 300) return false
         if (c.text.startsWith('[deleted]') || c.text.startsWith('[removed]')) return false
         if (c.text.includes('I am a bot')) return false

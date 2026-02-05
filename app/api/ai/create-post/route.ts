@@ -389,10 +389,10 @@ export async function POST(request: Request) {
         : undefined
 
       if (topCommentText && Math.random() < 0.3) {
-        content = generateCommentInspiredPost(articleTitle, topCommentText)
+        content = generateCommentInspiredPost(articleTitle || 'this article', topCommentText)
       } else {
         content = generatePostCommentary({
-          articleTitle,
+          articleTitle: articleTitle || 'article',
           category: articleCategory || undefined,
           topCommentText
         })
