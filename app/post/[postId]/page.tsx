@@ -410,10 +410,10 @@ export default function PostPage() {
               href={post.articleUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 flex items-start space-x-3 p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl hover:border-primary/30 hover:shadow-lg transition-all duration-200 group cursor-pointer"
+              className="mt-4 block rounded-xl border border-white/[0.06] hover:border-primary/30 hover:shadow-lg transition-all duration-200 group cursor-pointer overflow-hidden"
             >
               {post.articleImage && (
-                <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-slate-900">
+                <div className="w-full h-52 sm:h-64 overflow-hidden bg-slate-900">
                   <img
                     src={post.articleImage}
                     alt={post.articleTitle || 'Article'}
@@ -421,15 +421,19 @@ export default function PostPage() {
                   />
                 </div>
               )}
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-slate-200 group-hover:text-primary transition-colors line-clamp-2 leading-snug">
+              <div className="p-4 bg-white/[0.03]">
+                <h4 className="text-base font-semibold text-slate-200 group-hover:text-primary transition-colors leading-snug">
                   {post.articleTitle || 'Read Article'}
                 </h4>
                 {post.articleDescription && (
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                  <p className="text-sm text-slate-400 mt-2 leading-relaxed">
                     {post.articleDescription}
                   </p>
                 )}
+                <div className="flex items-center gap-2 mt-3 text-slate-500">
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span className="text-xs">{(() => { try { return new URL(post.articleUrl).hostname } catch { return 'article' } })()}</span>
+                </div>
               </div>
             </a>
           )}

@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { db } from '@/lib/firebase'
 import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
-import { Heart, MessageCircle } from 'lucide-react'
+import { Heart, MessageCircle, ExternalLink } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Post as PostType, POST_CATEGORIES } from '@/lib/types'
 
@@ -117,17 +117,42 @@ export default function Post({ post }: PostProps) {
         </div>
       )}
 
-      {/* Article */}
+      {/* Article Link Preview */}
       {post.articleUrl && post.articleTitle && (
-        <div className="mt-2 mb-2 p-2.5 bg-white/[0.03] rounded-xl border border-white/[0.06] hover:border-primary/20 transition-colors">
-          <div className="flex items-center gap-2">
-            {faviconUrl && (
-              <img src={faviconUrl} alt="" className="w-4 h-4 flex-shrink-0 rounded-sm opacity-60"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+        <a
+          href={post.articleUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="mt-2 mb-2 block rounded-xl border border-white/[0.06] hover:border-primary/20 transition-all overflow-hidden group/link"
+        >
+          {post.articleImage && (
+            <div className="w-full h-40 sm:h-48 overflow-hidden bg-slate-900">
+              <img
+                src={post.articleImage}
+                alt={post.articleTitle}
+                className="w-full h-full object-cover group-hover/link:scale-105 transition-transform duration-300"
+                onError={(e) => { (e.target as HTMLImageElement).parentElement!.style.display = 'none' }}
+              />
+            </div>
+          )}
+          <div className="p-3 bg-white/[0.03]">
+            <h4 className="text-sm font-semibold text-slate-200 group-hover/link:text-primary transition-colors leading-snug line-clamp-2">
+              {post.articleTitle}
+            </h4>
+            {post.articleDescription && (
+              <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">{post.articleDescription}</p>
             )}
-            <span className="text-xs text-slate-400 line-clamp-1 flex-1">{post.articleTitle}</span>
+            <div className="flex items-center gap-1.5 mt-2">
+              {faviconUrl && (
+                <img src={faviconUrl} alt="" className="w-3.5 h-3.5 flex-shrink-0 rounded-sm opacity-50"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+              )}
+              <span className="text-[10px] text-slate-500">{articleDomain}</span>
+              <ExternalLink className="w-3 h-3 text-slate-600 ml-auto" />
+            </div>
           </div>
-        </div>
+        </a>
       )}
 
       {/* Actions */}

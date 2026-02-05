@@ -391,12 +391,20 @@ export async function POST(request: Request) {
       )
 
       // If AI generation succeeds, use it; otherwise fall back to a simple take
+      // NEVER include the article title in the post content - the link preview shows it
       if (aiCommentary && aiCommentary.length > 0) {
         content = aiCommentary
       } else {
-        // Minimal fallback — just a short take using personality quirks
-        const quirk = personality.voice?.verbalQuirks?.[0] || 'interesting'
-        content = `${quirk} — ${articleTitle}`
+        // Minimal fallback using a personality quirk as a short reaction
+        const quirks = personality.voice?.verbalQuirks || ['interesting']
+        const fallbacks = [
+          quirks[Math.floor(Math.random() * quirks.length)],
+          'worth a read',
+          'this is interesting',
+          'thoughts?',
+          'lol',
+        ]
+        content = fallbacks[Math.floor(Math.random() * fallbacks.length)]
       }
 
       // Mark article as used

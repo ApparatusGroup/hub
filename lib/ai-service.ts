@@ -633,58 +633,141 @@ export async function generateAIComment(
 ): Promise<string> {
   const v = botPersonality.voice
 
+  // If we have scraped comments, 70% chance we paraphrase one directly,
+  // 30% chance we generate a fresh reaction
+  const hasScraped = scrapedComments && scrapedComments.length > 0
+  const shouldParaphrase = hasScraped && Math.random() < 0.7
+
+  if (shouldParaphrase && scrapedComments) {
+    // MODE 1: Paraphrase a real scraped comment in the bot's voice
+    return paraphraseRealComment(botPersonality, scrapedComments, existingComments)
+  }
+
+  // MODE 2: Generate a fresh reaction (no scraped comment to work from,
+  // or 30% chance even when scraped comments exist)
+  return generateFreshComment(botPersonality, postContent, postAuthorName, articleContext, existingComments, imageDescription, scrapedComments)
+}
+
+// Paraphrase a real HN/Reddit/Lobsters comment in the bot's voice
+async function paraphraseRealComment(
+  botPersonality: AIBotPersonality,
+  scrapedComments: string[],
+  existingComments?: Array<{ userName: string; content: string; isAI: boolean }> | null,
+): Promise<string> {
+  const v = botPersonality.voice
+
+  // Pick a random real comment
+  const baseComment = scrapedComments[Math.floor(Math.random() * scrapedComments.length)]
+
+  // Avoid existing comment topics
+  let existingSection = ''
+  if (existingComments && existingComments.length > 0) {
+    existingSection = `\nComments already posted (make yours different):\n${existingComments.slice(0, 3).map(c => `- "${c.content}"`).join('\n')}`
+  }
+
+  const prompt = `Rewrite this comment in a different voice. Keep the same point but change all the words.
+
+ORIGINAL COMMENT (from a forum):
+"${baseComment.substring(0, 250)}"
+
+REWRITE IT AS: ${botPersonality.name}, ${botPersonality.occupation}
+Voice style: ${v.sentenceStyle}
+Phrases they use: ${v.verbalQuirks.slice(0, 3).join(', ')}
+Emoji: ${v.emojiPattern}
+
+Examples of how ${botPersonality.name} talks:
+${v.exampleComments.slice(0, 3).map(c => `"${c}"`).join('\n')}
+${existingSection}
+
+${ANTI_AI_RULES}
+
+Rewrite the original comment in ${botPersonality.name}'s voice. Same point, completely different words. Keep it under 25 words.
+
+Rewritten:`
+
+  try {
+    const response = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-social.vercel.app',
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-sonnet-4',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 60,
+        temperature: 0.7,
+      }),
+    })
+
+    const data = await response.json()
+    let content = data.choices?.[0]?.message?.content?.trim()
+
+    if (content) {
+      return cleanAIOutput(content)
+    }
+    return botPersonality.voice.exampleComments[Math.floor(Math.random() * botPersonality.voice.exampleComments.length)]
+  } catch (error) {
+    console.error('Error paraphrasing comment:', error)
+    return botPersonality.voice.exampleComments[Math.floor(Math.random() * botPersonality.voice.exampleComments.length)]
+  }
+}
+
+// Generate a fresh AI comment when no scraped comment to paraphrase
+async function generateFreshComment(
+  botPersonality: AIBotPersonality,
+  postContent: string,
+  postAuthorName: string,
+  articleContext?: { title: string; description: string } | null,
+  existingComments?: Array<{ userName: string; content: string; isAI: boolean }> | null,
+  imageDescription?: string | null,
+  scrapedComments?: string[] | null,
+): Promise<string> {
+  const v = botPersonality.voice
+
   const lengthGuidance = v.commentLengthBias === 'terse'
     ? '4-12 words. Quick gut reaction only.'
     : v.commentLengthBias === 'verbose'
-    ? '15-30 words. One specific thought.'
+    ? '15-25 words. One specific thought.'
     : `${Math.random() > 0.5 ? '4-12 words' : '10-20 words'}.`
 
   let articleSection = ''
   if (articleContext) {
-    articleSection = `\nArticle being shared: "${articleContext.title}"${articleContext.description ? `\nSummary: ${articleContext.description}` : ''}\nReact to the ARTICLE, not the post text.`
+    articleSection = `\nArticle: "${articleContext.title}"${articleContext.description ? ` - ${articleContext.description.substring(0, 100)}` : ''}`
   }
 
   let imageSection = ''
   if (imageDescription) {
-    imageSection = `\nImage in post: ${imageDescription}`
+    imageSection = `\nImage: ${imageDescription}`
   }
 
-  // KEY CHANGE: Instead of vague "inspiration", pick ONE real comment as the foundation
-  // and instruct the AI to rewrite that specific point in their voice
-  let groundingSection = ''
+  // If scraped comments exist, show a couple for context about what the community thinks
+  let contextSection = ''
   if (scrapedComments && scrapedComments.length > 0) {
-    // Pick one random real comment as the foundation
-    const baseComment = scrapedComments[Math.floor(Math.random() * scrapedComments.length)]
-    groundingSection = `
-IMPORTANT: A real person commented this about the topic:
-"${baseComment.substring(0, 200)}"
-
-Take the CORE POINT from that real comment and restate it in your own words and style. Do NOT copy the phrasing. Extract the idea, then say it the way YOU would say it. If the comment doesn't match your interests, ignore it and react to the article directly.`
+    const samples = scrapedComments.sort(() => Math.random() - 0.5).slice(0, 2)
+    contextSection = `\nWhat the community is saying:\n${samples.map(c => `- "${c.substring(0, 80)}"`).join('\n')}\nSay something related but different from these.`
   }
 
   let existingSection = ''
   if (existingComments && existingComments.length > 0) {
-    existingSection = `\nOther comments (say something DIFFERENT):\n${existingComments.slice(0, 3).map(c => `- ${c.userName}: "${c.content}"`).join('\n')}`
+    existingSection = `\nAlready posted (be different):\n${existingComments.slice(0, 3).map(c => `- "${c.content}"`).join('\n')}`
   }
 
   const prompt = `You are ${botPersonality.name}, ${botPersonality.age}, ${botPersonality.occupation}.
 
-YOUR VOICE:
-- ${v.sentenceStyle}
-- Humor: ${v.humor}
-- Emoji: ${v.emojiPattern}
-- Phrases: ${v.verbalQuirks.join(', ')}
+Voice: ${v.sentenceStyle}
+Phrases: ${v.verbalQuirks.join(', ')}
+Emoji: ${v.emojiPattern}
 
-Examples of YOUR comments (match this voice):
+How you comment:
 ${v.exampleComments.map(c => `"${c}"`).join('\n')}
 
-POST by ${postAuthorName}:
-"${postContent.substring(0, 300)}"${articleSection}${imageSection}${groundingSection}${existingSection}
+POST by ${postAuthorName}: "${postContent.substring(0, 200)}"${articleSection}${imageSection}${contextSection}${existingSection}
 
 ${ANTI_AI_RULES}
 
-Write ONE comment as ${botPersonality.name}. Length: ${lengthGuidance}
-Must sound like the example comments above. React to the actual content.
+Write ONE comment. Length: ${lengthGuidance}
 
 Comment:`
 
@@ -699,7 +782,7 @@ Comment:`
       body: JSON.stringify({
         model: 'anthropic/claude-sonnet-4',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 80,
+        max_tokens: 60,
         temperature: 0.75,
       }),
     })
@@ -724,21 +807,19 @@ export async function generateArticleCommentary(
 ): Promise<string> {
   const v = botPersonality.voice
 
-  const prompt = `You are ${botPersonality.name}, ${botPersonality.occupation}. You found this article and want to share it on social media.
+  const prompt = `You are ${botPersonality.name}, ${botPersonality.occupation}. You're sharing an article link.
 
-YOUR VOICE:
-- ${v.sentenceStyle}
-- Phrases: ${v.verbalQuirks.slice(0, 3).join(', ')}
+Voice: ${v.sentenceStyle}
+Phrases: ${v.verbalQuirks.slice(0, 3).join(', ')}
 
-Article: "${articleTitle}"
-${articleDescription ? `Summary: ${articleDescription}` : ''}
+Article topic: "${articleTitle}"
 
-Examples of YOUR posts:
-${v.examplePosts.slice(0, 2).map(p => `"${p.substring(0, 100)}"`).join('\n')}
+How you post:
+${v.examplePosts.slice(0, 2).map(p => `"${p.substring(0, 80)}"`).join('\n')}
 
 ${ANTI_AI_RULES}
 
-Write a 3-8 word casual take on this article. Like a quick thought before sharing a link. Match your voice from the examples.
+Write a 3-8 word reaction to share with this link. DO NOT repeat the article title or any words from it. This is YOUR quick take, like "lol called it" or "been saying this for months" or "oh no". Just your gut reaction.
 
 Take:`
 
