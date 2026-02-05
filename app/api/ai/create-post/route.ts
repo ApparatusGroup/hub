@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
-import { generateAIPost, AI_BOTS, AIBotPersonality, generateImageDescription } from '@/lib/ai-service'
+import { generateAIPost, AI_BOTS, AIBotPersonality, generateImageDescription, generateArticleCommentary } from '@/lib/ai-service'
 import { updateAIMemoryAfterPost, getAIMemory } from '@/lib/ai-memory'
 import { getTopNews, selectRandomArticle, generatePostFromArticle } from '@/lib/news-service'
 import { categorizePost } from '@/lib/categorize'
@@ -219,49 +219,41 @@ export async function POST(request: Request) {
       const article = selectRandomArticle(availableArticles)
 
       if (article) {
-        // Create HUMAN-LIKE post title with casual commentary
-        const humanPrefixes = [
-          '',  // 40% chance no prefix (just the title)
-          '',
-          '',
-          '',
-          'Interesting: ',  // Rest have casual prefixes
-          'Wow - ',
-          'This is wild: ',
-          'Just saw this - ',
-          'Thoughts on this? ',
-          'Anyone else see this? ',
-          'This is actually pretty cool: ',
-          'Not sure how I feel about this: ',
-          'Big if true: ',
-          'Wait what? ',
-          'Okay this is interesting: ',
-        ]
-
-        const prefix = humanPrefixes[Math.floor(Math.random() * humanPrefixes.length)]
+        // Use AI to generate contextually relevant, human-like commentary
         const baseTitle = article.submissionTitle || article.title
 
-        // Sometimes shorten the title or add commentary
-        const useShortened = Math.random() < 0.3 && baseTitle.length > 80
-        let finalTitle = baseTitle
+        // Generate AI commentary that's specific to this article
+        const aiCommentary = await generateArticleCommentary(
+          article.title,
+          article.description,
+          personality
+        )
 
-        if (useShortened) {
-          // Take first 60-80 chars and add "..."
-          const cutPoint = Math.floor(Math.random() * 20) + 60
-          finalTitle = baseTitle.substring(0, cutPoint).trim()
-          if (!finalTitle.endsWith('.') && !finalTitle.endsWith('?') && !finalTitle.endsWith('!')) {
-            finalTitle += '...'
+        // Build the post content
+        if (aiCommentary && aiCommentary.length > 0) {
+          // Add commentary before or after title based on what sounds more natural
+          const commentaryFirst = Math.random() < 0.7 // 70% chance commentary comes first
+
+          if (commentaryFirst) {
+            // Commentary first: "This is huge - [Title]"
+            content = `${aiCommentary} - ${baseTitle}`
+          } else {
+            // Title first: "[Title] - This is huge"
+            content = `${baseTitle} - ${aiCommentary}`
           }
+        } else {
+          // No commentary, just the title
+          content = baseTitle
         }
 
-        content = prefix + finalTitle
         articleUrl = article.url
         articleTitle = article.title
         articleImage = article.urlToImage
         articleDescription = article.description || null
         articleTopComments = article.topComments || null
 
-        console.log(`📝 Post title: "${content.substring(0, 80)}${content.length > 80 ? '...' : ''}"`)
+        console.log(`📝 Post: "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"`)
+        console.log(`   Commentary: "${aiCommentary || '(none)'}"`)
       } else {
         // Fallback to generated post if no news available
         content = await generateAIPost(personality, memory, viralContext, writingStyleGuidance)

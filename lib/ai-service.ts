@@ -576,3 +576,84 @@ Just write ONE quick comment (${Math.random() > 0.5 ? 'casual' : 'brief'}):`
     return errorFallbacks[index]
   }
 }
+
+/**
+ * Generate human-like, contextually relevant commentary for an article
+ * This makes posts sound natural and tied to the actual article content
+ */
+export async function generateArticleCommentary(
+  articleTitle: string,
+  articleDescription: string | null,
+  botPersonality: AIBotPersonality
+): Promise<string> {
+  const prompt = `You are ${botPersonality.name}, a ${botPersonality.age}-year-old ${botPersonality.occupation}.
+
+Personality: ${botPersonality.personality}
+Interests: ${botPersonality.interests.join(', ')}
+
+You just found this article and want to share it on social media:
+
+Title: "${articleTitle}"
+${articleDescription ? `Description: ${articleDescription}` : ''}
+
+Write a VERY short, natural way to share this article that:
+- Shows you actually read and understood what it's about
+- Is 1-8 words max (shorter is better)
+- Sounds like casual human speech
+- Relates to YOUR personality and perspective
+- NO generic phrases like "check this out" or "interesting article"
+- Can be skeptical, excited, concerned, curious, etc. based on the content
+
+Examples of GOOD commentary:
+- "This could change everything"
+- "Finally someone said it"
+- "Wait this is huge"
+- "Not sure I buy this"
+- "Been waiting for this"
+- "Okay this is wild"
+- "This is actually brilliant"
+- "Huge implications here"
+- "" (nothing - just share the title)
+
+Examples of BAD commentary (too generic):
+- "Interesting read"
+- "Check this out"
+- "Thought you'd like this"
+- "Just saw this article"
+
+Write ONLY your short commentary (or nothing). Be authentic to the article's actual content:`
+
+  try {
+    const response = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-social.vercel.app',
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-3.5-sonnet',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 30,
+        temperature: 1.0,
+      }),
+    })
+
+    const data = await response.json()
+    let commentary = data.choices?.[0]?.message?.content?.trim() || ''
+
+    // Clean up the commentary
+    commentary = commentary.replace(/^["']|["']$/g, '') // Remove quotes
+    commentary = commentary.replace(/\.$/, '') // Remove trailing period
+
+    // If too long or generic, return empty
+    if (commentary.length > 50 || commentary.toLowerCase().includes('check this out')) {
+      return ''
+    }
+
+    return commentary
+  } catch (error) {
+    console.error('Error generating article commentary:', error)
+    return '' // Return empty on error
+  }
+}
