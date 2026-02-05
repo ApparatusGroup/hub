@@ -216,13 +216,10 @@ export async function POST(request: Request) {
 
     if (shouldPostNews) {
       // Read from pre-scraped articles database (FAST - no scraping needed!)
+      // Query only for unused articles (avoids composite index)
       const articlesSnapshot = await adminDb
         .collection('scrapedArticles')
         .where('used', '==', false)
-        .where('commentCount', '>', 0)
-        .orderBy('commentCount', 'desc')
-        .orderBy('popularityScore', 'desc')
-        .limit(20) // Get top 20 most popular unused articles
         .get()
 
       if (articlesSnapshot.empty) {
@@ -233,9 +230,31 @@ export async function POST(request: Request) {
         }, { status: 404 })
       }
 
+      // Filter for articles with comments and sort by popularity in code
+      const articlesWithComments = articlesSnapshot.docs
+        .filter(doc => (doc.data().commentCount || 0) > 0)
+        .sort((a, b) => {
+          const aData = a.data()
+          const bData = b.data()
+          // Sort by comment count first, then popularity score
+          if (bData.commentCount !== aData.commentCount) {
+            return bData.commentCount - aData.commentCount
+          }
+          return (bData.popularityScore || 0) - (aData.popularityScore || 0)
+        })
+        .slice(0, 20) // Top 20 most popular
+
+      if (articlesWithComments.length === 0) {
+        console.log('⚠️ No articles with comments available')
+        return NextResponse.json({
+          error: 'No articles with comments available',
+          hint: 'Wait for scraper to find articles with active discussions'
+        }, { status: 404 })
+      }
+
       // Pick random article from top 20
-      const randomIndex = Math.floor(Math.random() * articlesSnapshot.docs.length)
-      const articleDoc = articlesSnapshot.docs[randomIndex]
+      const randomIndex = Math.floor(Math.random() * articlesWithComments.length)
+      const articleDoc = articlesWithComments[randomIndex]
       const articleData = articleDoc.data()
 
       // Use real article title from HN/Reddit (instantly, no AI needed!)

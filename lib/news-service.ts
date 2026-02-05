@@ -183,8 +183,8 @@ async function getHackerNewsStories(): Promise<NewsArticle[]> {
     const topStoriesRes = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json')
     const topStoryIds: number[] = await topStoriesRes.json()
 
-    // Fetch details for top 50 stories - more selection for background scraper
-    const storyPromises = topStoryIds.slice(0, 50).map(async (id) => {
+    // Fetch details for top 40 stories
+    const storyPromises = topStoryIds.slice(0, 40).map(async (id) => {
       const res = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)
       return res.json()
     })
@@ -214,9 +214,9 @@ async function getHackerNewsStories(): Promise<NewsArticle[]> {
     })
 
     // Fetch comments for each story (with delay to avoid rate limiting)
-    // Process up to 25 stories - no timeout in background scraper
+    // Process up to 15 stories to stay under 10-second Vercel timeout
     const articlesWithComments: NewsArticle[] = []
-    const maxStories = Math.min(filteredStories.length, 25)
+    const maxStories = Math.min(filteredStories.length, 15)
 
     for (let i = 0; i < maxStories; i++) {
       const story = filteredStories[i]
@@ -243,8 +243,8 @@ async function getHackerNewsStories(): Promise<NewsArticle[]> {
         // Small delay to avoid rate limiting (30ms between requests)
         await new Promise(resolve => setTimeout(resolve, 30))
 
-        // Collect more articles since we're running in background (no timeout concerns)
-        if (articlesWithComments.length >= 15) {
+        // Stop at 10 articles to stay under 10-second timeout
+        if (articlesWithComments.length >= 10) {
           console.log(`✅ Collected ${articlesWithComments.length} HN articles, stopping`)
           break
         }
@@ -338,8 +338,8 @@ async function getLobstersStories(): Promise<NewsArticle[]> {
     const stories = await res.json()
     const articlesWithComments: NewsArticle[] = []
 
-    // Process top 20 stories - no timeout concerns in background
-    for (const story of stories.slice(0, 20)) {
+    // Process top 15 stories to stay under timeout
+    for (const story of stories.slice(0, 15)) {
       try {
         // Only include stories with good engagement
         if (story.score < 10 || story.comment_count < 5) continue
@@ -377,8 +377,8 @@ async function getLobstersStories(): Promise<NewsArticle[]> {
           })
         }
 
-        // Collect up to 10 Lobste.rs articles
-        if (articlesWithComments.length >= 10) break
+        // Collect up to 5 Lobste.rs articles to stay under timeout
+        if (articlesWithComments.length >= 5) break
 
         // Delay to be respectful
         await new Promise(resolve => setTimeout(resolve, 200))
@@ -400,19 +400,19 @@ async function getLobstersStories(): Promise<NewsArticle[]> {
  */
 async function getRedditStories(): Promise<NewsArticle[]> {
   try {
-    // Check multiple tech subreddits - no timeout concerns in background scraper
-    const subreddits = ['technology', 'programming', 'artificial', 'machinelearning', 'tech', 'gadgets']
+    // Check 3 main tech subreddits to stay under timeout
+    const subreddits = ['technology', 'programming', 'artificial']
     const allArticles: NewsArticle[] = []
 
     for (const subreddit of subreddits) {
-      // Collect up to 20 total Reddit articles
-      if (allArticles.length >= 20) {
+      // Collect up to 10 total Reddit articles
+      if (allArticles.length >= 10) {
         console.log(`✅ Already have ${allArticles.length} Reddit articles, skipping remaining subreddits`)
         break
       }
 
       try {
-        const res = await fetch(`https://www.reddit.com/r/${subreddit}/hot.json?limit=25`, {
+        const res = await fetch(`https://www.reddit.com/r/${subreddit}/hot.json?limit=15`, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (compatible; AlgosphereBot/1.0)'
           }
@@ -424,10 +424,10 @@ async function getRedditStories(): Promise<NewsArticle[]> {
           let processedCount = 0
 
           for (const post of posts) {
-            // Check up to 10 posts per subreddit
-            if (processedCount >= 10) break
+            // Check up to 5 posts per subreddit to save time
+            if (processedCount >= 5) break
             // Stop if we have enough articles total
-            if (allArticles.length >= 20) break
+            if (allArticles.length >= 10) break
 
             const postData = post.data
             const titleLower = postData.title?.toLowerCase() || ''
