@@ -215,53 +215,49 @@ export async function POST(request: Request) {
     let imageUrl: string | null = null
 
     if (shouldPostNews) {
-      // Fetch curated news based on bot's unique interests
-      const curatedNews = await getCuratedContent(botData.uid)
-
-      // Filter out articles that were already posted in the last 3 days (reduced from 7)
-      const threeDaysAgo = new Date()
-      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
-
-      const recentPostsSnapshot = await adminDb
-        .collection('posts')
-        .where('createdAt', '>=', threeDaysAgo)
-        .limit(100) // Limit query size for speed
+      // Read from pre-scraped articles database (FAST - no scraping needed!)
+      const articlesSnapshot = await adminDb
+        .collection('scrapedArticles')
+        .where('used', '==', false)
+        .where('commentCount', '>', 0)
+        .orderBy('commentCount', 'desc')
+        .orderBy('popularityScore', 'desc')
+        .limit(20) // Get top 20 most popular unused articles
         .get()
 
-      // Filter in code to avoid needing composite index
-      const usedUrls = new Set(
-        recentPostsSnapshot.docs
-          .map(doc => doc.data().articleUrl)
-          .filter(url => url && url !== null)
-      )
-
-      // Filter articles to exclude already-posted URLs
-      const availableArticles = curatedNews.filter(article => !usedUrls.has(article.url))
-
-      console.log(`📰 ${curatedNews.length} articles found, ${availableArticles.length} available (${usedUrls.size} already posted)`)
-
-      const article = selectRandomArticle(availableArticles)
-
-      if (article && article.topComments && article.topComments.length > 0) {
-        // Use real article title from HN/Reddit (no AI commentary to save time)
-        const baseTitle = article.submissionTitle || article.title
-
-        // Skip AI commentary to stay under 10-second timeout
-        // Just use the authentic article title that real people wrote
-        content = baseTitle
-
-        articleUrl = article.url
-        articleTitle = article.title
-        articleImage = article.urlToImage
-        articleDescription = article.description || null
-        articleTopComments = article.topComments || null
-
-        console.log(`📝 Post: "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"`)
-        console.log(`   Comments available: ${articleTopComments?.length || 0}`)
-      } else {
-        // Fallback to generated post if no news available
-        content = await generateAIPost(personality, memory, viralContext, writingStyleGuidance)
+      if (articlesSnapshot.empty) {
+        console.log('⚠️ No pre-scraped articles available - run /api/cron/scrape-articles first')
+        return NextResponse.json({
+          error: 'No articles available',
+          hint: 'Run the scrape-articles cron job to populate the database'
+        }, { status: 404 })
       }
+
+      // Pick random article from top 20
+      const randomIndex = Math.floor(Math.random() * articlesSnapshot.docs.length)
+      const articleDoc = articlesSnapshot.docs[randomIndex]
+      const articleData = articleDoc.data()
+
+      // Use real article title from HN/Reddit (instantly, no AI needed!)
+      content = articleData.submissionTitle
+
+      articleUrl = articleData.url
+      articleTitle = articleData.title
+      articleImage = articleData.urlToImage || null
+      articleDescription = articleData.description || null
+      articleTopComments = articleData.topComments || []
+
+      // Mark article as used
+      await articleDoc.ref.update({
+        used: true,
+        usedAt: new Date(),
+        usedBy: botData.uid
+      })
+
+      console.log(`📝 Post: "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"`)
+      console.log(`   Source: ${articleData.source}`)
+      console.log(`   Comments available: ${articleTopComments.length}`)
+      console.log(`   Popularity score: ${articleData.popularityScore}`)
     } else {
       // Generate original post content with memory context, viral patterns, and unique style
       content = await generateAIPost(personality, memory, viralContext, writingStyleGuidance)
