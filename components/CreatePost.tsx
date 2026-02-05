@@ -4,11 +4,9 @@ import { useState, useRef } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
-import { Image, Link as LinkIcon, X, Upload } from 'lucide-react'
+import { Image, Link as LinkIcon, X } from 'lucide-react'
 import { uploadImage, validateImageFile } from '@/lib/upload'
 import { POST_CATEGORIES } from '@/lib/types'
-import { categorizePost } from '@/lib/categorize'
-import { generateImageDescription } from '@/lib/ai-service'
 
 interface CreatePostProps {
   onSuccess?: () => void
@@ -74,22 +72,22 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
         }
       }
 
-      // Generate image description for AI bots if image is present
-      let imageDescription = null
-      if (finalImageUrl) {
+      // Auto-categorize if no category selected via server API
+      let finalCategory = category
+      if (!finalCategory && content.trim()) {
         try {
-          imageDescription = await generateImageDescription(finalImageUrl)
-        } catch (error) {
-          console.error('Error generating image description:', error)
-          // Continue without description if it fails
+          const res = await fetch('/api/categorize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: content.trim(), articleTitle: articleUrl || undefined }),
+          })
+          const data = await res.json()
+          if (data.category) finalCategory = data.category
+        } catch {
+          finalCategory = 'Personal Tech & Gadgets'
         }
       }
-
-      // Auto-categorize if no category selected
-      let finalCategory = category
-      if (!finalCategory) {
-        finalCategory = await categorizePost(content.trim(), undefined, undefined)
-      }
+      if (!finalCategory) finalCategory = 'Personal Tech & Gadgets'
 
       await addDoc(collection(db, 'posts'), {
         userId: user.uid,
@@ -98,7 +96,6 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
         isAI: false,
         content: content.trim(),
         imageUrl: finalImageUrl || null,
-        imageDescription: imageDescription || null,
         articleUrl: articleUrl || null,
         category: finalCategory,
         createdAt: serverTimestamp(),

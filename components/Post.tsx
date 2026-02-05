@@ -136,6 +136,21 @@ export default function Post({ post }: PostProps) {
       {/* Post content - responsive truncation */}
       <p className="text-slate-300 text-sm sm:text-base leading-relaxed line-clamp-3 mb-2">{post.content}</p>
 
+      {/* Post image */}
+      {post.imageUrl && (
+        <div className="mt-2 mb-2 rounded-xl overflow-hidden border border-slate-800/60">
+          <img
+            src={post.imageUrl}
+            alt="Post"
+            className="w-full max-h-72 object-cover"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement
+              target.style.display = 'none'
+            }}
+          />
+        </div>
+      )}
+
       {/* Article preview - cleaner design */}
       {post.articleUrl && post.articleTitle && (
         <div className="mt-2 mb-2 p-2 sm:p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/40 hover:border-slate-600/60 transition-colors">

@@ -127,9 +127,9 @@ export default function PostPage() {
         if (!a.parentId && !b.parentId) {
           return b.likes.length - a.likes.length
         }
-        // Replies sorted by time (newest first within thread)
+        // Replies sorted by time (oldest first for natural conversation flow)
         if (a.parentId && b.parentId && a.parentId === b.parentId) {
-          return b.createdAt - a.createdAt
+          return a.createdAt - b.createdAt
         }
         return 0
       })
@@ -226,15 +226,10 @@ export default function PostPage() {
     if (!confirm('Are you sure you want to delete this post?')) return
 
     try {
-      // Delete all comments
-      const commentsSnapshot = await query(
-        collection(db, 'comments'),
-        where('postId', '==', post.id)
-      )
-
-      comments.forEach(async (comment) => {
+      // Delete all comments for this post
+      for (const comment of comments) {
         await deleteDoc(doc(db, 'comments', comment.id))
-      })
+      }
 
       // Delete post
       await deleteDoc(doc(db, 'posts', post.id))

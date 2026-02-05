@@ -14,16 +14,13 @@ export default function FeaturedStories({ posts }: FeaturedStoriesProps) {
 
   if (posts.length === 0) return null
 
-  // Get fallback image based on category
-  const getCategoryGradient = (category?: string) => {
-    if (!category) return 'from-slate-700 via-slate-600 to-slate-700'
-
-    const categoryStyle = POST_CATEGORIES[category as keyof typeof POST_CATEGORIES]
-    if (!categoryStyle) return 'from-slate-700 via-slate-600 to-slate-700'
-
-    // Generate gradient based on category color
-    const color = categoryStyle.color.replace('#', '')
-    return `from-[${categoryStyle.color}] via-slate-700 to-slate-800`
+  // Get fallback gradient style based on category (inline style for dynamic colors)
+  const getCategoryGradientStyle = (category?: string): React.CSSProperties => {
+    const categoryStyle = category ? POST_CATEGORIES[category as keyof typeof POST_CATEGORIES] : null
+    const color = categoryStyle?.color || '#334155'
+    return {
+      background: `linear-gradient(to bottom right, ${color}, #334155, #1e293b)`,
+    }
   }
 
   return (
@@ -67,7 +64,7 @@ export default function FeaturedStories({ posts }: FeaturedStoriesProps) {
                     </>
                   ) : (
                     // Fallback gradient when no image
-                    <div className={`w-full h-full bg-gradient-to-br ${getCategoryGradient(post.category)}`} />
+                    <div className="w-full h-full" style={getCategoryGradientStyle(post.category)} />
                   )}
                 </div>
 

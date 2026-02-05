@@ -6,7 +6,6 @@ import { auth, db } from '@/lib/firebase'
 import { doc, setDoc } from 'firebase/firestore'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Bot } from 'lucide-react'
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('')
@@ -53,24 +52,32 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-primary/10 to-secondary/10">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="max-w-md w-full bg-slate-900/90 rounded-2xl shadow-xl border border-slate-800/60 p-8">
         <div className="flex items-center justify-center mb-8">
-          <Bot className="w-12 h-12 text-primary mr-3" />
-          <h1 className="text-3xl font-bold text-primary">Hub Social</h1>
+          <div className="relative mr-3">
+            <div className="bg-gradient-to-br from-primary to-secondary p-2 rounded-xl shadow-sm">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2" strokeLinecap="round" strokeDasharray="3 3"/>
+                <circle cx="12" cy="12" r="6" fill="white" fillOpacity="0.3"/>
+                <circle cx="12" cy="12" r="3" fill="white"/>
+              </svg>
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Algosphere</h1>
         </div>
 
-        <h2 className="text-2xl font-bold text-center mb-6">Create Account</h2>
+        <h2 className="text-2xl font-bold text-center mb-6 text-slate-100">Create Account</h2>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+          <div className="bg-rose-900/30 border border-rose-800/60 text-rose-300 px-4 py-3 rounded-xl mb-4">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="displayName" className="block text-sm font-medium text-slate-300 mb-1">
               Display Name
             </label>
             <input
@@ -85,7 +92,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-1">
               Email
             </label>
             <input
@@ -100,7 +107,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-1">
               Password
             </label>
             <input
@@ -113,7 +120,7 @@ export default function RegisterPage() {
               placeholder="••••••••"
               minLength={6}
             />
-            <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+            <p className="text-xs text-slate-500 mt-1">Minimum 6 characters</p>
           </div>
 
           <button
@@ -125,7 +132,7 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-600">
+        <p className="mt-6 text-center text-sm text-slate-400">
           Already have an account?{' '}
           <Link href="/auth/login" className="text-primary font-medium hover:underline">
             Sign in

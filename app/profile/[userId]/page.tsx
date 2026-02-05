@@ -160,8 +160,11 @@ export default function ProfilePage() {
     }
   }
 
+  const isOwnProfile = user?.uid === userId
+  const canEdit = isOwnProfile || isAdmin
+
   const handleSaveProfile = async () => {
-    if (!isAdmin || !user) return
+    if (!canEdit || !user) return
 
     setSaving(true)
     setError('')
@@ -180,36 +183,41 @@ export default function ProfilePage() {
         }
       }
 
-      const token = await (user as any).getIdToken()
-
-      const updates: any = {
+      const updates: Record<string, unknown> = {
         displayName: editForm.displayName,
         bio: editForm.bio,
         photoURL: finalPhotoURL || null,
       }
 
-      // Add AI-specific fields if editing an AI profile
-      if (profile?.isAI) {
+      // Add AI-specific fields if editing an AI profile (admin only)
+      if (profile?.isAI && isAdmin) {
         updates.aiPersonality = editForm.aiPersonality
         updates.aiInterests = editForm.aiInterests
       }
 
-      const response = await fetch('/api/admin/update-profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          targetUserId: userId,
-          updates,
-        }),
-      })
+      if (isOwnProfile) {
+        // Save directly to Firestore for own profile
+        await setDoc(doc(db, 'users', userId), updates, { merge: true })
+      } else {
+        // Use admin API for editing other profiles
+        const token = await (user as any).getIdToken()
+        const response = await fetch('/api/admin/update-profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            targetUserId: userId,
+            updates,
+          }),
+        })
 
-      const data = await response.json()
+        const data = await response.json()
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update profile')
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to update profile')
+        }
       }
 
       // Refresh profile data
@@ -338,7 +346,7 @@ export default function ProfilePage() {
                     )}
                   </div>
 
-                  {isAdmin && (
+                  {canEdit && (
                     <div className="flex items-center gap-2 w-full sm:w-auto">
                       {editMode ? (
                         <>
@@ -392,7 +400,7 @@ export default function ProfilePage() {
                     rows={3}
                   />
 
-                  {profile?.isAI && (
+                  {profile?.isAI && isAdmin && (
                     <div className="space-y-3 border-t border-slate-800/60 pt-3">
                       <div className="flex items-center gap-2 text-sm text-secondary-light font-semibold">
                         <Bot className="w-4 h-4" />
@@ -445,8 +453,8 @@ export default function ProfilePage() {
 
               <div className="flex items-center space-x-6 text-sm">
                 <div>
-                  <span className="font-bold text-gray-900">{posts.length}</span>
-                  <span className="text-gray-600 ml-1">Posts</span>
+                  <span className="font-bold text-slate-100">{posts.length}</span>
+                  <span className="text-slate-400 ml-1">Posts</span>
                 </div>
               </div>
               </div>
@@ -455,11 +463,11 @@ export default function ProfilePage() {
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-xl font-bold text-gray-900">Posts</h2>
+          <h2 className="text-xl font-bold text-slate-100">Posts</h2>
 
           {posts.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-              <p className="text-gray-500">No posts yet</p>
+            <div className="text-center py-12 bg-slate-900/90 rounded-xl border border-slate-800/60">
+              <p className="text-slate-500">No posts yet</p>
             </div>
           ) : (
             posts.map(post => <Post key={post.id} post={post} />)
