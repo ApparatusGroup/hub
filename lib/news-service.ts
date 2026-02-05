@@ -207,9 +207,12 @@ async function getHackerNewsStories(): Promise<NewsArticle[]> {
     })
 
     // Fetch comments for each story (with delay to avoid rate limiting)
+    // LIMIT: Process max 10 stories to stay under Vercel free tier 10-second timeout
     const articlesWithComments: NewsArticle[] = []
+    const maxStories = Math.min(filteredStories.length, 10)
 
-    for (const story of filteredStories) {
+    for (let i = 0; i < maxStories; i++) {
+      const story = filteredStories[i]
       try {
         const topComments = await getHNComments(story.id, 10)
         console.log(`📊 HN Story "${story.title.substring(0, 50)}" - Scraped ${topComments.length} comments`)
@@ -232,6 +235,12 @@ async function getHackerNewsStories(): Promise<NewsArticle[]> {
 
         // Small delay to avoid rate limiting (30ms between requests)
         await new Promise(resolve => setTimeout(resolve, 30))
+
+        // Stop if we have enough articles (5 is plenty for variety)
+        if (articlesWithComments.length >= 5) {
+          console.log(`✅ Collected ${articlesWithComments.length} HN articles, stopping early to save time`)
+          break
+        }
       } catch (error) {
         console.error(`Error fetching comments for HN story ${story.id}:`, error)
         // Don't add articles that failed to scrape - we need comments
@@ -304,12 +313,19 @@ async function getRedditComments(subreddit: string, postId: string): Promise<str
  */
 async function getRedditStories(): Promise<NewsArticle[]> {
   try {
-    const subreddits = ['technology', 'programming', 'artificial', 'MachineLearning']
+    // LIMIT: Only check 2 subreddits to stay under Vercel free tier timeout
+    const subreddits = ['technology', 'programming']
     const allArticles: NewsArticle[] = []
 
     for (const subreddit of subreddits) {
+      // Stop if we have enough articles already
+      if (allArticles.length >= 5) {
+        console.log(`✅ Already have ${allArticles.length} Reddit articles, skipping remaining subreddits`)
+        break
+      }
+
       try {
-        const res = await fetch(`https://www.reddit.com/r/${subreddit}/hot.json?limit=15`, {
+        const res = await fetch(`https://www.reddit.com/r/${subreddit}/hot.json?limit=10`, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (compatible; AlgosphereBot/1.0)'
           }
@@ -318,8 +334,14 @@ async function getRedditStories(): Promise<NewsArticle[]> {
         if (res.ok) {
           const data = await res.json()
           const posts = data.data?.children || []
+          let processedCount = 0
 
           for (const post of posts) {
+            // Stop after checking 5 posts per subreddit to save time
+            if (processedCount >= 5) break
+            // Stop if we have enough articles total
+            if (allArticles.length >= 5) break
+
             const postData = post.data
             const titleLower = postData.title?.toLowerCase() || ''
 
@@ -342,6 +364,7 @@ async function getRedditStories(): Promise<NewsArticle[]> {
               !isIrrelevant // Not a project showcase or SDK announcement
             ) {
               try {
+                processedCount++
                 // Fetch top comments for this post
                 const topComments = await getRedditComments(subreddit, postData.id)
                 console.log(`📊 Reddit r/${subreddit} "${postData.title.substring(0, 50)}" - Scraped ${topComments.length} comments`)
@@ -362,8 +385,8 @@ async function getRedditStories(): Promise<NewsArticle[]> {
                   console.log(`⚠️ Skipping Reddit post ${postData.id} - no comments scraped`)
                 }
 
-                // Delay to avoid Reddit rate limiting (500ms between requests)
-                await new Promise(resolve => setTimeout(resolve, 500))
+                // Reduced delay to 300ms (was 500ms) to speed up scraping
+                await new Promise(resolve => setTimeout(resolve, 300))
               } catch (error) {
                 console.error(`Error processing Reddit post ${postData.id}:`, error)
                 // Don't add articles that failed - we need comments
