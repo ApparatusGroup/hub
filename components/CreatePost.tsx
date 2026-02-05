@@ -40,14 +40,11 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
 
     setImageFile(file)
 
-    // Create preview
     const reader = new FileReader()
     reader.onloadend = () => {
       setImagePreview(reader.result as string)
     }
     reader.readAsDataURL(file)
-
-    // Clear URL input if file is selected
     setImageUrl('')
   }
 
@@ -61,7 +58,6 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
     try {
       let finalImageUrl = imageUrl
 
-      // Upload image file if selected
       if (imageFile) {
         try {
           finalImageUrl = await uploadImage(imageFile, 'posts')
@@ -115,7 +111,6 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
         fileInputRef.current.value = ''
       }
 
-      // Call onSuccess callback if provided
       if (onSuccess) {
         onSuccess()
       }
@@ -138,13 +133,13 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
   }
 
   return (
-    <div className="post-card">
+    <div className="post-card neon-border">
       <form onSubmit={handleSubmit}>
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="What's on your mind?"
-          className="w-full px-0 py-2 border-0 resize-none focus:outline-none bg-transparent text-slate-200 placeholder:text-slate-500"
+          className="w-full px-0 py-2 border-0 resize-none focus:outline-none bg-transparent text-slate-200 placeholder:text-slate-600 text-[15px]"
           rows={3}
         />
 
@@ -153,13 +148,11 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="text-sm px-3 py-1.5 bg-slate-800/50 border border-slate-700/60 rounded-lg text-slate-300 focus:outline-none focus:border-primary/40 transition-colors"
+            className="text-sm px-3 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-slate-400 focus:outline-none focus:border-primary/40 transition-colors"
           >
             <option value="">Auto-categorize with AI</option>
             {Object.keys(POST_CATEGORIES).map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
+              <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
         </div>
@@ -168,18 +161,18 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
           <div className="mt-3 mb-3 space-y-3">
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="flex-1">
-                <label className="block text-xs text-slate-400 font-medium mb-1.5">Upload Image</label>
+                <label className="block text-xs text-slate-500 font-medium mb-1.5">Upload Image</label>
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   onChange={handleFileChange}
                   disabled={!!imageUrl}
-                  className="block w-full text-sm text-slate-300 file:mr-2 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gradient-to-r file:from-primary file:to-primary-dark file:text-white hover:file:shadow-md disabled:opacity-50 transition-all"
+                  className="block w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gradient-to-r file:from-primary file:to-secondary file:text-white hover:file:shadow-md disabled:opacity-50 transition-all"
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-xs text-slate-400 font-medium mb-1.5">Or Paste URL</label>
+                <label className="block text-xs text-slate-500 font-medium mb-1.5">Or Paste URL</label>
                 <input
                   type="url"
                   value={imageUrl}
@@ -191,13 +184,10 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setShowImageInput(false)
-                  handleClearImage()
-                }}
-                className="p-2 hover:bg-slate-800 rounded-xl self-end transition-all smooth-interaction"
+                onClick={() => { setShowImageInput(false); handleClearImage() }}
+                className="p-2 hover:bg-white/[0.06] rounded-xl self-end transition-all smooth-interaction"
               >
-                <X className="w-4 h-4 text-slate-400" />
+                <X className="w-4 h-4 text-slate-500" />
               </button>
             </div>
 
@@ -210,16 +200,13 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
                 <img
                   src={imagePreview || imageUrl}
                   alt="Preview"
-                  className="rounded-xl max-h-64 w-full object-cover border border-slate-800/60"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement
-                    target.style.display = 'none'
-                  }}
+                  className="rounded-xl max-h-64 w-full object-cover border border-white/[0.06]"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
                 />
                 <button
                   type="button"
                   onClick={handleClearImage}
-                  className="absolute top-3 right-3 p-2 bg-slate-900/70 hover:bg-slate-900/90 backdrop-blur-sm rounded-xl transition-all smooth-interaction"
+                  className="absolute top-3 right-3 p-2 bg-surface/70 hover:bg-surface/90 backdrop-blur-sm rounded-xl transition-all smooth-interaction"
                 >
                   <X className="w-4 h-4 text-white" />
                 </button>
@@ -230,7 +217,7 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
 
         {showLinkInput && (
           <div className="mt-3 mb-3">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <input
                 type="url"
                 value={articleUrl}
@@ -240,43 +227,40 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
               />
               <button
                 type="button"
-                onClick={() => {
-                  setShowLinkInput(false)
-                  setArticleUrl('')
-                }}
-                className="p-2 hover:bg-slate-800 rounded-xl transition-all smooth-interaction"
+                onClick={() => { setShowLinkInput(false); setArticleUrl('') }}
+                className="p-2 hover:bg-white/[0.06] rounded-xl transition-all smooth-interaction"
               >
-                <X className="w-4 h-4 text-slate-400" />
+                <X className="w-4 h-4 text-slate-500" />
               </button>
             </div>
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-4 border-t border-slate-800/60">
-          <div className="flex items-center space-x-1">
+        <div className="flex items-center justify-between pt-3 border-t border-white/[0.06]">
+          <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={() => setShowImageInput(!showImageInput)}
-              className="p-2.5 hover:bg-slate-800 rounded-xl transition-all duration-200 smooth-interaction"
+              className="p-2.5 hover:bg-white/[0.06] rounded-xl transition-all duration-200 smooth-interaction"
               title="Add image"
             >
-              <Image className="w-5 h-5 text-slate-400" />
+              <Image className="w-5 h-5 text-slate-500 hover:text-primary" />
             </button>
 
             <button
               type="button"
               onClick={() => setShowLinkInput(!showLinkInput)}
-              className="p-2.5 hover:bg-slate-800 rounded-xl transition-all duration-200 smooth-interaction"
+              className="p-2.5 hover:bg-white/[0.06] rounded-xl transition-all duration-200 smooth-interaction"
               title="Add link"
             >
-              <LinkIcon className="w-5 h-5 text-slate-400" />
+              <LinkIcon className="w-5 h-5 text-slate-500 hover:text-primary" />
             </button>
           </div>
 
           <button
             type="submit"
             disabled={loading || (!content.trim() && !imageUrl && !articleUrl && !imageFile)}
-            className="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary text-sm disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {loading ? 'Posting...' : 'Post'}
           </button>

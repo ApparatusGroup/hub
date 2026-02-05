@@ -312,34 +312,35 @@ export default function PostPage() {
 
   // Create inline styles for border and badge colors to prevent disappearance on scroll
   const borderStyle = categoryStyle
-    ? { borderLeftColor: categoryStyle.color, borderLeftWidth: '4px' }
-    : { borderLeftColor: 'rgb(30 41 59 / 0.6)', borderLeftWidth: '4px' }
+    ? { borderLeftColor: categoryStyle.color, borderLeftWidth: '3px' }
+    : { borderLeftColor: 'rgba(6, 182, 212, 0.15)', borderLeftWidth: '3px' }
 
   const badgeStyle = categoryStyle
     ? {
-        backgroundColor: `${categoryStyle.color}1A`, // 10% opacity
+        backgroundColor: `${categoryStyle.color}12`,
         color: categoryStyle.color,
+        border: `1px solid ${categoryStyle.color}25`,
       }
     : {}
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-surface bg-grid">
       <Navbar />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Back button */}
         <button
           onClick={() => router.back()}
-          className="flex items-center space-x-2 text-slate-400 hover:text-primary transition-colors mb-4"
+          className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors mb-4"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-4 h-4" />
           <span className="text-sm font-medium">Back</span>
         </button>
 
         {/* Post */}
-        <div className="post-card mb-6 border-l-4" style={borderStyle}>
+        <div className="post-card mb-6" style={borderStyle}>
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-2.5">
+            <div className="flex items-center gap-2.5">
               <button
                 onClick={() => router.push(`/profile/${post.userId}`)}
                 className="flex-shrink-0 cursor-pointer"
@@ -351,7 +352,7 @@ export default function PostPage() {
                     className="w-10 h-10 rounded-full object-cover avatar-ring"
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center text-white font-semibold shadow-sm avatar-ring">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary via-accent to-secondary flex items-center justify-center text-white font-semibold shadow-sm avatar-ring">
                     {post.userName[0].toUpperCase()}
                   </div>
                 )}
@@ -395,7 +396,7 @@ export default function PostPage() {
           </p>
 
           {post.imageUrl && (
-            <div className="mt-4 rounded-xl overflow-hidden border border-slate-800/60 aspect-square">
+            <div className="mt-4 rounded-xl overflow-hidden border border-white/[0.06] aspect-square">
               <img
                 src={post.imageUrl}
                 alt="Post"
@@ -409,7 +410,7 @@ export default function PostPage() {
               href={post.articleUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 flex items-start space-x-3 p-3 bg-slate-800/50 border border-slate-700/60 rounded-xl hover:border-primary/40 hover:shadow-lg transition-all duration-200 group cursor-pointer"
+              className="mt-4 flex items-start space-x-3 p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl hover:border-primary/30 hover:shadow-lg transition-all duration-200 group cursor-pointer"
             >
               {post.articleImage && (
                 <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-slate-900">
@@ -437,7 +438,7 @@ export default function PostPage() {
             <button
               onClick={handleLike}
               className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg transition-all duration-200 active:scale-95 ${
-                liked ? 'text-rose-400 bg-rose-400/10' : 'text-slate-400 hover:text-rose-400 hover:bg-slate-800/50'
+                liked ? 'text-rose-400 bg-rose-400/10' : 'text-slate-400 hover:text-rose-400 hover:bg-white/[0.04]'
               }`}
             >
               <Heart className={`w-6 h-6 ${liked ? 'fill-current' : ''}`} />
@@ -455,7 +456,7 @@ export default function PostPage() {
         <div className="post-card mb-6">
           <form onSubmit={handleCommentSubmit}>
             {replyingTo && (
-              <div className="mb-2 flex items-center justify-between bg-slate-800/50 px-3 py-2 rounded-lg">
+              <div className="mb-2 flex items-center justify-between bg-white/[0.04] px-3 py-2 rounded-lg">
                 <span className="text-sm text-slate-400">
                   Replying to {comments.find((c) => c.id === replyingTo)?.userName}
                 </span>
@@ -472,14 +473,14 @@ export default function PostPage() {
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               placeholder={replyingTo ? 'Write a reply...' : 'Add a comment...'}
-              className="w-full px-4 py-3 bg-slate-800/90 text-white border border-slate-700/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all placeholder:text-slate-400 resize-none"
+              className="w-full px-4 py-3 bg-white/[0.04] text-white border border-white/[0.08] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 transition-all placeholder:text-slate-500 resize-none"
               rows={3}
             />
             <div className="mt-2 flex justify-end">
               <button
                 type="submit"
                 disabled={!commentText.trim()}
-                className="px-4 py-2 bg-gradient-to-r from-primary to-primary-dark text-white rounded-lg font-semibold hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {replyingTo ? 'Reply' : 'Comment'}
               </button>
@@ -511,7 +512,7 @@ export default function PostPage() {
                         className="w-8 h-8 rounded-full object-cover avatar-ring"
                       />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center text-white text-sm font-semibold avatar-ring">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary via-accent to-secondary flex items-center justify-center text-white text-sm font-semibold avatar-ring">
                         {comment.userName[0].toUpperCase()}
                       </div>
                     )}
@@ -580,7 +581,7 @@ export default function PostPage() {
 
                 {/* Replies */}
                 {(comment.replyCount || 0) > 0 && (
-                  <div className="mt-4 space-y-3 pl-4 border-l-2 border-slate-800">
+                  <div className="mt-4 space-y-3 pl-4 border-l-2 border-white/[0.06]">
                     {getReplies(comment.id).map((reply) => (
                       <div key={reply.id}>
                         {/* Reply Header */}
@@ -596,7 +597,7 @@ export default function PostPage() {
                                 className="w-7 h-7 rounded-full object-cover avatar-ring"
                               />
                             ) : (
-                              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center text-white text-xs font-semibold avatar-ring">
+                              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary via-accent to-secondary flex items-center justify-center text-white text-xs font-semibold avatar-ring">
                                 {reply.userName[0].toUpperCase()}
                               </div>
                             )}

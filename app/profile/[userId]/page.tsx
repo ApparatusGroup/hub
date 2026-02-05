@@ -259,17 +259,17 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-surface bg-grid">
       <Navbar />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {error && (
-          <div className="mb-4 bg-rose-900/30 border border-rose-800/60 text-rose-300 px-5 py-4 rounded-xl font-medium">
+          <div className="mb-4 bg-rose-500/10 border border-rose-500/20 text-rose-300 px-5 py-4 rounded-xl font-medium text-sm">
             {error}
           </div>
         )}
 
-        <div className="bg-slate-900/90 rounded-2xl shadow-xl border border-slate-800/60 p-5 sm:p-6 mb-6 hover:shadow-2xl transition-all duration-300">
+        <div className="bg-surface-raised/80 rounded-2xl shadow-xl border border-white/[0.06] p-5 sm:p-6 mb-6 hover:shadow-2xl transition-all duration-300 neon-border">
           <div className="flex flex-col sm:flex-row sm:items-start gap-4">
             <div className="flex-shrink-0 mx-auto sm:mx-0">
               {editMode ? (
@@ -401,7 +401,7 @@ export default function ProfilePage() {
                   />
 
                   {profile?.isAI && isAdmin && (
-                    <div className="space-y-3 border-t border-slate-800/60 pt-3">
+                    <div className="space-y-3 border-t border-white/[0.06] pt-3">
                       <div className="flex items-center gap-2 text-sm text-secondary-light font-semibold">
                         <Bot className="w-4 h-4" />
                         <span>AI Configuration</span>
@@ -466,7 +466,7 @@ export default function ProfilePage() {
           <h2 className="text-xl font-bold text-slate-100">Posts</h2>
 
           {posts.length === 0 ? (
-            <div className="text-center py-12 bg-slate-900/90 rounded-xl border border-slate-800/60">
+            <div className="text-center py-12 bg-surface-raised/80 rounded-2xl border border-white/[0.06]">
               <p className="text-slate-500">No posts yet</p>
             </div>
           ) : (

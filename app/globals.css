@@ -4,48 +4,113 @@
 
 @layer base {
   body {
-    @apply bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100;
+    @apply text-slate-100;
+    background: #0A0E1A;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(6, 182, 212, 0.2);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(6, 182, 212, 0.4);
+  }
+
+  ::selection {
+    background: rgba(6, 182, 212, 0.3);
+    color: #fff;
   }
 }
 
 @layer components {
   .post-card {
-    @apply bg-slate-900/90 rounded-xl md:rounded-2xl shadow-xl border-r border-t border-b border-slate-800/60 p-3 sm:p-4 md:p-5 mb-2 md:mb-3
-           hover:shadow-2xl hover:border-slate-700/60 hover:bg-slate-900
+    @apply bg-surface-raised/80 rounded-2xl shadow-lg
+           border border-white/[0.06]
+           p-4 sm:p-5 mb-3
+           hover:border-primary/20 hover:shadow-primary/5 hover:shadow-xl
            transition-all duration-300 backdrop-blur-sm animate-fade-in;
   }
 
   .btn-primary {
-    @apply bg-gradient-to-r from-primary to-primary-dark text-white px-5 py-2.5
-           rounded-xl font-medium hover:shadow-lg hover:shadow-primary/20 hover:scale-[1.02]
-           active:scale-[0.98] transition-all duration-200
-           focus:ring-2 focus:ring-primary/50 focus:outline-none;
+    @apply bg-gradient-to-r from-primary to-secondary text-white px-5 py-2.5
+           rounded-xl font-semibold
+           hover:shadow-lg hover:shadow-primary/25 hover:brightness-110
+           active:scale-[0.97] transition-all duration-200
+           focus:ring-2 focus:ring-primary/40 focus:outline-none;
   }
 
   .btn-secondary {
-    @apply bg-slate-800 text-slate-200 px-5 py-2.5 rounded-xl font-medium
-           hover:bg-slate-700 hover:shadow-sm active:scale-[0.98]
-           transition-all duration-200 focus:ring-2 focus:ring-slate-600 focus:outline-none;
+    @apply bg-white/[0.06] text-slate-200 px-5 py-2.5 rounded-xl font-medium
+           border border-white/[0.08]
+           hover:bg-white/[0.1] hover:border-primary/20
+           active:scale-[0.97] transition-all duration-200
+           focus:ring-2 focus:ring-primary/30 focus:outline-none;
   }
 
   .input-field {
-    @apply w-full px-4 py-3 bg-slate-800/90 text-white border border-slate-700/50 rounded-xl
-           focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50
+    @apply w-full px-4 py-3 bg-white/[0.04] text-white
+           border border-white/[0.08] rounded-xl
+           focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40
            transition-all duration-200 placeholder:text-slate-500;
   }
 
   .navbar-glass {
-    @apply bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/60 shadow-lg;
+    @apply bg-surface/90 backdrop-blur-2xl border-b border-white/[0.06];
   }
 
   .avatar-ring {
-    @apply ring-2 ring-slate-800 hover:ring-primary/40 transition-all duration-200;
+    @apply ring-2 ring-white/10 hover:ring-primary/40 transition-all duration-200;
   }
 
   .smooth-interaction {
-    @apply transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.98];
+    @apply transition-all duration-200 ease-out hover:scale-[1.03] active:scale-[0.97];
+  }
+
+  .neon-glow {
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.15), 0 0 40px rgba(6, 182, 212, 0.05);
+  }
+
+  .neon-border {
+    border: 1px solid rgba(6, 182, 212, 0.2);
+    box-shadow: inset 0 0 20px rgba(6, 182, 212, 0.03);
+  }
+
+  .chrome-text {
+    background: linear-gradient(180deg, #C0C0C0 0%, #8B9DC3 30%, #6366F1 60%, #9333EA 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: brightness(1.2);
+  }
+
+  .retro-gradient-text {
+    background: linear-gradient(135deg, #06B6D4, #8B5CF6, #D946EF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .bg-grid {
+    background-image: linear-gradient(rgba(6, 182, 212, 0.04) 1px, transparent 1px),
+                       linear-gradient(90deg, rgba(6, 182, 212, 0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
   }
 }
