@@ -179,9 +179,32 @@ export async function POST(request: Request) {
     const botProfile = await getBotContentProfile(botData.uid, botData.displayName)
     const writingStyleGuidance = getWritingStyleGuidance(botProfile)
 
-    // Mostly news articles (80%), some generated thoughts (20%)
-    // This is a news/tech sharing platform
-    const shouldPostNews = Math.random() < 0.8
+    // Check recent category distribution to ensure feed diversity
+    const recentCategoryCounts = new Map<string, number>()
+    recentPostsSnapshot.docs.forEach(doc => {
+      const category = doc.data().category
+      if (category) {
+        recentCategoryCounts.set(category, (recentCategoryCounts.get(category) || 0) + 1)
+      }
+    })
+
+    // Calculate which categories are underrepresented
+    const allCategories = ['Software & Development', 'Artificial Intelligence', 'Hardware & Devices',
+                          'Cybersecurity', 'Data & Analytics', 'Gaming & Entertainment',
+                          'Business & Startups', 'Personal Tech & Gadgets']
+    const avgPostsPerCategory = recentPostsSnapshot.docs.length / allCategories.length
+    const underrepresentedCategories = allCategories.filter(cat =>
+      (recentCategoryCounts.get(cat) || 0) < avgPostsPerCategory * 0.5
+    )
+
+    console.log(`📊 Category balance: ${underrepresentedCategories.length} underrepresented categories`)
+    if (underrepresentedCategories.length > 0) {
+      console.log(`   Boosting: ${underrepresentedCategories.join(', ')}`)
+    }
+
+    // Mostly news articles (95%), very few generated thoughts (5%)
+    // This is a news/tech sharing platform - prioritize real articles
+    const shouldPostNews = Math.random() < 0.95
 
     let content = ''
     let articleUrl: string | null = null

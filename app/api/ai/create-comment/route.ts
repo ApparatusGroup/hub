@@ -186,12 +186,32 @@ export async function POST(request: Request) {
       }, { status: 404 })
     }
 
-    // Filter out comments already used (trim and normalize for comparison)
+    // CRITICAL: Check for duplicates across ALL recent comments, not just this post
+    // This prevents the same comment from appearing on different posts by different bots
+    const oneDayAgo = new Date()
+    oneDayAgo.setHours(oneDayAgo.getHours() - 24)
+
+    const allRecentComments = await adminDb
+      .collection('comments')
+      .where('createdAt', '>=', oneDayAgo)
+      .get()
+
+    // Build set of ALL recently used comments (normalized)
+    const globallyUsedComments = new Set(
+      allRecentComments.docs.map(doc => doc.data().content.trim().toLowerCase())
+    )
+
+    // Also include comments on this specific post
     const usedComments = new Set(existingComments.map(c => c.content.trim().toLowerCase()))
+    usedComments.forEach(c => globallyUsedComments.add(c))
+
+    // Filter out ANY comment that's been used anywhere in last 24 hours
     const availableComments = postData.articleTopComments.filter((c: string) => {
       const normalized = c.trim().toLowerCase()
-      return !usedComments.has(normalized)
+      return !globallyUsedComments.has(normalized)
     })
+
+    console.log(`🔍 Global duplicate check: ${globallyUsedComments.size} comments used in last 24h`)
 
     if (availableComments.length === 0) {
       console.log('⚠️ All real comments already used on this post')

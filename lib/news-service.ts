@@ -132,6 +132,7 @@ async function getHNComments(storyId: number, limit: number = 10): Promise<strin
           .replace(/&amp;/g, '&')
           .replace(/&gt;/g, '>')
           .replace(/&lt;/g, '<')
+          .replace(/&#x2F;/g, '/')
           .trim()
 
         // Keep only first 2 sentences for brevity
@@ -141,6 +142,12 @@ async function getHNComments(storyId: number, limit: number = 10): Promise<strin
       .filter((text: string) => {
         // Filter out low quality comments
         if (text.length < 20 || text.length > 300) return false
+
+        // Remove comments with URLs/links (https://, http://, www.)
+        if (/https?:\/\/|www\.|github\.com|\.com|\.org|\.io/i.test(text)) {
+          console.log(`Filtered comment with link: "${text.substring(0, 60)}..."`)
+          return false
+        }
 
         // Remove comments ending with citation numbers like " 1" or ". 1"
         // This catches patterns like "is. 1" or "thing. 1"
@@ -291,19 +298,99 @@ async function getRedditComments(subreddit: string, postId: string): Promise<str
     const cleanedComments = comments
       .filter((c: any) => c.kind === 't1' && c.data && c.data.body)
       .map((c: any) => c.data.body.trim())
-      .filter((text: string) =>
-        text.length > 20 &&
-        text.length < 300 &&
-        !text.startsWith('[deleted]') &&
-        !text.startsWith('[removed]') &&
-        !text.includes('I am a bot')
-      )
+      .filter((text: string) => {
+        // Basic quality filters
+        if (text.length < 20 || text.length > 300) return false
+        if (text.startsWith('[deleted]') || text.startsWith('[removed]')) return false
+        if (text.includes('I am a bot')) return false
+
+        // Remove comments with URLs/links
+        if (/https?:\/\/|www\.|github\.com|\.com|\.org|\.io/i.test(text)) {
+          console.log(`Filtered Reddit comment with link: "${text.substring(0, 60)}..."`)
+          return false
+        }
+
+        return true
+      })
       .slice(0, 5) // Top 5 comments
 
     console.log(`✅ Cleaned ${cleanedComments.length} comments from Reddit r/${subreddit}/${postId}`)
     return cleanedComments
   } catch (error) {
     console.error(`Error fetching Reddit comments for r/${subreddit}/${postId}:`, error)
+    return []
+  }
+}
+
+/**
+ * Get fresh news from Lobste.rs (tech-focused community, free API)
+ */
+async function getLobstersStories(): Promise<NewsArticle[]> {
+  try {
+    // Lobste.rs has a free JSON API for hottest stories
+    const res = await fetch('https://lobste.rs/hottest.json')
+
+    if (!res.ok) {
+      console.error(`Lobste.rs API error: ${res.status}`)
+      return []
+    }
+
+    const stories = await res.json()
+    const articlesWithComments: NewsArticle[] = []
+
+    // Process top 10 stories
+    for (const story of stories.slice(0, 10)) {
+      try {
+        // Only include stories with good engagement
+        if (story.score < 10 || story.comment_count < 5) continue
+
+        // Fetch comments for this story
+        const commentsRes = await fetch(`https://lobste.rs/s/${story.short_id}.json`)
+        if (!commentsRes.ok) continue
+
+        const storyData = await commentsRes.json()
+        const topComments: string[] = []
+
+        // Extract top-level comments
+        if (storyData.comments && Array.isArray(storyData.comments)) {
+          for (const comment of storyData.comments.slice(0, 5)) {
+            if (comment.comment && comment.comment.length > 20 && comment.comment.length < 300) {
+              // Filter out links
+              if (!/https?:\/\/|www\.|\.com|\.org|\.io/i.test(comment.comment)) {
+                topComments.push(comment.comment.trim())
+              }
+            }
+          }
+        }
+
+        // Only add if we got comments
+        if (topComments.length > 0) {
+          articlesWithComments.push({
+            title: story.title,
+            description: story.description || story.title,
+            url: story.url,
+            urlToImage: null,
+            publishedAt: story.created_at,
+            source: { name: 'Lobsters' },
+            topComments: topComments,
+            submissionTitle: story.title
+          })
+        }
+
+        // Stop if we have enough
+        if (articlesWithComments.length >= 3) break
+
+        // Delay to be respectful
+        await new Promise(resolve => setTimeout(resolve, 200))
+      } catch (error) {
+        console.error(`Error processing Lobste.rs story:`, error)
+      }
+    }
+
+    console.log(`✅ Lobste.rs articles with comments: ${articlesWithComments.length}`)
+    return articlesWithComments
+  } catch (error) {
+    console.error('Error fetching Lobste.rs:', error)
     return []
   }
 }
@@ -409,15 +496,16 @@ async function getRedditStories(): Promise<NewsArticle[]> {
 
 export async function getTopNews(category?: string): Promise<NewsArticle[]> {
   try {
-    // Use Hacker News + Reddit for guaranteed fresh content (posted within hours)
-    // These are free, real-time, and always current
-    const [hnArticles, redditArticles] = await Promise.all([
+    // Use Hacker News + Reddit + Lobste.rs for guaranteed fresh content
+    // All have free APIs and real-time content
+    const [hnArticles, redditArticles, lobstersArticles] = await Promise.all([
       getHackerNewsStories(),
-      getRedditStories()
+      getRedditStories(),
+      getLobstersStories()
     ])
 
     // Combine and deduplicate by URL
-    const allArticles = [...hnArticles, ...redditArticles]
+    const allArticles = [...hnArticles, ...redditArticles, ...lobstersArticles]
     const uniqueUrls = new Map<string, NewsArticle>()
 
     for (const article of allArticles) {
