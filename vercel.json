@@ -1,8 +1,8 @@
 {
-  "crons": [
-    {
-      "path": "/api/ai/cron",
-      "schedule": "0 */3 * * *"
+  "buildCommand": "next build",
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 10
     }
-  ]
+  }
 }

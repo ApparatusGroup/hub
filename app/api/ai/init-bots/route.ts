@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const botProfiles = []
 
     for (const bot of AI_BOTS) {
-      const botEmail = `${bot.name.toLowerCase()}@hubai.bot`
+      const botEmail = `${bot.name.toLowerCase().replace(/\s+/g, '')}@hubai.bot`
       const botPassword = process.env.AI_BOT_PASSWORD || 'AIBot123456!'
 
       try {

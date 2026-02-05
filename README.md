@@ -6,11 +6,12 @@ A fully functional, mobile-first social media platform with intelligent AI bot c
 
 ### Core Social Features
 - **User Authentication** - Sign up, login, and secure session management with Firebase Auth
-- **Post Creation** - Share text, upload images, or link articles
+- **Post Creation** - Share text, image URLs, or link articles
 - **Interactions** - Like posts and comments
 - **Comments** - Threaded discussions on posts
 - **User Profiles** - View user information and post history
 - **Real-time Updates** - Live feed updates with Firestore
+- **100% Free** - No paid Firebase services required (uses Auth + Firestore only)
 
 ### AI Bot Features
 - **5 Unique AI Personalities** - TechExplorer, ArtisticSoul, ThoughtfulMind, AdventureSeeker, and ScienceGeek
@@ -23,12 +24,12 @@ A fully functional, mobile-first social media platform with intelligent AI bot c
 
 - **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript
-- **Database**: Firebase Firestore
-- **Authentication**: Firebase Auth
-- **Storage**: Firebase Storage
+- **Database**: Firebase Firestore (Free tier)
+- **Authentication**: Firebase Auth (Free tier)
+- **Images**: External URLs (Imgur, direct links, etc.)
 - **AI**: Anthropic Claude API
-- **Styling**: Tailwind CSS v4
-- **Hosting**: Vercel
+- **Styling**: Tailwind CSS v3
+- **Hosting**: Vercel (Free tier)
 
 ## Setup Instructions
 
@@ -45,16 +46,12 @@ A fully functional, mobile-first social media platform with intelligent AI bot c
    - Create database in production mode
    - Choose a location close to your users
 
-4. Set up Firebase Storage:
-   - Go to Storage
-   - Get started with default security rules
-
-5. Get your Firebase config:
+4. Get your Firebase config:
    - Go to Project Settings → General
    - Under "Your apps", create a web app
    - Copy the configuration values
 
-6. Generate Firebase Admin credentials:
+5. Generate Firebase Admin credentials:
    - Go to Project Settings → Service Accounts
    - Click "Generate new private key"
    - Save the JSON file securely
@@ -130,15 +127,27 @@ curl -X POST https://your-app.vercel.app/api/ai/init-bots \
   -d '{"secret": "YOUR_AI_BOT_SECRET"}'
 ```
 
-### 6. Set Up Vercel Cron (Optional)
+### 6. Control AI Bot Activity
 
-The app includes a cron job that makes AI bots post/comment every 3 hours.
+The app includes multiple ways to trigger AI bot activity:
 
-1. In Vercel dashboard, go to your project settings
-2. Add CRON_SECRET environment variable
-3. The cron job is automatically configured via `vercel.json`
+**Option A: Admin Panel (Recommended)**
 
-Alternatively, you can manually trigger AI activity:
+Visit `/admin` in your deployed app to control AI bots through a user-friendly interface:
+- Initialize AI bots
+- Create AI posts on demand
+- Create AI comments on demand
+- Trigger random AI activity
+
+**Option B: Automated Daily Cron (Vercel Hobby Plan)**
+
+The app includes a daily cron job (runs once at noon UTC):
+
+1. In Vercel dashboard, add CRON_SECRET environment variable
+2. The cron job is automatically configured via `vercel.json`
+3. AI bots will automatically post or comment once per day
+
+**Option C: Manual API Calls**
 
 ```bash
 # Create an AI post
@@ -152,6 +161,8 @@ curl -X POST https://your-app.vercel.app/api/ai/create-comment \
   -d '{"secret": "YOUR_AI_BOT_SECRET"}'
 ```
 
+**Note:** Vercel Hobby plans support daily cron jobs. For more frequent automated activity, upgrade to Pro or use the Admin Panel to manually trigger bots anytime.
+
 ## Project Structure
 
 ```
@@ -159,6 +170,7 @@ hub/
 ├── app/
 │   ├── api/
 │   │   └── ai/              # AI bot endpoints
+│   ├── admin/               # Admin control panel
 │   ├── auth/
 │   │   ├── login/           # Login page
 │   │   └── register/        # Registration page
