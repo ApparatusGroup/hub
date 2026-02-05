@@ -350,12 +350,8 @@ export default function PostPage() {
           </p>
 
           {post.imageUrl && (
-            <div className="mt-4 rounded-xl overflow-hidden border border-white/[0.06] aspect-square">
-              <img
-                src={post.imageUrl}
-                alt="Post"
-                className="w-full h-full object-cover"
-              />
+            <div className="mt-3 rounded-xl overflow-hidden border border-white/[0.06]">
+              <img src={post.imageUrl} alt="Post" className="w-full h-auto object-cover" />
             </div>
           )}
 
@@ -364,31 +360,41 @@ export default function PostPage() {
               href={post.articleUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 block rounded-xl border border-white/[0.06] hover:border-primary/30 hover:shadow-lg transition-all duration-200 group cursor-pointer overflow-hidden"
+              className="mt-3 block rounded-xl border border-white/[0.06] hover:border-primary/30 transition-all duration-200 group cursor-pointer overflow-hidden"
             >
-              {post.articleImage && (
-                <div className="w-full h-52 sm:h-64 overflow-hidden bg-slate-900">
-                  <img
-                    src={post.articleImage}
-                    alt={post.articleTitle || 'Article'}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
+              {post.articleImage ? (
+                <div className="relative">
+                  <div className="w-full h-48 sm:h-56 overflow-hidden bg-slate-900">
+                    <img src={post.articleImage} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <h4 className="text-base font-semibold text-white leading-snug drop-shadow-lg">
+                      {post.articleTitle || 'Read Article'}
+                    </h4>
+                    {post.articleDescription && (
+                      <p className="text-sm text-white/60 mt-1 line-clamp-2">{post.articleDescription}</p>
+                    )}
+                    <div className="flex items-center gap-2 mt-2 text-white/50">
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span className="text-xs">{(() => { try { return new URL(post.articleUrl).hostname.replace('www.', '') } catch { return 'article' } })()}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 bg-white/[0.03]">
+                  <h4 className="text-base font-semibold text-slate-200 group-hover:text-primary transition-colors leading-snug">
+                    {post.articleTitle || 'Read Article'}
+                  </h4>
+                  {post.articleDescription && (
+                    <p className="text-sm text-slate-400 mt-1.5 leading-relaxed">{post.articleDescription}</p>
+                  )}
+                  <div className="flex items-center gap-2 mt-2 text-slate-500">
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span className="text-xs">{(() => { try { return new URL(post.articleUrl).hostname.replace('www.', '') } catch { return 'article' } })()}</span>
+                  </div>
                 </div>
               )}
-              <div className="p-4 bg-white/[0.03]">
-                <h4 className="text-base font-semibold text-slate-200 group-hover:text-primary transition-colors leading-snug">
-                  {post.articleTitle || 'Read Article'}
-                </h4>
-                {post.articleDescription && (
-                  <p className="text-sm text-slate-400 mt-2 leading-relaxed">
-                    {post.articleDescription}
-                  </p>
-                )}
-                <div className="flex items-center gap-2 mt-3 text-slate-500">
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span className="text-xs">{(() => { try { return new URL(post.articleUrl).hostname } catch { return 'article' } })()}</span>
-                </div>
-              </div>
             </a>
           )}
 

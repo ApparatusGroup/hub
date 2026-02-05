@@ -54,29 +54,14 @@ export async function POST(request: Request) {
     })
 
     // Exclude lurker bots (they only like, don't create content)
-    // Also exclude bots that posted within last 90 minutes (hard cooldown)
-    const ninetyMinutesAgo = new Date()
-    ninetyMinutesAgo.setMinutes(ninetyMinutesAgo.getMinutes() - 90)
-
     const botDocs = botsSnapshot.docs.filter(doc => {
       const data = doc.data()
       if (data.isLurker === true) return false
-
-      // Hard cooldown: exclude if posted within last 90 minutes
-      const lastPost = botLastPostTime.get(data.uid)
-      if (lastPost && lastPost > ninetyMinutesAgo) {
-        console.log(`⏭️  Excluding ${data.displayName} - posted ${Math.round((Date.now() - lastPost.getTime()) / 60000)} minutes ago`)
-        return false
-      }
-
       return true
     })
 
     if (botDocs.length === 0) {
-      return NextResponse.json({
-        error: 'All bots on cooldown',
-        hint: 'All AI bots have posted recently. Try again in 90 minutes.'
-      }, { status: 429 })
+      return NextResponse.json({ error: 'No active bots found' }, { status: 404 })
     }
 
     // Calculate weights for bot selection (bots with fewer posts get much higher weight)
@@ -127,41 +112,13 @@ export async function POST(request: Request) {
 
     // Get AI memory for context
     const memory = await getAIMemory(botData.uid)
-
-    // Check posting frequency limits
     const now = Date.now()
-    const lastPostTime = memory?.interactions?.lastPostTime || 0
     const postsToday = memory?.interactions?.postsToday || 0
-    const dailyPostLimit = memory?.interactions?.dailyPostLimit || Math.floor(Math.random() * 10) + 1 // 1-10 posts/day
-
-    // Check if it's a new day - reset counter
+    const lastPostTime = memory?.interactions?.lastPostTime || 0
     const lastPostDate = new Date(lastPostTime).toDateString()
     const todayDate = new Date(now).toDateString()
     const isNewDay = lastPostDate !== todayDate
     const currentPostsToday = isNewDay ? 0 : postsToday
-
-    // Check if bot has reached daily limit
-    if (currentPostsToday >= dailyPostLimit) {
-      return NextResponse.json({
-        error: 'Daily post limit reached',
-        botName: botData.displayName,
-        postsToday: currentPostsToday,
-        limit: dailyPostLimit
-      }, { status: 429 })
-    }
-
-    // Minimum time between posts (varies by bot: 90min to 4 hours)
-    // More conservative to prevent power users
-    const minTimeBetweenPosts = (dailyPostLimit <= 3 ? 4 : dailyPostLimit <= 6 ? 2 : 1.5) * 60 * 60 * 1000
-    const timeSinceLastPost = now - lastPostTime
-
-    if (timeSinceLastPost < minTimeBetweenPosts && lastPostTime > 0) {
-      return NextResponse.json({
-        error: 'Too soon since last post',
-        botName: botData.displayName,
-        minutesUntilNextPost: Math.ceil((minTimeBetweenPosts - timeSinceLastPost) / 60000)
-      }, { status: 429 })
-    }
 
     // Get viral patterns for inspiration
     // Auto-refresh if stale (>6 hours) to keep trending topics current
@@ -486,13 +443,12 @@ export async function POST(request: Request) {
     // Update AI memory with this post and posting stats
     await updateAIMemoryAfterPost(botData.uid, botData.displayName, content)
 
-    // Update posting frequency tracking
+    // Update posting stats
     const memoryRef = adminDb.collection('aiMemory').doc(botData.uid)
     await memoryRef.set({
       interactions: {
         lastPostTime: now,
         postsToday: currentPostsToday + 1,
-        dailyPostLimit: dailyPostLimit,
         postCount: (memory?.interactions?.postCount || 0) + 1,
         commentCount: memory?.interactions?.commentCount || 0,
         lastActive: now,

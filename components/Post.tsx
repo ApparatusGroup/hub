@@ -56,11 +56,12 @@ export default function Post({ post }: PostProps) {
     : {}
 
   const getArticleDomain = (url: string) => {
-    try { return new URL(url).hostname } catch { return null }
+    try { return new URL(url).hostname.replace('www.', '') } catch { return null }
   }
 
   const articleDomain = post.articleUrl ? getArticleDomain(post.articleUrl) : null
   const faviconUrl = articleDomain ? `https://www.google.com/s2/favicons?domain=${articleDomain}&sz=32` : null
+  const hasArticle = post.articleUrl && post.articleTitle
 
   return (
     <div
@@ -69,45 +70,47 @@ export default function Post({ post }: PostProps) {
       style={borderStyle}
     >
       {/* Header */}
-      <div className="flex items-start sm:items-center gap-2.5 mb-2">
+      <div className="flex items-center gap-2.5 mb-2">
         <button
           onClick={(e) => { e.stopPropagation(); router.push(`/profile/${post.userId}`) }}
-          className="flex-shrink-0 cursor-pointer group"
+          className="flex-shrink-0 cursor-pointer"
         >
           {post.userPhoto ? (
-            <img src={post.userPhoto} alt={post.userName} className="w-9 h-9 rounded-full object-cover avatar-ring" />
+            <img src={post.userPhoto} alt={post.userName} className="w-8 h-8 rounded-full object-cover avatar-ring" />
           ) : (
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary via-accent to-secondary flex items-center justify-center text-white font-semibold text-sm avatar-ring">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary via-accent to-secondary flex items-center justify-center text-white font-semibold text-xs avatar-ring">
               {post.userName[0].toUpperCase()}
             </div>
           )}
         </button>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={(e) => { e.stopPropagation(); router.push(`/profile/${post.userId}`) }}
-              className="font-semibold text-sm text-slate-100 hover:text-primary transition-colors truncate max-w-[140px] sm:max-w-none"
+              className="font-semibold text-sm text-slate-100 hover:text-primary transition-colors truncate"
             >
               {post.userName}
             </button>
-            <span className="text-xs text-slate-500">
+            {post.category && categoryStyle && (
+              <span className="text-[10px] px-1.5 py-px rounded-full font-medium" style={badgeStyle}>
+                {categoryStyle.name}
+              </span>
+            )}
+            <span className="text-[10px] text-slate-500 ml-auto flex-shrink-0">
               {formatDistanceToNow(post.createdAt, { addSuffix: true })}
             </span>
           </div>
-          {post.category && categoryStyle && (
-            <span className="inline-block mt-0.5 text-[10px] px-2 py-0.5 rounded-full font-medium" style={badgeStyle}>
-              {categoryStyle.name}
-            </span>
-          )}
         </div>
       </div>
 
-      {/* Content */}
-      <p className="text-slate-300 text-sm sm:text-[15px] leading-relaxed line-clamp-3 mb-1.5">{post.content}</p>
+      {/* Content - only show if it's NOT just the article title */}
+      {(!hasArticle || (post.content && post.content !== post.articleTitle)) && (
+        <p className="text-slate-300 text-sm leading-relaxed line-clamp-2 mb-1.5">{post.content}</p>
+      )}
 
-      {/* Image */}
+      {/* Image-only post */}
       {post.imageUrl && (
-        <div className="mt-1.5 mb-1.5 rounded-xl overflow-hidden border border-white/[0.06]">
+        <div className="mt-1 rounded-xl overflow-hidden border border-white/[0.06]">
           <img
             src={post.imageUrl}
             alt="Post"
@@ -117,41 +120,59 @@ export default function Post({ post }: PostProps) {
         </div>
       )}
 
-      {/* Article Link Preview */}
-      {post.articleUrl && post.articleTitle && (
+      {/* Article Link - sleek single card, title shown ONCE here */}
+      {hasArticle && (
         <a
           href={post.articleUrl}
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="mt-1.5 mb-1.5 block rounded-xl border border-white/[0.06] hover:border-primary/20 transition-all overflow-hidden group/link"
+          className="mt-1.5 block rounded-xl border border-white/[0.06] hover:border-primary/20 transition-all overflow-hidden group/link"
         >
-          {post.articleImage && (
-            <div className="w-full h-40 sm:h-48 overflow-hidden bg-slate-900">
-              <img
-                src={post.articleImage}
-                alt={post.articleTitle}
-                className="w-full h-full object-cover group-hover/link:scale-105 transition-transform duration-300"
-                onError={(e) => { (e.target as HTMLImageElement).parentElement!.style.display = 'none' }}
-              />
+          {post.articleImage ? (
+            <div className="relative">
+              <div className="w-full h-36 sm:h-44 overflow-hidden bg-slate-900">
+                <img
+                  src={post.articleImage}
+                  alt=""
+                  className="w-full h-full object-cover group-hover/link:scale-105 transition-transform duration-300"
+                  onError={(e) => { (e.target as HTMLImageElement).parentElement!.style.display = 'none' }}
+                />
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-3">
+                <h4 className="text-sm font-semibold text-white leading-snug line-clamp-2 drop-shadow-lg">
+                  {post.articleTitle}
+                </h4>
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  {faviconUrl && (
+                    <img src={faviconUrl} alt="" className="w-3 h-3 rounded-sm opacity-70"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                  )}
+                  <span className="text-[10px] text-white/60">{articleDomain}</span>
+                  <ExternalLink className="w-2.5 h-2.5 text-white/40 ml-auto" />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 p-3 bg-white/[0.02]">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-white/[0.06] flex items-center justify-center">
+                {faviconUrl ? (
+                  <img src={faviconUrl} alt="" className="w-5 h-5 rounded-sm"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                ) : (
+                  <ExternalLink className="w-4 h-4 text-slate-500" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-medium text-slate-200 group-hover/link:text-primary transition-colors leading-snug line-clamp-2">
+                  {post.articleTitle}
+                </h4>
+                <span className="text-[10px] text-slate-500">{articleDomain}</span>
+              </div>
+              <ExternalLink className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />
             </div>
           )}
-          <div className="p-3 bg-white/[0.03]">
-            <h4 className="text-sm font-semibold text-slate-200 group-hover/link:text-primary transition-colors leading-snug line-clamp-2">
-              {post.articleTitle}
-            </h4>
-            {post.articleDescription && (
-              <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">{post.articleDescription}</p>
-            )}
-            <div className="flex items-center gap-1.5 mt-2">
-              {faviconUrl && (
-                <img src={faviconUrl} alt="" className="w-3.5 h-3.5 flex-shrink-0 rounded-sm opacity-50"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-              )}
-              <span className="text-[10px] text-slate-500">{articleDomain}</span>
-              <ExternalLink className="w-3 h-3 text-slate-600 ml-auto" />
-            </div>
-          </div>
         </a>
       )}
 
