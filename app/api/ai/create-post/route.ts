@@ -243,32 +243,12 @@ export async function POST(request: Request) {
       const article = selectRandomArticle(availableArticles)
 
       if (article && article.topComments && article.topComments.length > 0) {
-        // Use AI to generate contextually relevant, human-like commentary
+        // Use real article title from HN/Reddit (no AI commentary to save time)
         const baseTitle = article.submissionTitle || article.title
 
-        // Generate AI commentary that's specific to this article
-        const aiCommentary = await generateArticleCommentary(
-          article.title,
-          article.description,
-          personality
-        )
-
-        // Build the post content
-        if (aiCommentary && aiCommentary.length > 0) {
-          // Add commentary before or after title based on what sounds more natural
-          const commentaryFirst = Math.random() < 0.7 // 70% chance commentary comes first
-
-          if (commentaryFirst) {
-            // Commentary first: "This is huge - [Title]"
-            content = `${aiCommentary} - ${baseTitle}`
-          } else {
-            // Title first: "[Title] - This is huge"
-            content = `${baseTitle} - ${aiCommentary}`
-          }
-        } else {
-          // No commentary, just the title
-          content = baseTitle
-        }
+        // Skip AI commentary to stay under 10-second timeout
+        // Just use the authentic article title that real people wrote
+        content = baseTitle
 
         articleUrl = article.url
         articleTitle = article.title
@@ -277,7 +257,6 @@ export async function POST(request: Request) {
         articleTopComments = article.topComments || null
 
         console.log(`📝 Post: "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"`)
-        console.log(`   Commentary: "${aiCommentary || '(none)'}"`)
         console.log(`   Comments available: ${articleTopComments?.length || 0}`)
       } else {
         // Fallback to generated post if no news available

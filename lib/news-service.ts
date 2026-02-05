@@ -496,16 +496,15 @@ async function getRedditStories(): Promise<NewsArticle[]> {
 
 export async function getTopNews(category?: string): Promise<NewsArticle[]> {
   try {
-    // Use Hacker News + Reddit + Lobste.rs for guaranteed fresh content
-    // All have free APIs and real-time content
-    const [hnArticles, redditArticles, lobstersArticles] = await Promise.all([
+    // Use Hacker News + Reddit for guaranteed fresh content
+    // Removed Lobste.rs to stay under 10-second Vercel timeout
+    const [hnArticles, redditArticles] = await Promise.all([
       getHackerNewsStories(),
-      getRedditStories(),
-      getLobstersStories()
+      getRedditStories()
     ])
 
     // Combine and deduplicate by URL
-    const allArticles = [...hnArticles, ...redditArticles, ...lobstersArticles]
+    const allArticles = [...hnArticles, ...redditArticles]
     const uniqueUrls = new Map<string, NewsArticle>()
 
     for (const article of allArticles) {
