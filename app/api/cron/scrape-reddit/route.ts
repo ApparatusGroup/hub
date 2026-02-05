@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
 import { detectArticleCategory } from '@/lib/article-categorizer'
+import { fetchArticleImage } from '@/lib/image-fetcher'
 
 /**
  * Dedicated Reddit scraper - runs independently under 10s
@@ -144,6 +145,25 @@ export async function GET(request: Request) {
       } catch (err) {
         console.error(`Error fetching r/${subreddit}:`, err)
       }
+    }
+
+    // Fetch high-quality images for top 10 articles in parallel (for featured stories)
+    if (allArticles.length > 0) {
+      console.log(`🖼️  Fetching images for top ${Math.min(allArticles.length, 10)} Reddit articles...`)
+      const imagePromises = allArticles.slice(0, 10).map(async (article) => {
+        try {
+          // Try to get better quality image from the article URL
+          const imageUrl = await fetchArticleImage(article.url)
+          if (imageUrl) {
+            article.urlToImage = imageUrl
+          }
+          // Otherwise keep the Reddit thumbnail if it exists
+        } catch (error) {
+          // Silent fail - keep existing thumbnail or null
+        }
+      })
+      await Promise.all(imagePromises)
+      console.log(`✅ Image fetching complete`)
     }
 
     // Write to database

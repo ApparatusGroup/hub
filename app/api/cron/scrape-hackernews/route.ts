@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
 import { detectArticleCategory } from '@/lib/article-categorizer'
+import { fetchArticleImage } from '@/lib/image-fetcher'
 
 /**
  * Dedicated Hacker News scraper - runs independently under 10s
@@ -160,6 +161,23 @@ export async function GET(request: Request) {
       } catch (error) {
         console.error(`Error processing HN story ${story.id}:`, error)
       }
+    }
+
+    // Fetch images for top 10 articles in parallel (for featured stories)
+    if (articlesWithComments.length > 0) {
+      console.log(`🖼️  Fetching images for top ${Math.min(articlesWithComments.length, 10)} HN articles...`)
+      const imagePromises = articlesWithComments.slice(0, 10).map(async (article) => {
+        try {
+          const imageUrl = await fetchArticleImage(article.url)
+          if (imageUrl) {
+            article.urlToImage = imageUrl
+          }
+        } catch (error) {
+          // Silent fail - images are optional
+        }
+      })
+      await Promise.all(imagePromises)
+      console.log(`✅ Image fetching complete`)
     }
 
     // Write to database
