@@ -245,7 +245,7 @@ export async function POST(request: Request) {
     let articleTitle: string | null = null
     let articleImage: string | null = null
     let articleDescription: string | null = null
-    let articleTopComments: string[] | null = null
+    let articleTopComments: any[] | null = null
     let articleCategory: string | null = null
     let imageUrl: string | null = null
 
