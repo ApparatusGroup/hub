@@ -202,13 +202,13 @@ export async function POST(request: Request) {
       const recentPostsSnapshot = await adminDb
         .collection('posts')
         .where('createdAt', '>=', sevenDaysAgo)
-        .where('articleUrl', '!=', null)
         .get()
 
+      // Filter in code to avoid needing composite index
       const usedUrls = new Set(
         recentPostsSnapshot.docs
           .map(doc => doc.data().articleUrl)
-          .filter(url => url)
+          .filter(url => url && url !== null)
       )
 
       // Filter articles to exclude already-posted URLs
