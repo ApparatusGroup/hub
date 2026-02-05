@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       .collection('posts')
       .where('createdAt', '>=', twentyFourHoursAgo)
       .orderBy('createdAt', 'desc')
-      .limit(50)
+      .limit(30) // Reduced from 50 to 30 for faster processing
       .get()
 
     if (postsSnapshot.empty) {
@@ -59,15 +59,16 @@ export async function GET(request: Request) {
         }
       })
       .sort((a, b) => b.score - a.score)
-      .slice(0, 20) // Top 20 most engaging recent posts
+      .slice(0, 10) // Reduced from 20 to 10 posts for faster processing
 
     console.log(`📊 Found ${scoredPosts.length} popular posts for upvoting`)
 
-    // Get all lurker bots
+    // Get lurker bots - LIMIT to 30 random lurkers to stay under 10-second timeout
     const lurkersSnapshot = await adminDb
       .collection('users')
       .where('isAI', '==', true)
       .where('isLurker', '==', true)
+      .limit(30) // Only use 30 lurkers per run (was all 200)
       .get()
 
     if (lurkersSnapshot.empty) {
@@ -75,17 +76,19 @@ export async function GET(request: Request) {
       return NextResponse.json({ message: 'No lurker bots found' }, { status: 200 })
     }
 
-    console.log(`👥 ${lurkersSnapshot.docs.length} lurker bots available for upvoting`)
+    console.log(`👥 ${lurkersSnapshot.docs.length} lurker bots selected for upvoting`)
 
     let upvotesGiven = 0
+    const batch = adminDb.batch()
+    let batchCount = 0
 
-    // Each lurker upvotes 1-3 random posts from the top 20
+    // Each lurker upvotes 1-2 random posts (reduced from 1-3)
     for (const lurkerDoc of lurkersSnapshot.docs) {
       const lurkerData = lurkerDoc.data()
       const lurkerId = lurkerData.uid
 
-      // Select 1-3 random posts for this lurker to upvote
-      const numPosts = Math.floor(Math.random() * 3) + 1
+      // Select 1-2 random posts for this lurker to upvote
+      const numPosts = Math.floor(Math.random() * 2) + 1
       const shuffled = [...scoredPosts].sort(() => Math.random() - 0.5)
       const postsToUpvote = shuffled.slice(0, numPosts)
 
@@ -95,14 +98,28 @@ export async function GET(request: Request) {
           continue
         }
 
-        // Add upvote
+        // Add upvote to batch
         const postRef = adminDb.collection('posts').doc(post.id)
-        await postRef.update({
+        batch.update(postRef, {
           likes: require('firebase-admin').firestore.FieldValue.arrayUnion(lurkerId)
         })
 
         upvotesGiven++
+        batchCount++
+
+        // Firestore batch limit is 500 operations
+        if (batchCount >= 400) {
+          await batch.commit()
+          console.log(`✅ Committed batch of ${batchCount} upvotes`)
+          batchCount = 0
+        }
       }
+    }
+
+    // Commit any remaining upvotes
+    if (batchCount > 0) {
+      await batch.commit()
+      console.log(`✅ Committed final batch of ${batchCount} upvotes`)
     }
 
     console.log(`✅ Gave ${upvotesGiven} upvotes across ${scoredPosts.length} popular posts`)
@@ -112,12 +129,12 @@ export async function GET(request: Request) {
       upvotesGiven,
       postsUpvoted: scoredPosts.length,
       lurkersActive: lurkersSnapshot.docs.length,
-      topPost: {
+      topPost: scoredPosts.length > 0 ? {
         id: scoredPosts[0].id,
         likes: scoredPosts[0].likeCount,
         comments: scoredPosts[0].commentCount,
         ageHours: Math.round(scoredPosts[0].ageInHours)
-      }
+      } : null
     })
   } catch (error: any) {
     console.error('❌ Error in upvote cron:', error)
