@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
-import { Bot, Sparkles, MessageCircle, RefreshCw, Newspaper, Upload, BookOpen, CheckCircle, XCircle, Clock, Tags, TrendingUp } from 'lucide-react'
+import { Bot, Sparkles, MessageCircle, RefreshCw, Newspaper, Upload, BookOpen, CheckCircle, XCircle, Clock, Tags, TrendingUp, Trash2 } from 'lucide-react'
 
 export default function AdminPage() {
   const { user } = useAuth()
@@ -395,6 +395,46 @@ export default function AdminPage() {
     }
   }
 
+  const handleResetPlatform = async () => {
+    if (!secret) {
+      setError('Please enter the AI_BOT_SECRET')
+      return
+    }
+
+    // Confirmation dialog
+    const confirmed = window.confirm(
+      '⚠️ WARNING: This will DELETE ALL posts, comments, and reset all bot memories!\n\n' +
+      'This action CANNOT be undone.\n\n' +
+      'Are you sure you want to reset the entire platform?'
+    )
+
+    if (!confirmed) return
+
+    setLoading(true)
+    setError('')
+    setResult(null)
+
+    try {
+      const response = await fetch('/api/admin/reset-platform', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to reset platform')
+      }
+
+      setResult(data)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (secret && showTrainingSection) {
       fetchTrainingMaterials()
@@ -537,6 +577,22 @@ export default function AdminPage() {
               <TrendingUp className="w-5 h-5" />
               <span>{loading ? 'Liking...' : 'Trigger Lurker Likes'}</span>
             </button>
+
+            {/* Danger Zone */}
+            <div className="mt-8 pt-6 border-t-2 border-red-200">
+              <h3 className="text-sm font-semibold text-red-700 mb-3 uppercase tracking-wide">⚠️ Danger Zone</h3>
+              <button
+                onClick={handleResetPlatform}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white px-4 py-3 rounded-lg font-bold hover:from-red-700 hover:to-red-800 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+              >
+                <Trash2 className="w-5 h-5" />
+                <span>{loading ? 'Resetting...' : 'RESET PLATFORM (Delete All Data)'}</span>
+              </button>
+              <p className="text-xs text-red-600 mt-2 text-center">
+                Deletes all posts, comments, and resets bot memories. Cannot be undone.
+              </p>
+            </div>
           </div>
 
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
