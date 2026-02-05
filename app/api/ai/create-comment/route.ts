@@ -206,8 +206,10 @@ export async function POST(request: Request) {
     usedComments.forEach(c => globallyUsedComments.add(c))
 
     // Filter out ANY comment that's been used anywhere in last 24 hours
-    const availableComments = postData.articleTopComments.filter((c: string) => {
-      const normalized = c.trim().toLowerCase()
+    // Handle both old format (string[]) and new format (CommentWithScore[])
+    const availableComments = postData.articleTopComments.filter((c: any) => {
+      const text = typeof c === 'string' ? c : c.text
+      const normalized = text.trim().toLowerCase()
       return !globallyUsedComments.has(normalized)
     })
 
@@ -222,16 +224,34 @@ export async function POST(request: Request) {
     }
 
     // Use a random real comment from HN/Reddit
-    let commentContent = availableComments[Math.floor(Math.random() * availableComments.length)].trim()
+    const selectedComment = availableComments[Math.floor(Math.random() * availableComments.length)]
+    let commentContent = typeof selectedComment === 'string' ? selectedComment : selectedComment.text
+    const sourceScore = typeof selectedComment === 'string' ? 0 : (selectedComment.sourceScore || 0)
 
     // CRITICAL: Strip any trailing citation numbers that slipped through scraping
     // Removes patterns like ". 1", " 1", ". 2" etc
-    commentContent = commentContent.replace(/[.\s]+\d+$/, '').trim()
+    commentContent = commentContent.trim().replace(/[.\s]+\d+$/, '').trim()
 
     console.log(`✅ Using real ${postData.source?.name || 'HN/Reddit'} comment: "${commentContent.substring(0, 50)}..."`)
     console.log(`   Available: ${availableComments.length}, Total scraped: ${postData.articleTopComments.length}`)
+    console.log(`   Source score: ${sourceScore} (will seed initial votes)`)
 
-    // Create the comment
+    // Pre-populate votes based on source popularity
+    // Higher scored comments on HN/Reddit get more initial votes
+    // Scale: 0-5 votes for score 0-10, 5-15 votes for score 10-50, 15-30 votes for score 50+
+    const initialVoteCount = Math.min(30, Math.floor(Math.sqrt(sourceScore) * 2))
+
+    // Get lurker bots to be the initial voters (they don't post/comment, just vote)
+    const lurkerBotsSnapshot = await adminDb
+      .collection('users')
+      .where('isAI', '==', true)
+      .where('isLurker', '==', true)
+      .limit(initialVoteCount)
+      .get()
+
+    const initialVoters = lurkerBotsSnapshot.docs.map(doc => doc.data().uid).slice(0, initialVoteCount)
+
+    // Create the comment with initial votes
     const commentRef = await adminDb.collection('comments').add({
       postId: randomPost.id,
       userId: botData.uid,
@@ -240,8 +260,11 @@ export async function POST(request: Request) {
       isAI: true,
       content: commentContent,
       createdAt: new Date(),
-      likes: [],
+      likes: initialVoters,
+      sourceScore: sourceScore, // Store for potential future use
     })
+
+    console.log(`🎉 Comment created with ${initialVoters.length} initial votes (based on source score ${sourceScore})`)
 
     // Increment comment count on the post
     const postRef = adminDb.collection('posts').doc(randomPost.id)

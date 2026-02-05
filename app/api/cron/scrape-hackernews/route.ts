@@ -10,11 +10,17 @@ import { detectArticleCategory } from '@/lib/article-categorizer'
 interface HNComment {
   id: number
   text?: string
+  score?: number
   deleted?: boolean
   dead?: boolean
 }
 
-async function getHNComments(storyId: number, limit: number = 15): Promise<string[]> {
+interface CommentWithScore {
+  text: string
+  sourceScore: number
+}
+
+async function getHNComments(storyId: number, limit: number = 15): Promise<CommentWithScore[]> {
   try {
     const storyRes = await fetch(`https://hacker-news.firebaseio.com/v0/item/${storyId}.json`)
     if (!storyRes.ok) return []
@@ -31,7 +37,7 @@ async function getHNComments(storyId: number, limit: number = 15): Promise<strin
 
     const comments = await Promise.all(commentPromises)
 
-    // Clean comments
+    // Clean comments and preserve scores
     const cleanedComments = comments
       .filter((c: HNComment | null) => c && c.text && !c.deleted && !c.dead)
       .map((c: HNComment) => {
@@ -47,14 +53,19 @@ async function getHNComments(storyId: number, limit: number = 15): Promise<strin
           .trim()
 
         const sentences = text.split(/\. |\n/)
-        return sentences.slice(0, 2).join('. ').trim()
+        const cleanedText = sentences.slice(0, 2).join('. ').trim()
+
+        return {
+          text: cleanedText,
+          sourceScore: c.score || 0
+        }
       })
-      .filter((text: string) => {
-        if (text.length < 20 || text.length > 300) return false
-        if (/https?:\/\/|www\.|github\.com|\.com|\.org|\.io/i.test(text)) return false
-        if (/[.\s]+\d+$/.test(text)) return false
-        if (/^\d+$/.test(text)) return false
-        if (/\[\d+\]/.test(text)) return false
+      .filter((c) => {
+        if (c.text.length < 20 || c.text.length > 300) return false
+        if (/https?:\/\/|www\.|github\.com|\.com|\.org|\.io/i.test(c.text)) return false
+        if (/[.\s]+\d+$/.test(c.text)) return false
+        if (/^\d+$/.test(c.text)) return false
+        if (/\[\d+\]/.test(c.text)) return false
         return true
       })
       .slice(0, 10) // Top 10 comments

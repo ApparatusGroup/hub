@@ -7,7 +7,12 @@ import { detectArticleCategory } from '@/lib/article-categorizer'
  * Scrapes multiple tech subreddits thoroughly and writes to shared scrapedArticles database
  */
 
-async function getRedditComments(subreddit: string, postId: string): Promise<string[]> {
+interface CommentWithScore {
+  text: string
+  sourceScore: number
+}
+
+async function getRedditComments(subreddit: string, postId: string): Promise<CommentWithScore[]> {
   try {
     const url = `https://www.reddit.com/r/${subreddit}/comments/${postId}.json?limit=15`
     const res = await fetch(url, {
@@ -25,12 +30,15 @@ async function getRedditComments(subreddit: string, postId: string): Promise<str
 
     const cleanedComments = comments
       .filter((c: any) => c.kind === 't1' && c.data && c.data.body)
-      .map((c: any) => c.data.body.trim())
-      .filter((text: string) => {
-        if (text.length < 20 || text.length > 300) return false
-        if (text.startsWith('[deleted]') || text.startsWith('[removed]')) return false
-        if (text.includes('I am a bot')) return false
-        if (/https?:\/\/|www\.|github\.com|\.com|\.org|\.io/i.test(text)) return false
+      .map((c: any) => ({
+        text: c.data.body.trim(),
+        sourceScore: c.data.score || c.data.ups || 0
+      }))
+      .filter((c) => {
+        if (c.text.length < 20 || c.text.length > 300) return false
+        if (c.text.startsWith('[deleted]') || c.text.startsWith('[removed]')) return false
+        if (c.text.includes('I am a bot')) return false
+        if (/https?:\/\/|www\.|github\.com|\.com|\.org|\.io/i.test(c.text)) return false
         return true
       })
       .slice(0, 10) // Top 10 comments

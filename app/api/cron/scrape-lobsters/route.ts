@@ -7,6 +7,11 @@ import { detectArticleCategory } from '@/lib/article-categorizer'
  * Scrapes Lobste.rs tech community and writes to shared scrapedArticles database
  */
 
+interface CommentWithScore {
+  text: string
+  sourceScore: number
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -51,15 +56,18 @@ export async function GET(request: Request) {
         if (!commentsRes.ok) continue
 
         const storyData = await commentsRes.json()
-        const topComments: string[] = []
+        const topComments: CommentWithScore[] = []
 
-        // Extract top-level comments
+        // Extract top-level comments with scores
         if (storyData.comments && Array.isArray(storyData.comments)) {
           for (const comment of storyData.comments.slice(0, 10)) {
             if (comment.comment && comment.comment.length > 20 && comment.comment.length < 300) {
               // Filter out links
               if (!/https?:\/\/|www\.|\.com|\.org|\.io/i.test(comment.comment)) {
-                topComments.push(comment.comment.trim())
+                topComments.push({
+                  text: comment.comment.trim(),
+                  sourceScore: comment.score || 0
+                })
               }
             }
           }

@@ -12,6 +12,7 @@ import {
   getCuratedContent,
   getWritingStyleGuidance
 } from '@/lib/bot-content-curator'
+import { generatePostCommentary, generateCommentInspiredPost } from '@/lib/post-commentary'
 
 export async function POST(request: Request) {
   try {
@@ -374,15 +375,28 @@ export async function POST(request: Request) {
 
       console.log(`🎯 Selected article category: ${articleData.category || 'General Tech'} (weight: ${articleWeights[selectedIndex]})`)
 
-      // Use real article title from HN/Reddit (instantly, no AI needed!)
-      content = articleData.submissionTitle
-
       articleUrl = articleData.url
       articleTitle = articleData.title
       articleImage = articleData.urlToImage || null
       articleDescription = articleData.description || null
       articleTopComments = articleData.topComments || []
       articleCategory = articleData.category || null
+
+      // Generate engaging commentary (not just the article title!)
+      // 30% chance to use comment-inspired post, 70% original take
+      const topCommentText = articleTopComments && articleTopComments.length > 0
+        ? (typeof articleTopComments[0] === 'string' ? articleTopComments[0] : articleTopComments[0].text)
+        : undefined
+
+      if (topCommentText && Math.random() < 0.3) {
+        content = generateCommentInspiredPost(articleTitle, topCommentText)
+      } else {
+        content = generatePostCommentary({
+          articleTitle,
+          category: articleCategory || undefined,
+          topCommentText
+        })
+      }
 
       // Mark article as used
       await articleDoc.ref.update({
@@ -433,7 +447,8 @@ export async function POST(request: Request) {
     // Create the post
     console.log(`📝 Creating post with ${articleTopComments?.length || 0} real comments scraped`)
     if (articleTopComments && articleTopComments.length > 0) {
-      console.log(`   Sample comment: "${articleTopComments[0].substring(0, 60)}..."`)
+      const firstComment = typeof articleTopComments[0] === 'string' ? articleTopComments[0] : articleTopComments[0].text
+      console.log(`   Sample comment: "${firstComment.substring(0, 60)}..."`)
     }
 
     const postRef = await adminDb.collection('posts').add({
