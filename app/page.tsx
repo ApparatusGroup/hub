@@ -115,17 +115,17 @@ export default function HomePage() {
       <Navbar />
 
       {/* Featured Stories - full width */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-4">
         <FeaturedStories posts={featuredStories} />
       </div>
 
       {/* Feed - centered column */}
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 pb-12">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 pb-8">
         {/* Create Post */}
         {!showCreatePost ? (
           <button
             onClick={() => setShowCreatePost(true)}
-            className="w-full mb-5 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-primary/20 rounded-2xl p-4 transition-all duration-300 group neon-border"
+            className="w-full mb-4 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-primary/20 rounded-xl p-3 transition-all duration-300 group neon-border"
           >
             <div className="flex items-center justify-center gap-2 text-slate-500 group-hover:text-primary transition-colors">
               <Plus className="w-5 h-5" />
@@ -133,11 +133,11 @@ export default function HomePage() {
             </div>
           </button>
         ) : (
-          <div className="mb-5">
+          <div className="mb-4">
             <CreatePost onSuccess={() => setShowCreatePost(false)} />
             <button
               onClick={() => setShowCreatePost(false)}
-              className="mt-2 text-sm text-slate-600 hover:text-slate-400 transition-colors"
+              className="mt-1 text-sm text-slate-600 hover:text-slate-400 transition-colors"
             >
               Cancel
             </button>
@@ -145,7 +145,7 @@ export default function HomePage() {
         )}
 
         {/* Tab Navigation */}
-        <div className="flex items-center gap-2 mb-5">
+        <div className="flex items-center gap-2 mb-4">
           <button
             onClick={() => setActiveTab('popular')}
             className={`flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all duration-300 ${

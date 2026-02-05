@@ -16,12 +16,19 @@ export default function FeaturedStories({ posts }: FeaturedStoriesProps) {
 
   if (posts.length === 0) return null
 
-  const getCategoryGradientStyle = (category?: string): React.CSSProperties => {
-    const categoryStyle = category ? POST_CATEGORIES[category as keyof typeof POST_CATEGORIES] : null
+  // Generate a unique gradient for cards without images
+  const getPlaceholderStyle = (post: PostType): React.CSSProperties => {
+    const categoryStyle = post.category ? POST_CATEGORIES[post.category as keyof typeof POST_CATEGORIES] : null
     const color = categoryStyle?.color || '#06B6D4'
-    return {
-      background: `linear-gradient(135deg, ${color}25, #0A0E1A 50%, ${color}15)`,
-    }
+    // Create a unique-looking gradient based on post content hash
+    const hash = post.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+    const angle = (hash % 6) * 60
+    const patterns = [
+      `linear-gradient(${angle}deg, ${color}30 0%, #0A0E1A 40%, ${color}15 100%)`,
+      `linear-gradient(${angle + 45}deg, #0A0E1A 0%, ${color}20 50%, #0A0E1A 100%)`,
+      `radial-gradient(ellipse at ${30 + (hash % 40)}% ${20 + (hash % 40)}%, ${color}25 0%, #0A0E1A 70%)`,
+    ]
+    return { background: patterns[hash % patterns.length] }
   }
 
   const scroll = (direction: 'left' | 'right') => {
@@ -34,9 +41,9 @@ export default function FeaturedStories({ posts }: FeaturedStoriesProps) {
   }
 
   return (
-    <div className="mb-8">
+    <div className="mb-5">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 px-4 sm:px-0">
+      <div className="flex items-center justify-between mb-3 px-4 sm:px-0">
         <div className="flex items-center gap-2.5">
           <div className="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 neon-border">
             <Flame className="w-4 h-4 text-primary" />
@@ -77,7 +84,7 @@ export default function FeaturedStories({ posts }: FeaturedStoriesProps) {
                 onClick={() => router.push(`/post/${post.id}`)}
                 className={`${
                   isHero ? 'w-[85vw] sm:w-[480px]' : 'w-[260px] sm:w-[300px]'
-                } h-[280px] sm:h-[320px] flex-shrink-0 snap-start cursor-pointer group relative rounded-2xl overflow-hidden neon-border`}
+                } h-[280px] sm:h-[320px] flex-shrink-0 snap-center cursor-pointer group relative rounded-2xl overflow-hidden neon-border`}
               >
                 {/* Background */}
                 <div className="absolute inset-0">
@@ -91,64 +98,68 @@ export default function FeaturedStories({ posts }: FeaturedStoriesProps) {
                       <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/70 to-transparent" />
                     </>
                   ) : (
-                    <div className="w-full h-full relative" style={getCategoryGradientStyle(post.category)}>
-                      {/* Decorative grid + accent elements for text-only cards */}
-                      <div className="absolute inset-0 bg-grid opacity-40" />
-                      <div className="absolute top-4 right-4 flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/[0.06] border border-white/[0.08]">
-                        <TrendingUp className="w-3 h-3" style={{ color: categoryColor }} />
-                        <span className="text-[10px] font-semibold" style={{ color: categoryColor }}>Trending</span>
-                      </div>
-                      {/* Large decorative quote mark */}
-                      <div className="absolute top-12 left-5 text-6xl font-serif leading-none opacity-10" style={{ color: categoryColor }}>&ldquo;</div>
+                    <div className="w-full h-full relative" style={getPlaceholderStyle(post)}>
+                      <div className="absolute inset-0 bg-grid opacity-30" />
+                      {/* Decorative quote mark */}
+                      <div className="absolute top-8 left-5 text-6xl font-serif leading-none opacity-10" style={{ color: categoryColor }}>&ldquo;</div>
                     </div>
                   )}
                 </div>
 
                 {/* Content */}
-                <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-end">
-                  {categoryStyle && (
-                    <span
-                      className="self-start mb-2 text-[10px] px-2.5 py-0.5 rounded-full font-semibold backdrop-blur-md border"
-                      style={{
-                        backgroundColor: `${categoryStyle.color}15`,
-                        color: categoryStyle.color,
-                        borderColor: `${categoryStyle.color}30`,
-                      }}
-                    >
-                      {categoryStyle.name}
-                    </span>
-                  )}
-
-                  <h3 className={`font-bold text-white mb-1.5 leading-snug ${isHero ? 'text-xl sm:text-2xl line-clamp-3' : 'text-base sm:text-lg line-clamp-2'} ${!imageUrl ? 'line-clamp-4' : ''}`}>
-                    {post.articleTitle || post.content}
-                  </h3>
-
-                  {/* Show a content preview for text-only posts */}
-                  {!imageUrl && !post.articleTitle && post.content.length > 60 && (
-                    <p className="text-slate-400 text-xs line-clamp-2 mb-1">{post.content}</p>
-                  )}
-
-                  <div className="flex items-center justify-between mt-auto pt-2">
-                    <div className="flex items-center gap-2">
-                      {post.userPhoto ? (
-                        <img src={post.userPhoto} alt={post.userName} className="w-6 h-6 rounded-full object-cover ring-1 ring-white/20" />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-semibold text-[10px] ring-1 ring-white/20">
-                          {post.userName[0].toUpperCase()}
-                        </div>
-                      )}
-                      <span className="text-slate-300 text-xs font-medium">{post.userName}</span>
-                      <span className="text-slate-500 text-[10px]">{formatDistanceToNow(post.createdAt, { addSuffix: true })}</span>
+                <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-between">
+                  {/* Top row: trending tag */}
+                  <div className="flex items-center justify-between">
+                    {categoryStyle ? (
+                      <span
+                        className="text-[10px] px-2.5 py-0.5 rounded-full font-semibold backdrop-blur-md border"
+                        style={{
+                          backgroundColor: `${categoryStyle.color}15`,
+                          color: categoryStyle.color,
+                          borderColor: `${categoryStyle.color}30`,
+                        }}
+                      >
+                        {categoryStyle.name}
+                      </span>
+                    ) : <span />}
+                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-sm border border-white/[0.08]">
+                      <TrendingUp className="w-2.5 h-2.5" style={{ color: categoryColor }} />
+                      <span className="text-[9px] font-semibold" style={{ color: categoryColor }}>Trending</span>
                     </div>
+                  </div>
 
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex items-center gap-1 text-rose-400/80">
-                        <Heart className="w-3 h-3 fill-current" />
-                        <span className="text-[10px] font-semibold">{post.likes.length}</span>
+                  {/* Bottom content */}
+                  <div>
+                    <h3 className={`font-bold text-white mb-1 leading-snug ${isHero ? 'text-xl sm:text-2xl line-clamp-3' : 'text-base sm:text-lg line-clamp-2'} ${!imageUrl ? 'line-clamp-4' : ''}`}>
+                      {post.articleTitle || post.content}
+                    </h3>
+
+                    {!imageUrl && !post.articleTitle && post.content.length > 60 && (
+                      <p className="text-slate-400 text-xs line-clamp-2 mb-1">{post.content}</p>
+                    )}
+
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex items-center gap-2">
+                        {post.userPhoto ? (
+                          <img src={post.userPhoto} alt={post.userName} className="w-6 h-6 rounded-full object-cover ring-1 ring-white/20" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-semibold text-[10px] ring-1 ring-white/20">
+                            {post.userName[0].toUpperCase()}
+                          </div>
+                        )}
+                        <span className="text-slate-300 text-xs font-medium">{post.userName}</span>
+                        <span className="text-slate-500 text-[10px]">{formatDistanceToNow(post.createdAt, { addSuffix: true })}</span>
                       </div>
-                      <div className="flex items-center gap-1 text-primary/80">
-                        <MessageCircle className="w-3 h-3" />
-                        <span className="text-[10px] font-semibold">{post.commentCount || 0}</span>
+
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-1 text-rose-400/80">
+                          <Heart className="w-3 h-3 fill-current" />
+                          <span className="text-[10px] font-semibold">{post.likes.length}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-primary/80">
+                          <MessageCircle className="w-3 h-3" />
+                          <span className="text-[10px] font-semibold">{post.commentCount || 0}</span>
+                        </div>
                       </div>
                     </div>
                   </div>

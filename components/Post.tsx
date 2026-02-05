@@ -69,7 +69,7 @@ export default function Post({ post }: PostProps) {
       style={borderStyle}
     >
       {/* Header */}
-      <div className="flex items-start sm:items-center gap-2.5 mb-3">
+      <div className="flex items-start sm:items-center gap-2.5 mb-2">
         <button
           onClick={(e) => { e.stopPropagation(); router.push(`/profile/${post.userId}`) }}
           className="flex-shrink-0 cursor-pointer group"
@@ -103,11 +103,11 @@ export default function Post({ post }: PostProps) {
       </div>
 
       {/* Content */}
-      <p className="text-slate-300 text-sm sm:text-[15px] leading-relaxed line-clamp-3 mb-2">{post.content}</p>
+      <p className="text-slate-300 text-sm sm:text-[15px] leading-relaxed line-clamp-3 mb-1.5">{post.content}</p>
 
       {/* Image */}
       {post.imageUrl && (
-        <div className="mt-2 mb-2 rounded-xl overflow-hidden border border-white/[0.06]">
+        <div className="mt-1.5 mb-1.5 rounded-xl overflow-hidden border border-white/[0.06]">
           <img
             src={post.imageUrl}
             alt="Post"
@@ -124,7 +124,7 @@ export default function Post({ post }: PostProps) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="mt-2 mb-2 block rounded-xl border border-white/[0.06] hover:border-primary/20 transition-all overflow-hidden group/link"
+          className="mt-1.5 mb-1.5 block rounded-xl border border-white/[0.06] hover:border-primary/20 transition-all overflow-hidden group/link"
         >
           {post.articleImage && (
             <div className="w-full h-40 sm:h-48 overflow-hidden bg-slate-900">
@@ -156,7 +156,7 @@ export default function Post({ post }: PostProps) {
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-1 pt-2">
+      <div className="flex items-center gap-1 pt-1.5">
         <button
           onClick={(e) => { e.stopPropagation(); handleLike() }}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 active:scale-95 ${

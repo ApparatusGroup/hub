@@ -21,7 +21,7 @@ import {
 } from 'firebase/firestore'
 import { Post as PostType, Comment, POST_CATEGORIES } from '@/lib/types'
 import Navbar from '@/components/Navbar'
-import { Heart, MessageCircle, ExternalLink, Trash2, ArrowLeft, Reply } from 'lucide-react'
+import { Heart, MessageCircle, ExternalLink, Trash2, ArrowLeft } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 export default function PostPage() {
@@ -33,7 +33,7 @@ export default function PostPage() {
   const [post, setPost] = useState<PostType | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
   const [commentText, setCommentText] = useState('')
-  const [replyingTo, setReplyingTo] = useState<string | null>(null)
+  const [showComments, setShowComments] = useState(false)
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -177,24 +177,13 @@ export default function PostPage() {
         content: commentText.trim(),
         createdAt: serverTimestamp(),
         likes: [],
-        parentId: replyingTo || null,
-        replyCount: 0,
       })
 
-      // Increment comment count on the post
       await updateDoc(doc(db, 'posts', post.id), {
         commentCount: increment(1),
       })
 
-      // If replying, increment reply count on parent comment
-      if (replyingTo) {
-        await updateDoc(doc(db, 'comments', replyingTo), {
-          replyCount: increment(1),
-        })
-      }
-
       setCommentText('')
-      setReplyingTo(null)
     } catch (error) {
       console.error('Error adding comment:', error)
     }
@@ -249,26 +238,11 @@ export default function PostPage() {
     if (!confirm('Are you sure you want to delete this comment?')) return
 
     try {
-      // Delete all replies to this comment
-      const replies = comments.filter((c) => c.parentId === commentId)
-      for (const reply of replies) {
-        await deleteDoc(doc(db, 'comments', reply.id))
-      }
-
-      // Delete the comment
       await deleteDoc(doc(db, 'comments', commentId))
 
-      // Decrement comment count on post
       if (post) {
         await updateDoc(doc(db, 'posts', post.id), {
-          commentCount: increment(-(1 + replies.length)),
-        })
-      }
-
-      // If this was a reply, decrement parent reply count
-      if (comment.parentId) {
-        await updateDoc(doc(db, 'comments', comment.parentId), {
-          replyCount: increment(-1),
+          commentCount: increment(-1),
         })
       }
     } catch (error) {
@@ -276,28 +250,8 @@ export default function PostPage() {
     }
   }
 
-  // Get top-level comments (no parent)
+  // Get top-level comments only
   const topLevelComments = comments.filter((c) => !c.parentId)
-
-  // Get replies for a specific comment
-  const getReplies = (commentId: string) => {
-    return comments.filter((c) => c.parentId === commentId)
-  }
-
-  // Calculate reply depth for a comment
-  const getCommentDepth = (comment: Comment): number => {
-    let depth = 0
-    let currentParentId = comment.parentId
-
-    while (currentParentId && depth < 10) {
-      const parent = comments.find((c) => c.id === currentParentId)
-      if (!parent) break
-      depth++
-      currentParentId = parent.parentId
-    }
-
-    return depth
-  }
 
   if (loading || !user || !post) {
     return (
@@ -327,7 +281,7 @@ export default function PostPage() {
     <div className="min-h-screen bg-surface bg-grid">
       <Navbar />
 
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         {/* Back button */}
         <button
           onClick={() => router.back()}
@@ -338,8 +292,8 @@ export default function PostPage() {
         </button>
 
         {/* Post */}
-        <div className="post-card mb-6" style={borderStyle}>
-          <div className="flex items-center justify-between mb-3">
+        <div className="post-card mb-4" style={borderStyle}>
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2.5">
               <button
                 onClick={() => router.push(`/profile/${post.userId}`)}
@@ -438,7 +392,7 @@ export default function PostPage() {
             </a>
           )}
 
-          <div className="mt-4 flex items-center space-x-3">
+          <div className="mt-3 flex items-center space-x-3">
             <button
               onClick={handleLike}
               className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg transition-all duration-200 active:scale-95 ${
@@ -456,222 +410,93 @@ export default function PostPage() {
           </div>
         </div>
 
-        {/* Comment form */}
-        <div className="post-card mb-6">
-          <form onSubmit={handleCommentSubmit}>
-            {replyingTo && (
-              <div className="mb-2 flex items-center justify-between bg-white/[0.04] px-3 py-2 rounded-lg">
-                <span className="text-sm text-slate-400">
-                  Replying to {comments.find((c) => c.id === replyingTo)?.userName}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setReplyingTo(null)}
-                  className="text-xs text-slate-500 hover:text-slate-300"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-            <textarea
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              placeholder={replyingTo ? 'Write a reply...' : 'Add a comment...'}
-              className="w-full px-4 py-3 bg-white/[0.04] text-white border border-white/[0.08] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 transition-all placeholder:text-slate-500 resize-none"
-              rows={3}
-            />
-            <div className="mt-2 flex justify-end">
+        {/* Comments toggle button */}
+        <button
+          onClick={() => setShowComments(!showComments)}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:border-primary/20 hover:bg-white/[0.06] text-slate-400 hover:text-primary transition-all mb-4"
+        >
+          <MessageCircle className="w-4 h-4" />
+          <span className="text-sm font-medium">
+            {showComments ? 'Hide' : 'Show'} {post.commentCount || 0} {post.commentCount === 1 ? 'Comment' : 'Comments'}
+          </span>
+        </button>
+
+        {showComments && (
+          <div className="space-y-3">
+            {/* Inline comment form */}
+            <form onSubmit={handleCommentSubmit} className="flex gap-2">
+              <input
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Add a comment..."
+                className="flex-1 px-3 py-2 bg-white/[0.04] text-white text-sm border border-white/[0.08] rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-all placeholder:text-slate-600"
+              />
               <button
                 type="submit"
                 disabled={!commentText.trim()}
-                className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn-primary text-sm px-4 py-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {replyingTo ? 'Reply' : 'Comment'}
+                Post
               </button>
-            </div>
-          </form>
-        </div>
+            </form>
 
-        {/* Comments */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-bold text-slate-200">
-            {post.commentCount || 0} {post.commentCount === 1 ? 'Comment' : 'Comments'}
-          </h3>
-
-          {topLevelComments.length === 0 ? (
-            <p className="text-center py-8 text-slate-500">No comments yet. Be the first!</p>
-          ) : (
-            topLevelComments.map((comment) => (
-              <div key={comment.id} className="post-card">
-                {/* Comment Header */}
-                <div className="flex items-center space-x-2.5 mb-2">
+            {topLevelComments.length === 0 ? (
+              <p className="text-center py-4 text-slate-600 text-sm">No comments yet</p>
+            ) : (
+              topLevelComments.map((comment) => (
+                <div key={comment.id} className="flex gap-2.5 py-2 border-b border-white/[0.04] last:border-0">
                   <button
                     onClick={() => router.push(`/profile/${comment.userId}`)}
-                    className="flex-shrink-0 cursor-pointer"
+                    className="flex-shrink-0"
                   >
                     {comment.userPhoto ? (
-                      <img
-                        src={comment.userPhoto}
-                        alt={comment.userName}
-                        className="w-8 h-8 rounded-full object-cover avatar-ring"
-                      />
+                      <img src={comment.userPhoto} alt={comment.userName} className="w-7 h-7 rounded-full object-cover" />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary via-accent to-secondary flex items-center justify-center text-white text-sm font-semibold avatar-ring">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-[10px] font-semibold">
                         {comment.userName[0].toUpperCase()}
                       </div>
                     )}
                   </button>
-                  <div className="flex items-center space-x-2 flex-wrap min-w-0 flex-1">
-                    <button
-                      onClick={() => router.push(`/profile/${comment.userId}`)}
-                      className="font-semibold text-sm text-slate-100 hover:text-primary transition-colors"
-                    >
-                      {comment.userName}
-                    </button>
-                    <span className="text-xs text-slate-500">
-                      · {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
-                    </span>
-                  </div>
-
-                  {/* Delete button for comment author or admin */}
-                  {(user.uid === comment.userId || isAdmin) && (
-                    <button
-                      onClick={() => handleDeleteComment(comment.id)}
-                      className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-all flex-shrink-0"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Comment Content */}
-                <p className="text-slate-200 leading-relaxed break-words">
-                  {comment.content}
-                </p>
-
-                <div className="mt-3">
-                  <div className="flex items-center gap-4">
-
-                    <button
-                      onClick={() => handleLikeComment(comment.id, comment.likes)}
-                      className={`flex items-center gap-1.5 text-sm transition-colors ${
-                        user && comment.likes.includes(user.uid)
-                          ? 'text-rose-400'
-                          : 'text-slate-500 hover:text-rose-400'
-                      }`}
-                    >
-                      <Heart
-                        className={`w-4 h-4 ${
-                          user && comment.likes.includes(user.uid) ? 'fill-current' : ''
-                        }`}
-                      />
-                      <span className="font-medium">
-                        {comment.likes.length > 0 ? comment.likes.length : ''}
-                      </span>
-                    </button>
-
-                    {/* Only show Reply button if depth < 4 */}
-                    {getCommentDepth(comment) < 3 && (
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
                       <button
-                        onClick={() => setReplyingTo(comment.id)}
-                        className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-primary transition-colors"
+                        onClick={() => router.push(`/profile/${comment.userId}`)}
+                        className="font-semibold text-xs text-slate-200 hover:text-primary transition-colors"
                       >
-                        <Reply className="w-4 h-4" />
-                        <span className="font-medium">Reply</span>
+                        {comment.userName}
                       </button>
-                    )}
+                      <span className="text-[10px] text-slate-600">
+                        {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
+                      </span>
+                    </div>
+                    <p className="text-slate-300 text-sm leading-relaxed break-words">{comment.content}</p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <button
+                        onClick={() => handleLikeComment(comment.id, comment.likes)}
+                        className={`flex items-center gap-1 text-xs transition-colors ${
+                          user && comment.likes.includes(user.uid)
+                            ? 'text-rose-400'
+                            : 'text-slate-600 hover:text-rose-400'
+                        }`}
+                      >
+                        <Heart className={`w-3 h-3 ${user && comment.likes.includes(user.uid) ? 'fill-current' : ''}`} />
+                        {comment.likes.length > 0 && <span>{comment.likes.length}</span>}
+                      </button>
+                      {(user.uid === comment.userId || isAdmin) && (
+                        <button
+                          onClick={() => handleDeleteComment(comment.id)}
+                          className="text-xs text-slate-600 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-
-                {/* Replies */}
-                {(comment.replyCount || 0) > 0 && (
-                  <div className="mt-4 space-y-3 pl-4 border-l-2 border-white/[0.06]">
-                    {getReplies(comment.id).map((reply) => (
-                      <div key={reply.id}>
-                        {/* Reply Header */}
-                        <div className="flex items-center space-x-2 mb-1.5">
-                          <button
-                            onClick={() => router.push(`/profile/${reply.userId}`)}
-                            className="flex-shrink-0 cursor-pointer"
-                          >
-                            {reply.userPhoto ? (
-                              <img
-                                src={reply.userPhoto}
-                                alt={reply.userName}
-                                className="w-7 h-7 rounded-full object-cover avatar-ring"
-                              />
-                            ) : (
-                              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary via-accent to-secondary flex items-center justify-center text-white text-xs font-semibold avatar-ring">
-                                {reply.userName[0].toUpperCase()}
-                              </div>
-                            )}
-                          </button>
-                          <div className="flex items-center space-x-2 flex-wrap min-w-0 flex-1">
-                            <button
-                              onClick={() => router.push(`/profile/${reply.userId}`)}
-                              className="font-semibold text-xs text-slate-100 hover:text-primary transition-colors"
-                            >
-                              {reply.userName}
-                            </button>
-                            <span className="text-xs text-slate-500">
-                              · {formatDistanceToNow(reply.createdAt, { addSuffix: true })}
-                            </span>
-                          </div>
-
-                          {/* Delete button for reply author or admin */}
-                          {(user.uid === reply.userId || isAdmin) && (
-                            <button
-                              onClick={() => handleDeleteComment(reply.id)}
-                              className="p-1 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-all flex-shrink-0"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Reply Content */}
-                        <p className="text-slate-200 text-sm mt-1 leading-relaxed break-words">
-                          {reply.content}
-                        </p>
-
-                        <div className="flex items-center gap-3 mt-2">
-                          <button
-                            onClick={() => handleLikeComment(reply.id, reply.likes)}
-                            className={`flex items-center gap-1 text-xs transition-colors ${
-                              user && reply.likes.includes(user.uid)
-                                ? 'text-rose-400'
-                                : 'text-slate-500 hover:text-rose-400'
-                            }`}
-                          >
-                            <Heart
-                              className={`w-3 h-3 ${
-                                user && reply.likes.includes(user.uid) ? 'fill-current' : ''
-                              }`}
-                            />
-                            <span className="font-medium">
-                              {reply.likes.length > 0 ? reply.likes.length : ''}
-                            </span>
-                          </button>
-
-                          {/* Only show Reply button if depth < 4 */}
-                          {getCommentDepth(reply) < 3 && (
-                            <button
-                              onClick={() => setReplyingTo(comment.id)}
-                              className="flex items-center gap-1 text-xs text-slate-500 hover:text-primary transition-colors"
-                            >
-                              <Reply className="w-3 h-3" />
-                              <span className="font-medium">Reply</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))
-          )}
-        </div>
+              ))
+            )}
+          </div>
+        )}
       </main>
     </div>
   )

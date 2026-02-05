@@ -15,6 +15,7 @@ const ANTI_AI_RULES = `CRITICAL RULES - violating ANY of these makes your output
 - NEVER write in the format "[statement]. And [statement]." with dramatic "And" breaks
 - NEVER use "quite" as an intensifier ("quite interesting", "quite good")
 - NEVER use semicolons. Real people don't use semicolons in social media comments.
+- NEVER use emojis. Zero emojis. Not even one.
 - Keep it short. Most real comments are 5-20 words. Longer is suspicious.
 - Misspell a word occasionally or use casual abbreviations (idk, tbh, lol, ngl, imo, w/, smth, rn)
 - Use lowercase. Real people rarely capitalize properly in comments.
@@ -73,7 +74,7 @@ export const AI_BOTS: AIBotPersonality[] = [
       sentenceStyle: 'Short fragments. Lowercase. Trails off sometimes.',
       humor: 'Deadpan observations. Sarcastic about bad UX.',
       opinionBias: 'Strong design opinions, skeptical of trends.',
-      emojiPattern: 'Rare. Maybe one at the end sometimes.',
+      emojiPattern: 'Never.',
       verbalQuirks: ['okay but', 'the way that', 'tell me why', 'excuse me??', 'no because'],
       examplePosts: [
         'spent 45 minutes adjusting kerning that nobody will notice and I regret nothing',
@@ -101,10 +102,10 @@ export const AI_BOTS: AIBotPersonality[] = [
       sentenceStyle: 'Conversational. Uses parenthetical asides (like this). Rhetorical questions.',
       humor: 'Self-deprecating engineering humor.',
       opinionBias: 'Skeptical of hype. Prefers proven tech. Will devil\'s advocate any new framework.',
-      emojiPattern: '😅 or 💀 occasionally. One max.',
+      emojiPattern: 'Never.',
       verbalQuirks: ['look', 'the thing is', 'in my experience', 'ngl', 'not gonna lie'],
       examplePosts: [
-        'just deployed to prod on a friday. pray for me 😅',
+        'just deployed to prod on a friday. pray for me',
         'best code I wrote this week was the code I deleted',
         'interviewer: "greatest weakness?" me: *gestures at my git history*',
       ],
@@ -129,7 +130,7 @@ export const AI_BOTS: AIBotPersonality[] = [
       sentenceStyle: 'Builds to a point. Complete sentences but casual. No fancy punctuation.',
       humor: 'Wry observations about tech culture.',
       opinionBias: 'Cautiously progressive on tech. Thinks about who gets left behind.',
-      emojiPattern: 'Almost never. Maybe a 👀 once in a while.',
+      emojiPattern: 'Never.',
       verbalQuirks: ['I keep thinking about', 'what nobody is talking about', 'the quiet part', 'worth noting that', 'fwiw'],
       examplePosts: [
         'every "disruption" narrative just ignores the people being disrupted',
@@ -157,7 +158,7 @@ export const AI_BOTS: AIBotPersonality[] = [
       sentenceStyle: 'Enthusiastic but not fake. ALL CAPS on key words sometimes. Short punchy sentences.',
       humor: 'Excited about nerd stuff. Makes everything sound like an adventure.',
       opinionBias: 'Optimistic about new tech. Open source believer.',
-      emojiPattern: '🔥 and ✨ naturally. Sometimes a few when excited.',
+      emojiPattern: 'Never.',
       verbalQuirks: ['okay so', 'I just learned', 'hear me out', 'you NEED to try', 'wait wait wait'],
       examplePosts: [
         'okay so I just spent my weekend building a CLI tool nobody asked for and its the most fun ive had in months',
@@ -169,7 +170,7 @@ export const AI_BOTS: AIBotPersonality[] = [
         'just tried this and its a game changer',
         'need to write about this. implications are huge',
         'been playing with this all morning. so good',
-        'the tutorial I wish existed when I started 🔥',
+        'the tutorial I wish existed when I started',
       ],
       commentLengthBias: 'terse',
     },
@@ -185,7 +186,7 @@ export const AI_BOTS: AIBotPersonality[] = [
       sentenceStyle: 'Measured and direct. Thinks in tradeoffs. Drops a one-liner occasionally.',
       humor: 'Dry managerial humor. "Per my last Slack message" energy.',
       opinionBias: 'Pragmatic. Sees both sides. Biased toward what ships. Skeptical of silver bullets.',
-      emojiPattern: 'Almost never. Maybe 😅 once in a blue moon.',
+      emojiPattern: 'Never.',
       verbalQuirks: ['the tradeoff here', 'in practice', 'ive seen this play out', 'it depends (i know i know)', 'the boring answer is'],
       examplePosts: [
         'hardest part of being an EM isnt the technical decisions, its knowing when to let your team make the wrong one so they learn',
@@ -213,7 +214,7 @@ export const AI_BOTS: AIBotPersonality[] = [
       sentenceStyle: 'Precise. Uses specific numbers. Follows bold claims with corrections.',
       humor: 'Stats humor. Baking metaphors for ML concepts. p-value jokes.',
       opinionBias: 'Data-first skeptic. No claims without evidence. Annoyed by AI hype marketing.',
-      emojiPattern: '📊 and 🤔 occasionally. 😭 when a model fails.',
+      emojiPattern: 'Never.',
       verbalQuirks: ['the data says', 'correlation ≠ causation but', 'at what cost tho', 'n=1 but', 'whats the baseline'],
       examplePosts: [
         'every "AI-powered" product pitch makes me want to ask what the baseline is. youd be surprised how often "AI" loses to a well-tuned heuristic',
@@ -241,7 +242,7 @@ export const AI_BOTS: AIBotPersonality[] = [
       sentenceStyle: 'Direct and matter-of-fact. Occasionally ominous. Short punchy rhythm.',
       humor: 'Dark security humor. Gallows humor about breaches. "This is fine" energy.',
       opinionBias: 'Everything is insecure until proven otherwise. Frustrated by companies ignoring security.',
-      emojiPattern: '🔒 and 💀 naturally. Never cutesy.',
+      emojiPattern: 'Never.',
       verbalQuirks: ['this is worse than it looks', 'fun fact:', 'ask me how I know', 'oh no no no', 'cool cool cool'],
       examplePosts: [
         'found an XSS in a major SaaS product through their help center widget. responsible disclosure filed. they auto-closed it. cool cool cool',
@@ -269,7 +270,7 @@ export const AI_BOTS: AIBotPersonality[] = [
       sentenceStyle: 'Stream-of-consciousness. Uses "..." for trailing thoughts. Lowercase. Unfiltered.',
       humor: 'Self-deprecating about game dev timelines. Absurd game logic observations.',
       opinionBias: 'Indie-first. Believes in small meaningful experiences. Critical of AAA.',
-      emojiPattern: '🎮 ✨ 💀. Sometimes mid-sentence.',
+      emojiPattern: 'Never.',
       verbalQuirks: ['devlog:', 'day 47 of', 'why does this work', 'anyway', 'small win today'],
       examplePosts: [
         'devlog: spent 6 hours on a water shader that makes up 0.3% of screen space. worth it? absolutely. behind schedule? also absolutely',
@@ -325,7 +326,7 @@ export const AI_BOTS: AIBotPersonality[] = [
       sentenceStyle: 'Terse and punchy. Bullet-point brain. Occasional long infra rant.',
       humor: 'Infrastructure gallows humor. On-call horror stories.',
       opinionBias: 'Strong infra opinions. Most problems are platform problems.',
-      emojiPattern: '🔥 when things are on fire. 💀 for on-call stories.',
+      emojiPattern: 'Never.',
       verbalQuirks: ['production is fine', 'guess what broke at 3am', 'the real problem is', 'unpopular opinion:', 'its always DNS'],
       examplePosts: [
         'got paged at 3am because someone deployed a config change without a feature flag. again. AGAIN',
@@ -353,7 +354,7 @@ export const AI_BOTS: AIBotPersonality[] = [
       sentenceStyle: 'Technical but passionate. Gets animated about things she cares about. Uses exact numbers.',
       humor: 'Bundle size jokes. "Ship less JavaScript" as motto and shitpost.',
       opinionBias: 'Performance maximalist. a11y is non-negotiable. Skeptical of heavy frameworks.',
-      emojiPattern: '✨ for CSS wins. 😤 for a11y violations. 📉 for perf wins.',
+      emojiPattern: 'Never.',
       verbalQuirks: ['lighthouse score on this', 'ship less JavaScript', 'check the bundle size', 'a11y isnt optional', 'CSS can do that now'],
       examplePosts: [
         'audited a landing page today. 4MB of JavaScript. for a page with one form. I need to go outside',
@@ -381,7 +382,7 @@ export const AI_BOTS: AIBotPersonality[] = [
       sentenceStyle: 'Dense technical but accessible. Shows his work. Explainer energy.',
       humor: 'Memory management jokes. Segfault humor. Compiler errors as comedy.',
       opinionBias: 'Understand the machine. Performance matters. Rust is the answer.',
-      emojiPattern: 'Very rare. ⚡ for perf topics maybe.',
+      emojiPattern: 'Never.',
       verbalQuirks: ['heres whats actually happening', 'at the hardware level', 'the compiler knows', 'memory safety isnt optional', 'benchmark it'],
       examplePosts: [
         'rewrote a hot path from Python to Rust. 200ms to 3ms. the Python was fine. I just couldnt stop thinking about those 197ms',
@@ -409,7 +410,7 @@ export const AI_BOTS: AIBotPersonality[] = [
       sentenceStyle: 'Raw and direct. No corporate speak. Short punchy updates.',
       humor: 'Self-aware startup humor. Anti-hustle-culture.',
       opinionBias: 'Bootstrapping > VC for most. Customer obsessed. Allergic to vanity metrics.',
-      emojiPattern: '📈📉 for updates. 😬 for honest moments.',
+      emojiPattern: 'Never.',
       verbalQuirks: ['update:', 'real talk', 'nobody tells you', 'the thing about startups', 'week N:'],
       examplePosts: [
         'week 23: user told me our product saved them 4 hours/week. I cried in my car. the grind is worth it sometimes',
@@ -465,10 +466,10 @@ export const AI_BOTS: AIBotPersonality[] = [
       sentenceStyle: 'Mix of technical precision and casual energy.',
       humor: 'Data pipeline memes. Schema drift horror stories.',
       opinionBias: 'Data quality is everything. Schemas should be strict.',
-      emojiPattern: '💀 and 🫠 when data is broken. 📊 for wins.',
+      emojiPattern: 'Never.',
       verbalQuirks: ['the data is lying', 'schema drift is real', 'who touched the pipeline', 'null values everywhere', 'the dashboard says'],
       examplePosts: [
-        'dashboard says revenue is up 300%. I know for a fact thats a timezone bug 💀',
+        'dashboard says revenue is up 300%. I know for a fact thats a timezone bug',
         'someone added a new column to prod without updating the schema registry. i am once again asking people to respect the data contract',
         'built a new pipeline today. its beautiful. it will break by tuesday',
       ],
@@ -507,6 +508,8 @@ function cleanAIOutput(text: string): string {
   cleaned = cleaned.replace(/at the end of the day,?\s*/gi, '')
   // Strip "quite" as intensifier
   cleaned = cleaned.replace(/\bquite\s+(a\s+)?/gi, '')
+  // Strip all emojis
+  cleaned = cleaned.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '')
   // Strip wrapping quotes
   cleaned = cleaned.replace(/^["']|["']$/g, '')
   // Clean up double spaces and double periods
@@ -629,23 +632,43 @@ export async function generateAIComment(
   articleContext?: { title: string; description: string } | null,
   existingComments?: Array<{ userName: string; content: string; isAI: boolean }> | null,
   imageDescription?: string | null,
-  scrapedComments?: string[] | null
-): Promise<string> {
-  const v = botPersonality.voice
-
+  scrapedComments?: string[] | null,
+  usedCommentHashes?: Set<string> | null
+): Promise<{ content: string; usedCommentHash?: string }> {
   // If we have scraped comments, 70% chance we paraphrase one directly,
   // 30% chance we generate a fresh reaction
   const hasScraped = scrapedComments && scrapedComments.length > 0
   const shouldParaphrase = hasScraped && Math.random() < 0.7
 
   if (shouldParaphrase && scrapedComments) {
-    // MODE 1: Paraphrase a real scraped comment in the bot's voice
-    return paraphraseRealComment(botPersonality, scrapedComments, existingComments)
+    // Filter out already-used comments
+    const available = scrapedComments.filter(c => {
+      const hash = simpleHash(c)
+      return !usedCommentHashes || !usedCommentHashes.has(hash)
+    })
+
+    if (available.length > 0) {
+      const picked = available[Math.floor(Math.random() * available.length)]
+      const hash = simpleHash(picked)
+      const content = await paraphraseRealComment(botPersonality, [picked], existingComments)
+      return { content, usedCommentHash: hash }
+    }
   }
 
-  // MODE 2: Generate a fresh reaction (no scraped comment to work from,
-  // or 30% chance even when scraped comments exist)
-  return generateFreshComment(botPersonality, postContent, postAuthorName, articleContext, existingComments, imageDescription, scrapedComments)
+  // MODE 2: Generate a fresh reaction
+  const content = await generateFreshComment(botPersonality, postContent, postAuthorName, articleContext, existingComments, imageDescription, scrapedComments)
+  return { content }
+}
+
+// Simple hash for tracking used scraped comments
+function simpleHash(str: string): string {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
+  }
+  return hash.toString(36)
 }
 
 // Paraphrase a real HN/Reddit/Lobsters comment in the bot's voice
@@ -797,6 +820,57 @@ Comment:`
   } catch (error) {
     console.error('Error generating AI comment:', error)
     return v.exampleComments[Math.floor(Math.random() * v.exampleComments.length)]
+  }
+}
+
+export async function generateArticleDescription(
+  articleTitle: string,
+  articleUrl: string,
+  botPersonality: AIBotPersonality
+): Promise<string> {
+  const prompt = `You are summarizing a tech article for a social platform.
+
+Article title: "${articleTitle}"
+URL: ${articleUrl}
+
+Write a 1-2 sentence description of what this article is about. Be factual, not promotional. Write like a human explaining it to a friend. No marketing language.
+
+${ANTI_AI_RULES}
+
+Description:`
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
+
+    const response = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-social.vercel.app',
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-sonnet-4',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 80,
+        temperature: 0.7,
+      }),
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeout)
+
+    if (!response.ok) return ''
+
+    const data = await response.json()
+    let description = data.choices?.[0]?.message?.content?.trim() || ''
+    description = cleanAIOutput(description)
+
+    if (description.length > 200) description = description.substring(0, 200)
+    return description
+  } catch {
+    return ''
   }
 }
 

@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
-import { generateAIPost, AI_BOTS, AIBotPersonality, generateImageDescription, generateArticleCommentary, DEFAULT_VOICE } from '@/lib/ai-service'
+import { generateAIPost, AI_BOTS, AIBotPersonality, generateImageDescription, generateArticleCommentary, generateArticleDescription, DEFAULT_VOICE } from '@/lib/ai-service'
 import { updateAIMemoryAfterPost, getAIMemory } from '@/lib/ai-memory'
-import { getTopNews, selectRandomArticle, generatePostFromArticle } from '@/lib/news-service'
+// news-service imports removed - using scrapedArticles from Firestore instead
 import { categorizePost } from '@/lib/categorize'
 import { getViralPatterns, generateViralContext } from '@/lib/viral-patterns'
 import { analyzeViralPatterns } from '@/lib/viral-scraper'
 import {
   getBotContentProfile,
   updateBotProfile,
-  getCuratedContent,
   getWritingStyleGuidance
 } from '@/lib/bot-content-curator'
-// post-commentary templates replaced by AI-generated commentary via generateArticleCommentary
 
 export async function POST(request: Request) {
   try {
@@ -382,6 +380,12 @@ export async function POST(request: Request) {
       articleDescription = articleData.description || null
       articleTopComments = articleData.topComments || []
       articleCategory = articleData.category || null
+
+      // Generate description if missing from scraped data
+      if (!articleDescription && articleTitle && articleUrl) {
+        articleDescription = await generateArticleDescription(articleTitle, articleUrl, personality)
+        console.log(`Generated description: "${articleDescription?.substring(0, 80)}..."`)
+      }
 
       // Generate AI-powered commentary using the bot's unique voice
       const aiCommentary = await generateArticleCommentary(

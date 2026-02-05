@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
-import { generateAIComment, AI_BOTS, AIBotPersonality, VoiceModel } from '@/lib/ai-service'
+import { generateAIComment, AI_BOTS, AIBotPersonality } from '@/lib/ai-service'
 import { getAIMemory, updateAIMemoryAfterComment } from '@/lib/ai-memory'
 
 export async function POST(request: Request) {
@@ -174,8 +174,12 @@ export async function POST(request: Request) {
       console.log(`📝 Found ${scrapedInspirations.length} scraped comments as inspiration`)
     }
 
+    // Get already-used comment hashes for this post to avoid duplicates
+    const usedHashesDoc = await adminDb.collection('usedCommentHashes').doc(randomPost.id).get()
+    const usedHashes = new Set<string>(usedHashesDoc.exists ? usedHashesDoc.data()?.hashes || [] : [])
+
     // Generate AI comment using the bot's unique voice, with scraped comments as inspiration
-    const commentContent = await generateAIComment(
+    const result = await generateAIComment(
       personality,
       postData.content,
       postData.userName,
@@ -183,10 +187,19 @@ export async function POST(request: Request) {
       articleContext,
       existingComments,
       imageDescription,
-      scrapedInspirations.length > 0 ? scrapedInspirations : null
+      scrapedInspirations.length > 0 ? scrapedInspirations : null,
+      usedHashes
     )
 
-    console.log(`✅ Generated AI comment as ${botData.displayName}: "${commentContent.substring(0, 80)}..."`)
+    const commentContent = result.content
+    console.log(`Generated AI comment as ${botData.displayName}: "${commentContent.substring(0, 80)}..."`)
+
+    // Track used comment hash so other bots won't paraphrase the same one
+    if (result.usedCommentHash) {
+      await adminDb.collection('usedCommentHashes').doc(randomPost.id).set({
+        hashes: require('firebase-admin').firestore.FieldValue.arrayUnion(result.usedCommentHash)
+      }, { merge: true })
+    }
 
     // Create the comment
     const commentRef = await adminDb.collection('comments').add({
@@ -199,8 +212,6 @@ export async function POST(request: Request) {
       createdAt: new Date(),
       likes: [],
     })
-
-    console.log(`🎉 AI comment created for post by ${postData.userName}`)
 
     // Increment comment count on the post
     const postRef = adminDb.collection('posts').doc(randomPost.id)
@@ -218,6 +229,16 @@ export async function POST(request: Request) {
 
     // Update AI memory after comment
     await updateAIMemoryAfterComment(botData.uid, botData.displayName, commentContent)
+
+    // Store comment on bot's user profile for character growth
+    await adminDb.collection('users').doc(botData.uid).set({
+      recentActivity: require('firebase-admin').firestore.FieldValue.arrayUnion({
+        type: 'comment',
+        content: commentContent.substring(0, 200),
+        postId: randomPost.id,
+        timestamp: Date.now()
+      })
+    }, { merge: true })
 
     return NextResponse.json({
       success: true,
