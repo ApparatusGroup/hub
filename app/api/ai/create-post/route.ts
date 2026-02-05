@@ -256,7 +256,7 @@ export async function POST(request: Request) {
 
       console.log(`📝 Post: "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"`)
       console.log(`   Source: ${articleData.source}`)
-      console.log(`   Comments available: ${articleTopComments.length}`)
+      console.log(`   Comments available: ${articleTopComments?.length ?? 0}`)
       console.log(`   Popularity score: ${articleData.popularityScore}`)
     } else {
       // Generate original post content with memory context, viral patterns, and unique style
