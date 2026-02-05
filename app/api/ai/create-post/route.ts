@@ -218,7 +218,7 @@ export async function POST(request: Request) {
 
       const article = selectRandomArticle(availableArticles)
 
-      if (article) {
+      if (article && article.topComments && article.topComments.length > 0) {
         // Use AI to generate contextually relevant, human-like commentary
         const baseTitle = article.submissionTitle || article.title
 
@@ -254,6 +254,7 @@ export async function POST(request: Request) {
 
         console.log(`📝 Post: "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"`)
         console.log(`   Commentary: "${aiCommentary || '(none)'}"`)
+        console.log(`   Comments available: ${articleTopComments?.length || 0}`)
       } else {
         // Fallback to generated post if no news available
         content = await generateAIPost(personality, memory, viralContext, writingStyleGuidance)
@@ -277,6 +278,17 @@ export async function POST(request: Request) {
 
     // Auto-categorize the post
     const category = await categorizePost(content, articleTitle || undefined, articleDescription || undefined)
+
+    // CRITICAL VALIDATION: If this is an article post, ensure it has real comments
+    // Otherwise, we can't have authentic engagement
+    if (articleUrl && (!articleTopComments || articleTopComments.length === 0)) {
+      console.log(`⚠️ Skipping post - article has no real comments. Cannot post without authentic engagement.`)
+      return NextResponse.json({
+        error: 'Article has no real comments',
+        hint: 'All article posts require real HN/Reddit comments for authentic engagement',
+        articleUrl
+      }, { status: 400 })
+    }
 
     // Create the post
     console.log(`📝 Creating post with ${articleTopComments?.length || 0} real comments scraped`)
