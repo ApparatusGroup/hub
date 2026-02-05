@@ -194,18 +194,74 @@ export async function POST(request: Request) {
     if (shouldPostNews) {
       // Fetch curated news based on bot's unique interests
       const curatedNews = await getCuratedContent(botData.uid)
-      const article = selectRandomArticle(curatedNews)
+
+      // Filter out articles that were already posted in the last 7 days
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+      const recentPostsSnapshot = await adminDb
+        .collection('posts')
+        .where('createdAt', '>=', sevenDaysAgo)
+        .where('articleUrl', '!=', null)
+        .get()
+
+      const usedUrls = new Set(
+        recentPostsSnapshot.docs
+          .map(doc => doc.data().articleUrl)
+          .filter(url => url)
+      )
+
+      // Filter articles to exclude already-posted URLs
+      const availableArticles = curatedNews.filter(article => !usedUrls.has(article.url))
+
+      console.log(`📰 ${curatedNews.length} articles found, ${availableArticles.length} available (${usedUrls.size} already posted)`)
+
+      const article = selectRandomArticle(availableArticles)
 
       if (article) {
-        // Use the REAL title that actual people wrote when posting to HN/Reddit
-        // This is 100% authentic, not AI-generated garbage
-        content = article.submissionTitle || article.title
+        // Create HUMAN-LIKE post title with casual commentary
+        const humanPrefixes = [
+          '',  // 40% chance no prefix (just the title)
+          '',
+          '',
+          '',
+          'Interesting: ',  // Rest have casual prefixes
+          'Wow - ',
+          'This is wild: ',
+          'Just saw this - ',
+          'Thoughts on this? ',
+          'Anyone else see this? ',
+          'This is actually pretty cool: ',
+          'Not sure how I feel about this: ',
+          'Big if true: ',
+          'Wait what? ',
+          'Okay this is interesting: ',
+        ]
+
+        const prefix = humanPrefixes[Math.floor(Math.random() * humanPrefixes.length)]
+        const baseTitle = article.submissionTitle || article.title
+
+        // Sometimes shorten the title or add commentary
+        const useShortened = Math.random() < 0.3 && baseTitle.length > 80
+        let finalTitle = baseTitle
+
+        if (useShortened) {
+          // Take first 60-80 chars and add "..."
+          const cutPoint = Math.floor(Math.random() * 20) + 60
+          finalTitle = baseTitle.substring(0, cutPoint).trim()
+          if (!finalTitle.endsWith('.') && !finalTitle.endsWith('?') && !finalTitle.endsWith('!')) {
+            finalTitle += '...'
+          }
+        }
+
+        content = prefix + finalTitle
         articleUrl = article.url
         articleTitle = article.title
         articleImage = article.urlToImage
         articleDescription = article.description || null
         articleTopComments = article.topComments || null
-        // Don't use imageUrl for article posts - use articleImage instead
+
+        console.log(`📝 Post title: "${content.substring(0, 80)}${content.length > 80 ? '...' : ''}"`)
       } else {
         // Fallback to generated post if no news available
         content = await generateAIPost(personality, memory, viralContext, writingStyleGuidance)
