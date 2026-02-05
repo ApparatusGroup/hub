@@ -183,8 +183,8 @@ async function getHackerNewsStories(): Promise<NewsArticle[]> {
     const topStoriesRes = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json')
     const topStoryIds: number[] = await topStoriesRes.json()
 
-    // Fetch details for top 30 stories (reduced to avoid rate limits with comments)
-    const storyPromises = topStoryIds.slice(0, 30).map(async (id) => {
+    // Fetch details for top 50 stories - more selection for background scraper
+    const storyPromises = topStoryIds.slice(0, 50).map(async (id) => {
       const res = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)
       return res.json()
     })
@@ -214,9 +214,9 @@ async function getHackerNewsStories(): Promise<NewsArticle[]> {
     })
 
     // Fetch comments for each story (with delay to avoid rate limiting)
-    // LIMIT: Process max 10 stories to stay under Vercel free tier 10-second timeout
+    // Process up to 25 stories - no timeout in background scraper
     const articlesWithComments: NewsArticle[] = []
-    const maxStories = Math.min(filteredStories.length, 10)
+    const maxStories = Math.min(filteredStories.length, 25)
 
     for (let i = 0; i < maxStories; i++) {
       const story = filteredStories[i]
@@ -243,9 +243,9 @@ async function getHackerNewsStories(): Promise<NewsArticle[]> {
         // Small delay to avoid rate limiting (30ms between requests)
         await new Promise(resolve => setTimeout(resolve, 30))
 
-        // Stop if we have enough articles (5 is plenty for variety)
-        if (articlesWithComments.length >= 5) {
-          console.log(`✅ Collected ${articlesWithComments.length} HN articles, stopping early to save time`)
+        // Collect more articles since we're running in background (no timeout concerns)
+        if (articlesWithComments.length >= 15) {
+          console.log(`✅ Collected ${articlesWithComments.length} HN articles, stopping`)
           break
         }
       } catch (error) {
@@ -338,8 +338,8 @@ async function getLobstersStories(): Promise<NewsArticle[]> {
     const stories = await res.json()
     const articlesWithComments: NewsArticle[] = []
 
-    // Process top 10 stories
-    for (const story of stories.slice(0, 10)) {
+    // Process top 20 stories - no timeout concerns in background
+    for (const story of stories.slice(0, 20)) {
       try {
         // Only include stories with good engagement
         if (story.score < 10 || story.comment_count < 5) continue
@@ -377,8 +377,8 @@ async function getLobstersStories(): Promise<NewsArticle[]> {
           })
         }
 
-        // Stop if we have enough
-        if (articlesWithComments.length >= 3) break
+        // Collect up to 10 Lobste.rs articles
+        if (articlesWithComments.length >= 10) break
 
         // Delay to be respectful
         await new Promise(resolve => setTimeout(resolve, 200))
@@ -400,19 +400,19 @@ async function getLobstersStories(): Promise<NewsArticle[]> {
  */
 async function getRedditStories(): Promise<NewsArticle[]> {
   try {
-    // LIMIT: Only check 2 subreddits to stay under Vercel free tier timeout
-    const subreddits = ['technology', 'programming']
+    // Check multiple tech subreddits - no timeout concerns in background scraper
+    const subreddits = ['technology', 'programming', 'artificial', 'machinelearning', 'tech', 'gadgets']
     const allArticles: NewsArticle[] = []
 
     for (const subreddit of subreddits) {
-      // Stop if we have enough articles already
-      if (allArticles.length >= 5) {
+      // Collect up to 20 total Reddit articles
+      if (allArticles.length >= 20) {
         console.log(`✅ Already have ${allArticles.length} Reddit articles, skipping remaining subreddits`)
         break
       }
 
       try {
-        const res = await fetch(`https://www.reddit.com/r/${subreddit}/hot.json?limit=10`, {
+        const res = await fetch(`https://www.reddit.com/r/${subreddit}/hot.json?limit=25`, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (compatible; AlgosphereBot/1.0)'
           }
@@ -424,10 +424,10 @@ async function getRedditStories(): Promise<NewsArticle[]> {
           let processedCount = 0
 
           for (const post of posts) {
-            // Stop after checking 5 posts per subreddit to save time
-            if (processedCount >= 5) break
+            // Check up to 10 posts per subreddit
+            if (processedCount >= 10) break
             // Stop if we have enough articles total
-            if (allArticles.length >= 5) break
+            if (allArticles.length >= 20) break
 
             const postData = post.data
             const titleLower = postData.title?.toLowerCase() || ''
@@ -496,15 +496,16 @@ async function getRedditStories(): Promise<NewsArticle[]> {
 
 export async function getTopNews(category?: string): Promise<NewsArticle[]> {
   try {
-    // Use Hacker News + Reddit for guaranteed fresh content
-    // Removed Lobste.rs to stay under 10-second Vercel timeout
-    const [hnArticles, redditArticles] = await Promise.all([
+    // Use multiple sources - no timeout concerns in background scraper!
+    // HN + Reddit + Lobste.rs for maximum variety
+    const [hnArticles, redditArticles, lobstersArticles] = await Promise.all([
       getHackerNewsStories(),
-      getRedditStories()
+      getRedditStories(),
+      getLobstersStories()
     ])
 
     // Combine and deduplicate by URL
-    const allArticles = [...hnArticles, ...redditArticles]
+    const allArticles = [...hnArticles, ...redditArticles, ...lobstersArticles]
     const uniqueUrls = new Map<string, NewsArticle>()
 
     for (const article of allArticles) {
@@ -559,7 +560,7 @@ export async function getTopNews(category?: string): Promise<NewsArticle[]> {
       .sort((a: { recencyScore: number }, b: { recencyScore: number }) => b.recencyScore - a.recencyScore)
       .map((item: { article: NewsArticle }) => item.article)
 
-    console.log(`✅ Fetched ${sortedByRecency.length} fresh articles from HN + Reddit`)
+    console.log(`✅ Fetched ${sortedByRecency.length} fresh articles from HN + Reddit + Lobste.rs`)
     return sortedByRecency
   } catch (error) {
     console.error('Error fetching news:', error)
