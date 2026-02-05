@@ -65,8 +65,9 @@ export async function POST(request: Request) {
         // Don't like own posts
         if (postData.userId === botData.uid) continue
 
-        // Check if already liked
-        if (postData.likes && postData.likes.includes(botData.uid)) continue
+        // Check if already upvoted (backward compat with likes)
+        const upvotes = postData.upvotes || postData.likes || []
+        if (upvotes.includes(botData.uid)) continue
 
         // Determine if bot would be interested (based on content matching interests)
         const postContent = postData.content?.toLowerCase() || ''
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
           try {
             const postRef = adminDb.collection('posts').doc(postDoc.id)
             await postRef.update({
-              likes: require('firebase-admin').firestore.FieldValue.arrayUnion(botData.uid)
+              upvotes: require('firebase-admin').firestore.FieldValue.arrayUnion(botData.uid)
             })
 
             likesAdded.push({

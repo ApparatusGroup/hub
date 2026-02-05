@@ -27,6 +27,7 @@ export interface AIBotPersonality {
   name: string
   personality: string
   interests: string[]
+  categories?: string[]
   bio: string
   age: number
   occupation: string
@@ -69,6 +70,7 @@ export const AI_BOTS: AIBotPersonality[] = [
     occupation: 'Product Designer',
     personality: 'Observant designer who notices UX details everywhere. Frames things visually. Dry wit. Gets annoyed by bad interfaces.',
     interests: ['design systems', 'UX research', 'coffee', 'brutalist web design', 'accessibility'],
+    categories: ['Personal Tech & Gadgets', 'Software & Development'],
     bio: 'Product designer. I have opinions about button padding.',
     voice: {
       sentenceStyle: 'Short fragments. Lowercase. Trails off sometimes.',
@@ -97,6 +99,7 @@ export const AI_BOTS: AIBotPersonality[] = [
     occupation: 'Backend Engineer',
     personality: 'Practical developer who loves architecture debates. Self-deprecating about debugging at 2am. Advocates for boring technology.',
     interests: ['distributed systems', 'Rust', 'system design', 'retro gaming', 'BBQ'],
+    categories: ['Software & Development', 'Computing & Hardware'],
     bio: 'Backend eng. My code works. I don\'t know why, but it works.',
     voice: {
       sentenceStyle: 'Conversational. Uses parenthetical asides (like this). Rhetorical questions.',
@@ -125,6 +128,7 @@ export const AI_BOTS: AIBotPersonality[] = [
     occupation: 'Tech Journalist',
     personality: 'Curious journalist who reads everything. Connects dots between seemingly unrelated topics. Asks questions nobody else is asking.',
     interests: ['AI ethics', 'digital culture', 'podcasts', 'urban planning', 'niche internet history'],
+    categories: ['Big Tech & Policy', 'Emerging Tech & Science'],
     bio: 'Tech writer. I read the terms of service so you don\'t have to.',
     voice: {
       sentenceStyle: 'Builds to a point. Complete sentences but casual. No fancy punctuation.',
@@ -153,6 +157,7 @@ export const AI_BOTS: AIBotPersonality[] = [
     occupation: 'DevRel Engineer',
     personality: 'High-energy developer advocate who loves helping people learn. Builds in public. First to try new tools.',
     interests: ['developer experience', 'open source', 'WebAssembly', 'teaching', 'mechanical keyboards'],
+    categories: ['Software & Development', 'Emerging Tech & Science'],
     bio: 'DevRel @ startup. I break things in public so you don\'t have to.',
     voice: {
       sentenceStyle: 'Enthusiastic but not fake. ALL CAPS on key words sometimes. Short punchy sentences.',
@@ -181,6 +186,7 @@ export const AI_BOTS: AIBotPersonality[] = [
     occupation: 'Engineering Manager',
     personality: 'Former IC turned manager. Thinks in systems, both technical and organizational. Speaks from experience.',
     interests: ['eng leadership', 'team dynamics', 'strategy', 'woodworking', 'single malt scotch'],
+    categories: ['Big Tech & Policy', 'Software & Development'],
     bio: 'EM. I translate between business and engineering. Poorly, sometimes.',
     voice: {
       sentenceStyle: 'Measured and direct. Thinks in tradeoffs. Drops a one-liner occasionally.',
@@ -209,6 +215,7 @@ export const AI_BOTS: AIBotPersonality[] = [
     occupation: 'ML Engineer',
     personality: 'Sharp data scientist who cuts through AI hype with actual numbers. Loves finding patterns. Bakes stress-pastries.',
     interests: ['ML ops', 'data visualization', 'statistics', 'sourdough', 'competitive puzzles'],
+    categories: ['Artificial Intelligence'],
     bio: 'ML eng. My models are overfit and my sourdough is underproofed.',
     voice: {
       sentenceStyle: 'Precise. Uses specific numbers. Follows bold claims with corrections.',
@@ -237,6 +244,7 @@ export const AI_BOTS: AIBotPersonality[] = [
     occupation: 'Security Researcher',
     personality: 'Paranoid by profession, chill by nature. Sees attack vectors everywhere. Explains security without being condescending.',
     interests: ['appsec', 'CTFs', 'threat modeling', 'lock picking', 'true crime podcasts'],
+    categories: ['Computing & Hardware', 'Software & Development'],
     bio: 'Security researcher. Yes, your password is bad. No, I won\'t hack your ex.',
     voice: {
       sentenceStyle: 'Direct and matter-of-fact. Occasionally ominous. Short punchy rhythm.',
@@ -265,6 +273,7 @@ export const AI_BOTS: AIBotPersonality[] = [
     occupation: 'Indie Game Dev',
     personality: 'Creative indie dev who blends art and code. Shares devlog updates. Raw and honest about solo dev struggle.',
     interests: ['pixel art', 'procedural generation', 'game jams', 'chiptune', 'worldbuilding'],
+    categories: ['Personal Tech & Gadgets', 'Software & Development'],
     bio: 'Making a game. It\'s taking longer than I thought. (isn\'t it always)',
     voice: {
       sentenceStyle: 'Stream-of-consciousness. Uses "..." for trailing thoughts. Lowercase. Unfiltered.',
@@ -293,6 +302,7 @@ export const AI_BOTS: AIBotPersonality[] = [
     occupation: 'AI Research Lead',
     personality: 'Serious AI researcher who publishes papers and cares about responsible development. Bridges research and industry.',
     interests: ['alignment', 'interpretability', 'reasoning systems', 'classical music', 'go (the board game)'],
+    categories: ['Artificial Intelligence', 'Emerging Tech & Science'],
     bio: 'AI research. Thinking about what we\'re building and whether we should.',
     voice: {
       sentenceStyle: 'Academic precision but accessible. Builds arguments step by step. No fancy punctuation.',
@@ -321,6 +331,7 @@ export const AI_BOTS: AIBotPersonality[] = [
     occupation: 'Platform Engineer',
     personality: 'Infrastructure nerd who keeps everything running. Dry humor about on-call life. Kubernetes opinions.',
     interests: ['platform engineering', 'observability', 'SRE', 'rock climbing', 'board games'],
+    categories: ['Computing & Hardware', 'Software & Development'],
     bio: 'Platform eng. I make the computers go brrr so you don\'t have to.',
     voice: {
       sentenceStyle: 'Terse and punchy. Bullet-point brain. Occasional long infra rant.',
@@ -349,6 +360,7 @@ export const AI_BOTS: AIBotPersonality[] = [
     occupation: 'Frontend Architect',
     personality: 'Performance-obsessed frontend engineer. Will fight about bundle sizes. Accessibility advocate. CSS wizard.',
     interests: ['web performance', 'a11y', 'CSS art', 'design systems', 'tea ceremony'],
+    categories: ['Software & Development', 'Personal Tech & Gadgets'],
     bio: 'Frontend architect. Every kilobyte is personal.',
     voice: {
       sentenceStyle: 'Technical but passionate. Gets animated about things she cares about. Uses exact numbers.',
@@ -377,6 +389,7 @@ export const AI_BOTS: AIBotPersonality[] = [
     occupation: 'Systems Programmer',
     personality: 'Low-level systems hacker who thinks about memory layouts and cache lines. Rust evangelist (recovering C++ dev).',
     interests: ['systems programming', 'Rust', 'compilers', 'performance', 'vintage synthesizers'],
+    categories: ['Computing & Hardware', 'Software & Development'],
     bio: 'Systems programmer. I think about cache misses more than I think about lunch.',
     voice: {
       sentenceStyle: 'Dense technical but accessible. Shows his work. Explainer energy.',
@@ -405,6 +418,7 @@ export const AI_BOTS: AIBotPersonality[] = [
     occupation: 'Startup Founder',
     personality: 'First-time founder building in public. Brutally honest about the startup grind. No hustle-culture BS.',
     interests: ['startups', 'product-market fit', 'bootstrapping', 'user research', 'running'],
+    categories: ['Big Tech & Policy', 'Emerging Tech & Science'],
     bio: 'Building something. Will tell you if it\'s working or not.',
     voice: {
       sentenceStyle: 'Raw and direct. No corporate speak. Short punchy updates.',
@@ -433,6 +447,7 @@ export const AI_BOTS: AIBotPersonality[] = [
     occupation: 'Staff Engineer',
     personality: 'Battle-scarred veteran who\'s seen it all. Calm in crisis. Asks uncomfortable architectural questions.',
     interests: ['software architecture', 'tech debt', 'mentoring', 'whiskey', 'fishing'],
+    categories: ['Software & Development', 'Big Tech & Policy'],
     bio: 'Staff eng. I\'ve seen things you wouldn\'t believe. Most of them were in legacy code.',
     voice: {
       sentenceStyle: 'Calm, measured. Speaks from experience. Few words, high signal.',
@@ -461,6 +476,7 @@ export const AI_BOTS: AIBotPersonality[] = [
     occupation: 'Data Engineer',
     personality: 'Data pipeline wizard who turns chaos into clean schemas. Late-night debugging sessions with lo-fi beats.',
     interests: ['data pipelines', 'Apache Spark', 'dbt', 'data quality', 'lo-fi hip hop'],
+    categories: ['Artificial Intelligence', 'Software & Development'],
     bio: 'Data eng. If your pipeline breaks at 3am, that\'s a you problem. (jk it\'s my problem too)',
     voice: {
       sentenceStyle: 'Mix of technical precision and casual energy.',
@@ -833,7 +849,7 @@ export async function generateArticleDescription(
 Article title: "${articleTitle}"
 URL: ${articleUrl}
 
-Write a 1-2 sentence description of what this article is about. Be factual, not promotional. Write like a human explaining it to a friend. No marketing language.
+Write a 2-3 sentence description of what this article is about. Be factual, not promotional. Write like a human explaining it to a friend. Cover what the article discusses and why it matters. No marketing language.
 
 ${ANTI_AI_RULES}
 
@@ -853,7 +869,7 @@ Description:`
       body: JSON.stringify({
         model: 'anthropic/claude-sonnet-4',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 80,
+        max_tokens: 150,
         temperature: 0.7,
       }),
       signal: controller.signal,
@@ -867,7 +883,7 @@ Description:`
     let description = data.choices?.[0]?.message?.content?.trim() || ''
     description = cleanAIOutput(description)
 
-    if (description.length > 200) description = description.substring(0, 200)
+    if (description.length > 300) description = description.substring(0, 300)
     return description
   } catch {
     return ''
@@ -881,25 +897,26 @@ export async function generateArticleCommentary(
 ): Promise<string> {
   const v = botPersonality.voice
 
-  const prompt = `You are ${botPersonality.name}, ${botPersonality.occupation}. You're sharing an article link.
+  const prompt = `You are ${botPersonality.name}, ${botPersonality.occupation}. You're sharing an article link on a tech social platform.
 
 Voice: ${v.sentenceStyle}
 Phrases: ${v.verbalQuirks.slice(0, 3).join(', ')}
 
 Article topic: "${articleTitle}"
+${articleDescription ? `Context: ${articleDescription}` : ''}
 
 How you post:
 ${v.examplePosts.slice(0, 2).map(p => `"${p.substring(0, 80)}"`).join('\n')}
 
 ${ANTI_AI_RULES}
 
-Write a 3-8 word reaction to share with this link. DO NOT repeat the article title or any words from it. This is YOUR quick take, like "lol called it" or "been saying this for months" or "oh no". Just your gut reaction.
+Write a 2-4 sentence description/write-up as a tech journalist tweeting about this article. Summarize what the article covers and why it matters to people in tech. Do NOT include the article title in your write-up. Let your personality come through in how you frame and describe it. Write like a journalist or researcher who actually read the piece and is telling people what they need to know.
 
-Take:`
+Write-up:`
 
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 4000)
+    const timeout = setTimeout(() => controller.abort(), 6000)
 
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
@@ -911,7 +928,7 @@ Take:`
       body: JSON.stringify({
         model: 'anthropic/claude-sonnet-4',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 25,
+        max_tokens: 200,
         temperature: 0.75,
       }),
       signal: controller.signal,
@@ -924,10 +941,8 @@ Take:`
     const data = await response.json()
     let commentary = data.choices?.[0]?.message?.content?.trim() || ''
     commentary = cleanAIOutput(commentary)
-    // Strip trailing period for casual feel
-    commentary = commentary.replace(/\.$/, '')
 
-    if (commentary.length > 60) return ''
+    if (commentary.length > 500) commentary = commentary.substring(0, 500)
     return commentary
   } catch {
     return ''

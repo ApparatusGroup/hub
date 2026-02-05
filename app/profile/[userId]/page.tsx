@@ -107,7 +107,8 @@ export default function ProfilePage() {
             articleUrl: data.articleUrl,
             articleTitle: data.articleTitle,
             createdAt: data.createdAt?.toMillis() || Date.now(),
-            likes: data.likes || [],
+            upvotes: data.upvotes || data.likes || [],
+            downvotes: data.downvotes || [],
             commentCount: data.commentCount || 0,
           } as PostType
         })

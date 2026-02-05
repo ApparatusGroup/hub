@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { Post as PostType, POST_CATEGORIES } from '@/lib/types'
-import { Heart, MessageCircle, Flame, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react'
+import { Heart, MessageCircle, Flame, ChevronLeft, ChevronRight, TrendingUp, ChevronUp } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useRef } from 'react'
 
@@ -152,9 +152,9 @@ export default function FeaturedStories({ posts }: FeaturedStoriesProps) {
                       </div>
 
                       <div className="flex items-center gap-2.5">
-                        <div className="flex items-center gap-1 text-rose-400/80">
-                          <Heart className="w-3 h-3 fill-current" />
-                          <span className="text-[10px] font-semibold">{post.likes.length}</span>
+                        <div className="flex items-center gap-0.5 text-primary/80">
+                          <ChevronUp className="w-3.5 h-3.5" />
+                          <span className="text-[10px] font-semibold">{(post.upvotes || (post as any).likes || []).length - (post.downvotes || []).length}</span>
                         </div>
                         <div className="flex items-center gap-1 text-primary/80">
                           <MessageCircle className="w-3 h-3" />

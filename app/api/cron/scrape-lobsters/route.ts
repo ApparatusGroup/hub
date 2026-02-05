@@ -41,14 +41,14 @@ export async function GET(request: Request) {
     const stories = await res.json()
     const articlesWithComments: any[] = []
 
-    // Process top 25 stories for better selection
-    for (const story of stories.slice(0, 25)) {
+    // Process top 40 stories for wider selection
+    for (const story of stories.slice(0, 40)) {
       // Stop if we have enough
-      if (articlesWithComments.length >= 10) break
+      if (articlesWithComments.length >= 15) break
 
       try {
         // Only include stories with good engagement
-        if (story.score < 8 || story.comment_count < 5) continue
+        if (story.score < 5 || story.comment_count < 3) continue
         if (existingUrls.has(story.url)) continue
 
         // Fetch comments for this story

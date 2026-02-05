@@ -64,111 +64,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No active bots found' }, { status: 404 })
     }
 
-    // Calculate weights for bot selection (bots with fewer posts get much higher weight)
-    const botWeights = botDocs.map(doc => {
-      const postCount = botPostCounts.get(doc.data().uid) || 0
-      // More aggressive weighting - heavily favor bots that haven't posted
-      return Math.max(1, 20 - postCount * 5)
-    })
-
-    // Weighted random selection
-    const totalWeight = botWeights.reduce((sum, weight) => sum + weight, 0)
-    let random = Math.random() * totalWeight
-    let selectedIndex = 0
-
-    for (let i = 0; i < botWeights.length; i++) {
-      random -= botWeights[i]
-      if (random <= 0) {
-        selectedIndex = i
-        break
-      }
-    }
-
-    const randomBot = botDocs[selectedIndex]
-    const botData = randomBot.data()
-
-    // Build personality from database or fall back to hardcoded config
-    let personality: AIBotPersonality
-
-    // Try hardcoded personality first (has rich voice model), fall back to database
-    const hardcodedPersonality = AI_BOTS.find(b => b.name === botData.displayName)
-
-    if (hardcodedPersonality) {
-      personality = hardcodedPersonality
-    } else if (botData.aiPersonality && botData.aiInterests) {
-      // Use personality from database with default voice
-      personality = {
-        name: botData.displayName,
-        personality: botData.aiPersonality,
-        interests: botData.aiInterests,
-        bio: botData.bio || '',
-        age: 30,
-        occupation: botData.occupation || 'AI Assistant',
-        voice: DEFAULT_VOICE,
-      }
-    } else {
-      return NextResponse.json({ error: 'Bot personality not found' }, { status: 404 })
-    }
-
-    // Get AI memory for context
-    const memory = await getAIMemory(botData.uid)
-    const now = Date.now()
-    const postsToday = memory?.interactions?.postsToday || 0
-    const lastPostTime = memory?.interactions?.lastPostTime || 0
-    const lastPostDate = new Date(lastPostTime).toDateString()
-    const todayDate = new Date(now).toDateString()
-    const isNewDay = lastPostDate !== todayDate
-    const currentPostsToday = isNewDay ? 0 : postsToday
-
-    // Get viral patterns for inspiration
-    // Auto-refresh if stale (>6 hours) to keep trending topics current
-    let viralContext: string | null = null
-    try {
-      // Check if patterns are stale
-      const viralDoc = await adminDb.collection('viralPatterns').doc('latest').get()
-      let needsRefresh = false
-
-      if (viralDoc.exists) {
-        const data = viralDoc.data()
-        const updatedAt = data?.updatedAt?.toDate?.() || new Date(data?.stats?.scraped_at || 0)
-        const hoursSinceUpdate = (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60)
-        needsRefresh = hoursSinceUpdate > 6
-      } else {
-        needsRefresh = true
-      }
-
-      // Refresh if needed (non-blocking, happens in background)
-      if (needsRefresh) {
-        console.log(`🔄 Viral patterns stale, refreshing...`)
-        analyzeViralPatterns()
-          .then(async (results) => {
-            if (results.success) {
-              await adminDb.collection('viralPatterns').doc('latest').set({
-                ...results,
-                updatedAt: new Date(),
-              })
-              console.log(`✅ Viral patterns auto-refreshed`)
-            }
-          })
-          .catch(err => console.error('⚠️  Auto-refresh failed:', err))
-      }
-
-      // Use current patterns (even if stale, refresh happens async)
-      const viralPatterns = await getViralPatterns()
-      if (viralPatterns) {
-        viralContext = generateViralContext(viralPatterns)
-        console.log(`✅ Using viral patterns for ${botData.displayName}'s post`)
-      } else {
-        console.log(`⚠️  No viral patterns available for ${botData.displayName}'s post`)
-      }
-    } catch (error) {
-      console.log(`⚠️  Viral patterns unavailable for ${botData.displayName}, proceeding without them`)
-    }
-
-    // Get bot-specific content profile for personalized content
-    const botProfile = await getBotContentProfile(botData.uid, botData.displayName)
-    const writingStyleGuidance = getWritingStyleGuidance(botProfile)
-
     // Check recent category distribution to ensure feed diversity
     const recentCategoryCounts = new Map<string, number>()
     recentPostsSnapshot.docs.forEach(doc => {
@@ -204,7 +99,11 @@ export async function POST(request: Request) {
     let articleTopComments: any[] | null = null
     let articleCategory: string | null = null
     let imageUrl: string | null = null
+    let articleDoc: FirebaseFirestore.QueryDocumentSnapshot | null = null
 
+    // ============================================================
+    // STEP 1: Select article FIRST (before bot) so we know the category
+    // ============================================================
     if (shouldPostNews) {
       // Read from pre-scraped articles database (FAST - no scraping needed!)
       // Query only for unused articles (avoids composite index)
@@ -314,22 +213,22 @@ export async function POST(request: Request) {
         return Math.max(1, 10 - categoryCount)
       })
 
-      const totalWeight = articleWeights.reduce((sum, w) => sum + w, 0)
-      let random = Math.random() * totalWeight
-      let selectedIndex = 0
+      const totalArticleWeight = articleWeights.reduce((sum, w) => sum + w, 0)
+      let articleRandom = Math.random() * totalArticleWeight
+      let selectedArticleIndex = 0
 
       for (let i = 0; i < articleWeights.length; i++) {
-        random -= articleWeights[i]
-        if (random <= 0) {
-          selectedIndex = i
+        articleRandom -= articleWeights[i]
+        if (articleRandom <= 0) {
+          selectedArticleIndex = i
           break
         }
       }
 
-      const articleDoc = unpostedArticles[selectedIndex]
+      articleDoc = unpostedArticles[selectedArticleIndex]
       const articleData = articleDoc.data()
 
-      console.log(`🎯 Selected article category: ${articleData.category || 'General Tech'} (weight: ${articleWeights[selectedIndex]})`)
+      console.log(`🎯 Selected article category: ${articleData.category || 'General Tech'} (weight: ${articleWeights[selectedArticleIndex]})`)
 
       articleUrl = articleData.url
       articleTitle = articleData.title
@@ -337,7 +236,135 @@ export async function POST(request: Request) {
       articleDescription = articleData.description || null
       articleTopComments = articleData.topComments || []
       articleCategory = articleData.category || null
+    }
 
+    // ============================================================
+    // STEP 2: Select bot with category-matching weights
+    // ============================================================
+    // Calculate weights for bot selection (bots with fewer posts get much higher weight)
+    // If we have an article category, bots specializing in that category get 5x weight
+    const botWeights = botDocs.map(doc => {
+      const postCount = botPostCounts.get(doc.data().uid) || 0
+      // More aggressive weighting - heavily favor bots that haven't posted
+      let weight = Math.max(1, 20 - postCount * 5)
+
+      // Category matching: check if this bot specializes in the article's category
+      if (articleCategory) {
+        const botName = doc.data().displayName
+        const hardcodedBot = AI_BOTS.find(b => b.name === botName)
+        const botCategories = hardcodedBot?.categories || []
+
+        if (botCategories.includes(articleCategory)) {
+          weight *= 5 // 5x weight for category-matching bots
+          console.log(`   🎯 Category match: ${botName} specializes in "${articleCategory}" (weight: ${weight})`)
+        }
+      }
+
+      return weight
+    })
+
+    // Weighted random selection
+    const totalWeight = botWeights.reduce((sum, weight) => sum + weight, 0)
+    let random = Math.random() * totalWeight
+    let selectedIndex = 0
+
+    for (let i = 0; i < botWeights.length; i++) {
+      random -= botWeights[i]
+      if (random <= 0) {
+        selectedIndex = i
+        break
+      }
+    }
+
+    const randomBot = botDocs[selectedIndex]
+    const botData = randomBot.data()
+
+    // Build personality from database or fall back to hardcoded config
+    let personality: AIBotPersonality
+
+    // Try hardcoded personality first (has rich voice model), fall back to database
+    const hardcodedPersonality = AI_BOTS.find(b => b.name === botData.displayName)
+
+    if (hardcodedPersonality) {
+      personality = hardcodedPersonality
+    } else if (botData.aiPersonality && botData.aiInterests) {
+      // Use personality from database with default voice
+      personality = {
+        name: botData.displayName,
+        personality: botData.aiPersonality,
+        interests: botData.aiInterests,
+        bio: botData.bio || '',
+        age: 30,
+        occupation: botData.occupation || 'AI Assistant',
+        voice: DEFAULT_VOICE,
+      }
+    } else {
+      return NextResponse.json({ error: 'Bot personality not found' }, { status: 404 })
+    }
+
+    // Get AI memory for context
+    const memory = await getAIMemory(botData.uid)
+    const now = Date.now()
+    const postsToday = memory?.interactions?.postsToday || 0
+    const lastPostTime = memory?.interactions?.lastPostTime || 0
+    const lastPostDate = new Date(lastPostTime).toDateString()
+    const todayDate = new Date(now).toDateString()
+    const isNewDay = lastPostDate !== todayDate
+    const currentPostsToday = isNewDay ? 0 : postsToday
+
+    // Get viral patterns for inspiration
+    // Auto-refresh if stale (>6 hours) to keep trending topics current
+    let viralContext: string | null = null
+    try {
+      // Check if patterns are stale
+      const viralDoc = await adminDb.collection('viralPatterns').doc('latest').get()
+      let needsRefresh = false
+
+      if (viralDoc.exists) {
+        const data = viralDoc.data()
+        const updatedAt = data?.updatedAt?.toDate?.() || new Date(data?.stats?.scraped_at || 0)
+        const hoursSinceUpdate = (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60)
+        needsRefresh = hoursSinceUpdate > 6
+      } else {
+        needsRefresh = true
+      }
+
+      // Refresh if needed (non-blocking, happens in background)
+      if (needsRefresh) {
+        console.log(`🔄 Viral patterns stale, refreshing...`)
+        analyzeViralPatterns()
+          .then(async (results) => {
+            if (results.success) {
+              await adminDb.collection('viralPatterns').doc('latest').set({
+                ...results,
+                updatedAt: new Date(),
+              })
+              console.log(`✅ Viral patterns auto-refreshed`)
+            }
+          })
+          .catch(err => console.error('⚠️  Auto-refresh failed:', err))
+      }
+
+      // Use current patterns (even if stale, refresh happens async)
+      const viralPatterns = await getViralPatterns()
+      if (viralPatterns) {
+        viralContext = generateViralContext(viralPatterns)
+        console.log(`✅ Using viral patterns for ${botData.displayName}'s post`)
+      } else {
+        console.log(`⚠️  No viral patterns available for ${botData.displayName}'s post`)
+      }
+    } catch (error) {
+      console.log(`⚠️  Viral patterns unavailable for ${botData.displayName}, proceeding without them`)
+    }
+
+    // Get bot-specific content profile for personalized content
+    const botProfile = await getBotContentProfile(botData.uid, botData.displayName)
+    const writingStyleGuidance = getWritingStyleGuidance(botProfile)
+
+    // ============================================================
+    // STEP 3: Generate content
+    // ============================================================
+    if (shouldPostNews) {
       // Generate description if missing from scraped data
       if (!articleDescription && articleTitle && articleUrl) {
         articleDescription = await generateArticleDescription(articleTitle, articleUrl, personality)
@@ -351,10 +378,35 @@ export async function POST(request: Request) {
         personality
       )
 
-      // If AI generation succeeds, use it; otherwise fall back to a simple take
+      // Use journalist-quality commentary if it's substantial (> 20 chars)
       // NEVER include the article title in the post content - the link preview shows it
-      if (aiCommentary && aiCommentary.length > 0) {
+      if (aiCommentary && aiCommentary.length > 20) {
         content = aiCommentary
+      } else if (aiCommentary && aiCommentary.length > 0) {
+        // Short but valid commentary - still use it
+        content = aiCommentary
+      } else {
+        // Minimal fallback for articles - simple generic reaction
+        content = 'worth a read'
+      }
+
+      // Mark article as used
+      await articleDoc!.ref.update({
+        used: true,
+        usedAt: new Date(),
+        usedBy: botData.uid
+      })
+
+      console.log(`📝 Post: "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"`)
+      console.log(`   Source: ${articleDoc!.data().source}`)
+      console.log(`   Comments available: ${articleTopComments?.length ?? 0}`)
+      console.log(`   Popularity score: ${articleDoc!.data().popularityScore}`)
+    } else {
+      // Generate original post content with memory context, viral patterns, and unique style
+      // The short quirk-based reactions are only for these 5% original thought posts
+      const generated = await generateAIPost(personality, memory, viralContext, writingStyleGuidance)
+      if (generated && generated.length > 0) {
+        content = generated
       } else {
         // Minimal fallback using a personality quirk as a short reaction
         const quirks = personality.voice?.verbalQuirks || ['interesting']
@@ -367,21 +419,6 @@ export async function POST(request: Request) {
         ]
         content = fallbacks[Math.floor(Math.random() * fallbacks.length)]
       }
-
-      // Mark article as used
-      await articleDoc.ref.update({
-        used: true,
-        usedAt: new Date(),
-        usedBy: botData.uid
-      })
-
-      console.log(`📝 Post: "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"`)
-      console.log(`   Source: ${articleData.source}`)
-      console.log(`   Comments available: ${articleTopComments?.length ?? 0}`)
-      console.log(`   Popularity score: ${articleData.popularityScore}`)
-    } else {
-      // Generate original post content with memory context, viral patterns, and unique style
-      content = await generateAIPost(personality, memory, viralContext, writingStyleGuidance)
     }
 
     // Generate image description for AI bots if image is present
@@ -436,7 +473,8 @@ export async function POST(request: Request) {
       articleTopComments, // Real comments from HN/Reddit for this article
       category,
       createdAt: new Date(),
-      likes: [],
+      upvotes: [],
+      downvotes: [],
       commentCount: 0,
     })
 

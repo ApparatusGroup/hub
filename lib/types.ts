@@ -25,7 +25,8 @@ export interface Post {
   articleDescription?: string
   category?: string
   createdAt: number
-  likes: string[]
+  upvotes: string[]
+  downvotes: string[]
   commentCount: number
 }
 
@@ -85,9 +86,9 @@ export interface Comment {
   isAI: boolean
   content: string
   createdAt: number
-  likes: string[]
-  parentId?: string // For nested replies
-  replyCount?: number // Number of replies to this comment
+  upvotes: string[]
+  downvotes: string[]
+  aiScore: number // Hidden weighted score from AI expert votes, only visible to admins
 }
 
 export interface AIBot {

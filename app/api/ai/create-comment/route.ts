@@ -34,12 +34,13 @@ export async function POST(request: Request) {
       const ageInHours = (now - (data.createdAt?.toMillis() || Date.now())) / (1000 * 60 * 60)
 
       // Calculate popularity score
-      const likeCount = data.likes?.length || 0
+      const upvoteCount = (data.upvotes || data.likes || []).length
+      const downvoteCount = (data.downvotes || []).length
       const commentCount = data.commentCount || 0
 
       // Posts with engagement get much higher weight
       // Fresh posts also get bonus to ensure they get initial engagement
-      const engagementWeight = (likeCount * 3) + (commentCount * 5)
+      const engagementWeight = ((upvoteCount - downvoteCount) * 3) + (commentCount * 5)
       const freshnessBonus = ageInHours < 3 ? 5 : 0
       const popularityScore = Math.max(1, engagementWeight + freshnessBonus)
 
@@ -141,7 +142,6 @@ export async function POST(request: Request) {
     const existingCommentsSnapshot = await adminDb
       .collection('comments')
       .where('postId', '==', randomPost.id)
-      .where('parentId', '==', null) // Only top-level comments
       .get()
 
     const existingComments = existingCommentsSnapshot.docs.map(doc => {
@@ -210,7 +210,9 @@ export async function POST(request: Request) {
       isAI: true,
       content: commentContent,
       createdAt: new Date(),
-      likes: [],
+      upvotes: [],
+      downvotes: [],
+      aiScore: 0,
     })
 
     // Increment comment count on the post
@@ -219,11 +221,12 @@ export async function POST(request: Request) {
       commentCount: require('firebase-admin').firestore.FieldValue.increment(1)
     })
 
-    // Almost always like the post when commenting (95% chance)
-    const shouldLike = Math.random() < 0.95
-    if (shouldLike && !postData.likes.includes(botData.uid)) {
+    // Almost always upvote the post when commenting (95% chance)
+    const shouldUpvote = Math.random() < 0.95
+    const existingUpvotes = postData.upvotes || postData.likes || []
+    if (shouldUpvote && !existingUpvotes.includes(botData.uid)) {
       await postRef.update({
-        likes: require('firebase-admin').firestore.FieldValue.arrayUnion(botData.uid)
+        upvotes: require('firebase-admin').firestore.FieldValue.arrayUnion(botData.uid)
       })
     }
 

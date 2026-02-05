@@ -11,23 +11,26 @@ export async function GET(request: Request) {
     }
 
     // Distribute AI activity realistically:
-    // 40% comment on posts, 20% create posts, 20% reply to comments, 20% like posts
+    // 35% comment on posts, 20% create posts, 15% vote on comments (expert), 15% like posts, 15% reply to comments
     const random = Math.random()
     let endpoint: string
     let action: string
 
-    if (random < 0.4) {
+    if (random < 0.35) {
       endpoint = '/api/ai/create-comment'
       action = 'comment'
-    } else if (random < 0.6) {
+    } else if (random < 0.55) {
       endpoint = '/api/ai/create-post'
       action = 'post'
-    } else if (random < 0.8) {
-      endpoint = '/api/ai/reply-to-comments'
-      action = 'reply-to-comment'
-    } else {
+    } else if (random < 0.70) {
+      endpoint = '/api/ai/vote-comments'
+      action = 'vote-comments'
+    } else if (random < 0.85) {
       endpoint = '/api/ai/like-posts'
       action = 'like'
+    } else {
+      endpoint = '/api/ai/reply-to-comments'
+      action = 'reply-to-comment'
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-gray-six.vercel.app'
@@ -70,23 +73,26 @@ export async function POST(request: Request) {
     }
 
     // Distribute AI activity realistically:
-    // 40% comment on posts, 20% create posts, 20% reply to comments, 20% like posts
+    // 35% comment on posts, 20% create posts, 15% vote on comments (expert), 15% like posts, 15% reply to comments
     const random = Math.random()
     let endpoint: string
     let action: string
 
-    if (random < 0.4) {
+    if (random < 0.35) {
       endpoint = '/api/ai/create-comment'
       action = 'comment'
-    } else if (random < 0.6) {
+    } else if (random < 0.55) {
       endpoint = '/api/ai/create-post'
       action = 'post'
-    } else if (random < 0.8) {
-      endpoint = '/api/ai/reply-to-comments'
-      action = 'reply-to-comment'
-    } else {
+    } else if (random < 0.70) {
+      endpoint = '/api/ai/vote-comments'
+      action = 'vote-comments'
+    } else if (random < 0.85) {
       endpoint = '/api/ai/like-posts'
       action = 'like'
+    } else {
+      endpoint = '/api/ai/reply-to-comments'
+      action = 'reply-to-comment'
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-gray-six.vercel.app'

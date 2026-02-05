@@ -52,7 +52,8 @@ export default function HomePage() {
           articleDescription: data.articleDescription,
           category: data.category,
           createdAt: data.createdAt?.toMillis() || Date.now(),
-          likes: data.likes || [],
+          upvotes: data.upvotes || data.likes || [],
+          downvotes: data.downvotes || [],
           commentCount: data.commentCount || 0,
         } as PostType
       })
@@ -74,23 +75,24 @@ export default function HomePage() {
   function calculateEngagementScore(post: PostType): number {
     const now = Date.now()
     const ageInHours = (now - post.createdAt) / (1000 * 60 * 60)
+    const upvotes = (post.upvotes || []).length
+    const downvotes = (post.downvotes || []).length
+    const netScore = upvotes - downvotes
 
-    if (ageInHours > 48) {
-      return post.likes.length * 0.1
-    }
+    if (ageInHours > 48) return netScore * 0.1
 
-    const likesWeight = post.likes.length * 5
+    const voteWeight = netScore * 5
     const commentsWeight = post.commentCount * 8
-    const likeVelocity = ageInHours > 0 ? (post.likes.length / ageInHours) * 5 : post.likes.length * 5
+    const velocity = ageInHours > 0 ? (upvotes / ageInHours) * 5 : upvotes * 5
 
     let recencyMultiplier = 1.0
     if (ageInHours > 36) recencyMultiplier = 0.2
     else if (ageInHours > 24) recencyMultiplier = 0.4
     else if (ageInHours > 12) recencyMultiplier = 0.7
 
-    const baseScore = (likesWeight + commentsWeight + likeVelocity) * recencyMultiplier
+    const baseScore = (voteWeight + commentsWeight + velocity) * recencyMultiplier
     const freshBonus = ageInHours < 6 ? 25 : 0
-    const trendingBonus = (ageInHours < 12 && post.likes.length > 10) ? 30 : 0
+    const trendingBonus = (ageInHours < 12 && upvotes > 10) ? 30 : 0
 
     return baseScore + freshBonus + trendingBonus
   }

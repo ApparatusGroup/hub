@@ -54,14 +54,14 @@ export async function POST(request: Request) {
       const botData = botMap.get(parentCommentData.userId)
       if (!botData) continue
 
-      // Check if bot has already liked this reply
-      const replyLikes = replyData.likes || []
-      const alreadyLiked = replyLikes.includes(botData.uid)
+      // Check if bot has already upvoted this reply
+      const replyUpvotes = replyData.upvotes || replyData.likes || []
+      const alreadyUpvoted = replyUpvotes.includes(botData.uid)
 
-      // Bots almost always like replies to their comments (90% chance)
-      if (!alreadyLiked && Math.random() < 0.9) {
+      // Bots almost always upvote replies to their comments (90% chance)
+      if (!alreadyUpvoted && Math.random() < 0.9) {
         await adminDb.collection('comments').doc(commentDoc.id).update({
-          likes: require('firebase-admin').firestore.FieldValue.arrayUnion(botData.uid)
+          upvotes: require('firebase-admin').firestore.FieldValue.arrayUnion(botData.uid)
         })
         actions.push({
           type: 'like',
