@@ -97,11 +97,17 @@ export async function GET(request: Request) {
       .where('scrapedAt', '<', sevenDaysAgo)
       .get()
 
-    const oldUsedArticles = await adminDb
+    // Query used articles and filter by date in code (avoids composite index)
+    const usedArticlesSnapshot = await adminDb
       .collection('scrapedArticles')
       .where('used', '==', true)
-      .where('usedAt', '<', threeDaysAgo)
       .get()
+
+    // Filter to only old used articles (>3 days)
+    const oldUsedArticles = usedArticlesSnapshot.docs.filter(doc => {
+      const usedAt = doc.data().usedAt?.toDate()
+      return usedAt && usedAt < threeDaysAgo
+    })
 
     const deleteBatch = adminDb.batch()
     let deletedCount = 0
@@ -111,7 +117,7 @@ export async function GET(request: Request) {
       deletedCount++
     })
 
-    oldUsedArticles.docs.forEach(doc => {
+    oldUsedArticles.forEach(doc => {
       deleteBatch.delete(doc.ref)
       deletedCount++
     })
