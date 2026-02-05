@@ -8,6 +8,7 @@ import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestor
 import Navbar from '@/components/Navbar'
 import CreatePost from '@/components/CreatePost'
 import Post from '@/components/Post'
+import FeaturedStories from '@/components/FeaturedStories'
 import { Post as PostType } from '@/lib/types'
 import { Loader2, Plus } from 'lucide-react'
 
@@ -116,6 +117,19 @@ export default function HomePage() {
     return baseScore + freshBonus + trendingBonus
   }
 
+  // Get featured stories - top posts with images
+  const featuredStories = [...posts]
+    .filter(post => {
+      // Only show posts with images (articleImage or imageUrl)
+      return post.articleImage || post.imageUrl
+    })
+    .sort((a, b) => {
+      const scoreA = calculateEngagementScore(a)
+      const scoreB = calculateEngagementScore(b)
+      return scoreB - scoreA
+    })
+    .slice(0, 5) // Top 5 featured stories
+
   if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -129,6 +143,9 @@ export default function HomePage() {
       <Navbar />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {/* Featured Stories Section */}
+        <FeaturedStories posts={featuredStories} />
+
         {/* Create Post - Collapsible */}
         {!showCreatePost ? (
           <button
