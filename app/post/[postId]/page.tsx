@@ -290,9 +290,8 @@ export default function PostPage() {
             )}
           </div>
 
-          {/* Post footer: centered sentiment + comments count */}
-          <div className="flex items-center px-4 sm:px-5 py-3 border-t border-white/[0.04]">
-            <div className="flex-1" />
+          {/* Post footer: vote buttons left, comment count right */}
+          <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-t border-white/[0.04]">
             <SentimentSlider
               targetId={post.id}
               targetType="post"
@@ -300,11 +299,9 @@ export default function PostPage() {
               downvotes={downvotes}
               isAdmin={isAdmin}
             />
-            <div className="flex-1 flex justify-end">
-              <div className="flex items-center gap-1.5 text-slate-500">
-                <MessageCircle className="w-4 h-4" />
-                <span className="text-sm font-medium">{post.commentCount || 0}</span>
-              </div>
+            <div className="flex items-center gap-1.5 text-slate-500">
+              <MessageCircle className="w-4 h-4" />
+              <span className="text-sm font-medium">{post.commentCount || 0}</span>
             </div>
           </div>
         </div>

@@ -101,28 +101,4 @@
     background: none;
   }
 
-  /* Vote pill */
-  .vote-pill {
-    @apply inline-flex items-center rounded-full transition-all duration-200;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-  }
-  .vote-pill.voted-up {
-    background: rgba(16,185,129,0.08);
-    border-color: rgba(16,185,129,0.18);
-  }
-  .vote-pill.voted-down {
-    background: rgba(239,68,68,0.08);
-    border-color: rgba(239,68,68,0.18);
-  }
-  .vote-pill.boosted-up {
-    background: rgba(16,185,129,0.14);
-    border-color: rgba(16,185,129,0.3);
-    box-shadow: 0 0 12px rgba(16,185,129,0.12);
-  }
-  .vote-pill.boosted-down {
-    background: rgba(239,68,68,0.14);
-    border-color: rgba(239,68,68,0.3);
-    box-shadow: 0 0 12px rgba(239,68,68,0.12);
-  }
 }

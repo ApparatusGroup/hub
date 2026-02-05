@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
 import { doc, updateDoc, arrayUnion, arrayRemove, getDoc, setDoc } from 'firebase/firestore'
-import { Minus, Plus, Zap } from 'lucide-react'
+import { ChevronDown, ChevronUp, Zap } from 'lucide-react'
 
 type SentimentLevel = -2 | -1 | 0 | 1 | 2
 type TargetType = 'post' | 'comment'
@@ -72,7 +72,6 @@ export default function SentimentSlider({
     const ref = doc(db, coll, targetId)
 
     try {
-      // Remove existing vote
       if (level > 0 || upvotes?.includes(user.uid)) {
         await updateDoc(ref, { upvotes: arrayRemove(user.uid) })
       }
@@ -80,13 +79,11 @@ export default function SentimentSlider({
         await updateDoc(ref, { downvotes: arrayRemove(user.uid) })
       }
 
-      // Toggle off
       if (newLevel === 0 || newLevel === level) {
         setLevel(0)
         return
       }
 
-      // Apply
       if (newLevel > 0) {
         if (newLevel === 2) {
           for (let i = 0; i < 5; i++) {
@@ -143,71 +140,72 @@ export default function SentimentSlider({
   const showBoost = level !== 0 && Math.abs(level) === 1 && (isAdmin || canUseExtreme)
   const isBoosted = Math.abs(level) === 2
 
-  const pillClass = isBoosted
-    ? (level > 0 ? 'boosted-up' : 'boosted-down')
-    : level > 0 ? 'voted-up' : level < 0 ? 'voted-down' : ''
-
-  const iconSize = compact ? 'w-3 h-3' : 'w-3.5 h-3.5'
-  const boostSize = compact ? 'w-2.5 h-2.5' : 'w-3 h-3'
-  const pad = compact ? 'p-1.5' : 'p-2'
-  const scorePad = compact ? 'px-0.5 min-w-[16px] text-[11px]' : 'px-1 min-w-[20px] text-xs'
+  const btnSize = compact ? 'w-7 h-7' : 'w-9 h-9'
+  const iconSize = compact ? 'w-3.5 h-3.5' : 'w-4 h-4'
+  const boostBtnSize = compact ? 'w-6 h-6' : 'w-7 h-7'
+  const boostIconSize = compact ? 'w-3 h-3' : 'w-3.5 h-3.5'
 
   return (
-    <div className={`vote-pill ${pillClass}`}>
-      {/* Downvote */}
-      <button
-        onClick={handleDown}
-        className={`${pad} rounded-l-full transition-colors ${
-          level < 0
-            ? 'text-red-400'
-            : 'text-slate-600 hover:text-red-400 hover:bg-white/[0.04]'
-        }`}
-      >
-        <Minus className={iconSize} strokeWidth={2.5} />
-      </button>
-
-      {/* Score */}
-      <span className={`${scorePad} font-bold text-center tabular-nums select-none ${
-        level > 0 ? 'text-emerald-400' :
-        level < 0 ? 'text-red-400' :
-        'text-slate-500'
-      }`}>
-        {score > 0 ? `+${score}` : score}
-      </span>
-
-      {/* Upvote */}
-      <button
-        onClick={handleUp}
-        className={`${pad} ${!showBoost && !isBoosted ? 'rounded-r-full' : ''} transition-colors ${
-          level > 0
-            ? 'text-emerald-400'
-            : 'text-slate-600 hover:text-emerald-400 hover:bg-white/[0.04]'
-        }`}
-      >
-        <Plus className={iconSize} strokeWidth={2.5} />
-      </button>
-
-      {/* Boost (appears after voting a direction) */}
-      {showBoost && (
+    <div className="flex items-center">
+      {/* Vote buttons: red, score, green */}
+      <div className={`flex items-center ${compact ? 'gap-2.5' : 'gap-3'}`}>
+        {/* Downvote */}
         <button
-          onClick={handleBoost}
-          className={`${compact ? 'pl-0.5 pr-1.5 py-1.5' : 'pl-1 pr-2 py-2'} rounded-r-full border-l transition-all ${
-            level > 0
-              ? 'border-emerald-500/15 text-emerald-400/35 hover:text-emerald-300 hover:bg-emerald-500/10'
-              : 'border-red-500/15 text-red-400/35 hover:text-red-300 hover:bg-red-500/10'
+          onClick={handleDown}
+          className={`${btnSize} rounded-full flex items-center justify-center transition-all duration-150 ${
+            level < 0
+              ? 'bg-red-500/15 border-[1.5px] border-red-400/50 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.15)]'
+              : 'border-[1.5px] border-white/[0.1] text-slate-600 hover:border-red-400/40 hover:text-red-400 hover:bg-red-500/8'
           }`}
-          title="Boost (+5 weight)"
         >
-          <Zap className={boostSize} />
+          <ChevronDown className={iconSize} strokeWidth={2.5} />
         </button>
-      )}
 
-      {/* Boosted indicator */}
-      {isBoosted && (
-        <div className={`${compact ? 'pl-0.5 pr-1.5 py-1.5' : 'pl-1 pr-2 py-2'} rounded-r-full border-l ${
-          level > 0 ? 'border-emerald-500/20 text-emerald-300' : 'border-red-500/20 text-red-300'
+        {/* Score */}
+        <span className={`${compact ? 'text-xs min-w-[18px]' : 'text-sm min-w-[22px]'} font-bold text-center tabular-nums select-none ${
+          level > 0 ? 'text-emerald-400' : level < 0 ? 'text-red-400' : 'text-slate-500'
         }`}>
-          <Zap className={`${boostSize} fill-current`} />
+          {score > 0 ? `+${score}` : score}
+        </span>
+
+        {/* Upvote */}
+        <button
+          onClick={handleUp}
+          className={`${btnSize} rounded-full flex items-center justify-center transition-all duration-150 ${
+            level > 0
+              ? 'bg-emerald-500/15 border-[1.5px] border-emerald-400/50 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.15)]'
+              : 'border-[1.5px] border-white/[0.1] text-slate-600 hover:border-emerald-400/40 hover:text-emerald-400 hover:bg-emerald-500/8'
+          }`}
+        >
+          <ChevronUp className={iconSize} strokeWidth={2.5} />
+        </button>
+      </div>
+
+      {/* Boost - separated from vote buttons */}
+      {(showBoost || isBoosted) && (
+        <div className={compact ? 'ml-4' : 'ml-5'}>
+          {showBoost && (
+            <button
+              onClick={handleBoost}
+              className={`${boostBtnSize} rounded-full flex items-center justify-center transition-all duration-150 ${
+                level > 0
+                  ? 'border-[1.5px] border-emerald-400/20 text-emerald-400/30 hover:border-emerald-400/50 hover:text-emerald-400 hover:bg-emerald-500/10'
+                  : 'border-[1.5px] border-red-400/20 text-red-400/30 hover:border-red-400/50 hover:text-red-400 hover:bg-red-500/10'
+              }`}
+              title="Boost (+5 weight)"
+            >
+              <Zap className={boostIconSize} />
+            </button>
+          )}
+          {isBoosted && (
+            <div className={`${boostBtnSize} rounded-full flex items-center justify-center ${
+              level > 0
+                ? 'bg-emerald-500/15 border-[1.5px] border-emerald-400/40 text-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.2)]'
+                : 'bg-red-500/15 border-[1.5px] border-red-400/40 text-red-300 shadow-[0_0_8px_rgba(239,68,68,0.2)]'
+            }`}>
+              <Zap className={`${boostIconSize} fill-current`} />
+            </div>
+          )}
         </div>
       )}
     </div>
