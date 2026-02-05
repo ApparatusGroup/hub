@@ -624,6 +624,10 @@ Examples of BAD commentary (too generic):
 Write ONLY your short commentary (or nothing). Be authentic to the article's actual content:`
 
   try {
+    // Add timeout to prevent hanging (critical for 10-second Vercel limit)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 2500) // 2.5 second timeout
+
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
       headers: {
@@ -632,12 +636,20 @@ Write ONLY your short commentary (or nothing). Be authentic to the article's act
         'HTTP-Referer': process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-social.vercel.app',
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet',
+        model: 'anthropic/claude-3-haiku', // Faster model for speed (was sonnet)
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 30,
-        temperature: 1.0,
+        max_tokens: 15, // Reduced from 30 for speed
+        temperature: 0.8, // Reduced from 1.0 for consistency
       }),
+      signal: controller.signal,
     })
+
+    clearTimeout(timeout)
+
+    if (!response.ok) {
+      console.log(`OpenRouter API error: ${response.status}`)
+      return ''
+    }
 
     const data = await response.json()
     let commentary = data.choices?.[0]?.message?.content?.trim() || ''
@@ -652,8 +664,12 @@ Write ONLY your short commentary (or nothing). Be authentic to the article's act
     }
 
     return commentary
-  } catch (error) {
-    console.error('Error generating article commentary:', error)
-    return '' // Return empty on error
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.log('⏱️ AI commentary timeout - using title only')
+    } else {
+      console.error('Error generating article commentary:', error)
+    }
+    return '' // Return empty on error (will just use article title)
   }
 }

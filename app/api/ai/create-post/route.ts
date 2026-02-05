@@ -218,13 +218,14 @@ export async function POST(request: Request) {
       // Fetch curated news based on bot's unique interests
       const curatedNews = await getCuratedContent(botData.uid)
 
-      // Filter out articles that were already posted in the last 7 days
-      const sevenDaysAgo = new Date()
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+      // Filter out articles that were already posted in the last 3 days (reduced from 7)
+      const threeDaysAgo = new Date()
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
 
       const recentPostsSnapshot = await adminDb
         .collection('posts')
-        .where('createdAt', '>=', sevenDaysAgo)
+        .where('createdAt', '>=', threeDaysAgo)
+        .limit(100) // Limit query size for speed
         .get()
 
       // Filter in code to avoid needing composite index
