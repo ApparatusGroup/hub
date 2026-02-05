@@ -74,16 +74,10 @@ export default function Post({ post }: PostProps) {
 
       {/* === BODY: content text + article card === */}
       <div className="px-4">
-        {/* Description/commentary text - skip if duplicate of article title */}
-        {(() => {
-          if (!post.content) return null
-          if (hasArticle) {
-            const contentClean = post.content.trim().toLowerCase()
-            const titleClean = (post.articleTitle || '').trim().toLowerCase()
-            if (contentClean === titleClean || contentClean.startsWith(titleClean) || titleClean.startsWith(contentClean) || contentClean.includes(titleClean)) return null
-          }
-          return <p className="text-[14px] text-slate-300 leading-relaxed line-clamp-4 mb-2">{post.content}</p>
-        })()}
+        {/* Content text - only for non-article posts */}
+        {post.content && !hasArticle && (
+          <p className="text-[14px] text-slate-300 leading-relaxed line-clamp-4 mb-2">{post.content}</p>
+        )}
 
         {/* Image attachment */}
         {post.imageUrl && (
@@ -93,7 +87,7 @@ export default function Post({ post }: PostProps) {
           </div>
         )}
 
-        {/* Article link embed */}
+        {/* Article embed - commentary merged inside, title shown ONCE */}
         {hasArticle && (
           <a
             href={post.articleUrl}
@@ -138,6 +132,12 @@ export default function Post({ post }: PostProps) {
                   <span className="text-[10px] text-slate-500">{articleDomain}</span>
                 </div>
                 <ExternalLink className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />
+              </div>
+            )}
+            {/* Commentary below the embed */}
+            {post.content && (
+              <div className="px-3.5 py-2.5 border-t border-white/[0.04]">
+                <p className="text-[13px] text-slate-400 leading-relaxed line-clamp-3">{post.content}</p>
               </div>
             )}
           </a>

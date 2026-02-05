@@ -33,23 +33,12 @@ const NODE_CLASSES: Record<SentimentLevel, string> = {
   [2]: 'active-love',
 }
 
-const POSITIONS: SentimentLevel[] = [-2, -1, 0, 1, 2]
-
-// 5-node layout for admin
-const NODE_PCT_5: Record<SentimentLevel, number> = {
+// Fixed 5-position track layout
+const NODE_PCT: Record<SentimentLevel, number> = {
   [-2]: 0,
   [-1]: 25,
   [0]: 50,
   [1]: 75,
-  [2]: 100,
-}
-
-// 3-node layout for regular users (evenly spaced)
-const NODE_PCT_3: Record<SentimentLevel, number> = {
-  [-2]: 0,
-  [-1]: 0,
-  [0]: 50,
-  [1]: 100,
   [2]: 100,
 }
 
@@ -63,6 +52,7 @@ export default function SentimentSlider({
 }: SentimentSliderProps) {
   const { user } = useAuth()
   const [level, setLevel] = useState<SentimentLevel>(0)
+  const [expanded, setExpanded] = useState(false)
   const [canUseExtreme, setCanUseExtreme] = useState(true)
   const [score, setScore] = useState(0)
 
@@ -101,9 +91,8 @@ export default function SentimentSlider({
     checkLimit()
   }, [user, isAdmin])
 
-  const handleSelect = useCallback(async (newLevel: SentimentLevel) => {
+  const handleVote = useCallback(async (newLevel: SentimentLevel) => {
     if (!user) return
-    if ((newLevel === -2 || newLevel === 2) && !isAdmin && !canUseExtreme) return
 
     const coll = targetType === 'post' ? 'posts' : 'comments'
     const ref = doc(db, coll, targetId)
@@ -117,12 +106,21 @@ export default function SentimentSlider({
         await updateDoc(ref, { downvotes: arrayRemove(user.uid) })
       }
 
+      // Toggle off if clicking same level
       if (newLevel === level) {
         setLevel(0)
+        setExpanded(false)
         return
       }
 
-      // Apply new vote (extreme = 5 entries, regular = 1)
+      // Reset to neutral
+      if (newLevel === 0) {
+        setLevel(0)
+        setExpanded(false)
+        return
+      }
+
+      // Apply new vote
       if (newLevel > 0) {
         if (newLevel === 2) {
           for (let i = 0; i < 5; i++) {
@@ -155,11 +153,66 @@ export default function SentimentSlider({
     }
   }, [user, level, targetId, targetType, upvotes, downvotes, isAdmin, canUseExtreme])
 
+  const handleNodeClick = useCallback((pos: SentimentLevel) => {
+    if (!user) return
+
+    // Center node: expand options if not voted, remove vote if voted
+    if (pos === 0) {
+      if (level === 0) {
+        setExpanded(!expanded)
+      } else {
+        handleVote(0)
+      }
+      return
+    }
+
+    // Extreme node
+    if (pos === 2 || pos === -2) {
+      if (!isAdmin && !canUseExtreme) return
+      handleVote(pos)
+      return
+    }
+
+    // Regular direction (-1 or +1)
+    handleVote(pos)
+  }, [user, level, expanded, handleVote, isAdmin, canUseExtreme])
+
   if (!user) return null
 
-  // Non-admin users only see 3 nodes (-1, 0, 1). Admin sees all 5.
-  const visiblePositions: SentimentLevel[] = isAdmin ? POSITIONS : [-1, 0, 1]
-  const pctMap = isAdmin ? NODE_PCT_5 : NODE_PCT_3
+  // Progressive disclosure: determine which nodes are visible
+  const visible = new Set<SentimentLevel>()
+
+  if (level === 0) {
+    // Not voted: show center, expand to show adjacent
+    visible.add(0)
+    if (expanded) {
+      visible.add(-1)
+      visible.add(1)
+    }
+  } else if (level === 1) {
+    // Voted upvote: show center + upvote, reveal love if eligible
+    visible.add(0)
+    visible.add(1)
+    if (isAdmin || canUseExtreme) visible.add(2)
+  } else if (level === -1) {
+    // Voted downvote: show center + downvote, reveal hate if eligible
+    visible.add(-2)
+    visible.add(-1)
+    if (isAdmin || canUseExtreme) visible.add(-2)
+    visible.add(0)
+  } else if (level === 2) {
+    // Voted love: show chain
+    visible.add(0)
+    visible.add(1)
+    visible.add(2)
+  } else if (level === -2) {
+    // Voted hate: show chain
+    visible.add(-2)
+    visible.add(-1)
+    visible.add(0)
+  }
+
+  const nodeSize = compact ? 14 : 18
 
   return (
     <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'}`}>
@@ -171,52 +224,53 @@ export default function SentimentSlider({
       </span>
 
       {/* Slider track */}
-      <div className={`relative flex-1 ${compact ? 'max-w-[130px]' : 'max-w-[180px]'}`}>
+      <div className={`relative ${compact ? 'max-w-[130px]' : 'max-w-[180px]'} flex-1`}>
         <div className="sentiment-track">
           {level < 0 && (
             <div
               className="sentiment-fill-negative"
-              style={{
-                left: `${pctMap[level as SentimentLevel]}%`,
-                right: '50%',
-              }}
+              style={{ left: `${NODE_PCT[level]}%`, right: '50%' }}
             />
           )}
           {level > 0 && (
             <div
               className="sentiment-fill-positive"
-              style={{
-                left: '50%',
-                right: `${100 - pctMap[level as SentimentLevel]}%`,
-              }}
+              style={{ left: '50%', right: `${100 - NODE_PCT[level]}%` }}
             />
           )}
         </div>
 
-        {/* Nodes */}
-        {visiblePositions.map((pos) => {
+        {/* Nodes - only render visible ones */}
+        {([-2, -1, 0, 1, 2] as SentimentLevel[]).map((pos) => {
+          if (!visible.has(pos)) return null
+
+          const isActive = level === pos
           const isExtreme = pos === -2 || pos === 2
-          const isLocked = isExtreme && !canUseExtreme
+          const isLocked = isExtreme && !isAdmin && !canUseExtreme
+          // Faded: adjacent nodes when just expanded (not voted), or extreme nodes not yet selected
+          const isFaded = (!isActive && level === 0 && pos !== 0) || (isExtreme && !isActive)
 
           return (
             <button
               key={pos}
-              onClick={(e) => { e.stopPropagation(); handleSelect(pos) }}
+              onClick={(e) => { e.stopPropagation(); handleNodeClick(pos) }}
               disabled={isLocked}
-              className={`sentiment-node ${level === pos ? NODE_CLASSES[pos] : ''} ${isLocked ? 'opacity-30 cursor-not-allowed' : ''}`}
+              className={`sentiment-node ${isActive ? NODE_CLASSES[pos] : ''} ${isLocked ? 'cursor-not-allowed' : ''}`}
               style={{
-                left: `${pctMap[pos]}%`,
+                left: `${NODE_PCT[pos]}%`,
                 transform: 'translate(-50%, -50%)',
-                width: compact ? '14px' : '18px',
-                height: compact ? '14px' : '18px',
+                width: `${nodeSize}px`,
+                height: `${nodeSize}px`,
+                opacity: isLocked ? 0.25 : isFaded ? 0.4 : 1,
+                transition: 'all 0.25s ease, opacity 0.25s ease',
               }}
-              title={isLocked ? 'Used today (resets in 24h)' : LABELS[pos] || 'Neutral'}
+              title={isLocked ? 'Boost used today' : LABELS[pos] || 'Neutral'}
             />
           )
         })}
       </div>
 
-      {/* Label (only in non-compact mode) */}
+      {/* Label */}
       {!compact && level !== 0 && (
         <span className={`text-[10px] font-medium min-w-[48px] ${
           level < 0 ? 'text-red-400' : 'text-emerald-400'

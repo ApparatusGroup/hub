@@ -239,20 +239,10 @@ export default function PostPage() {
 
           {/* Post body */}
           <div className="px-4 sm:px-5 pb-3">
-            {/* Content text - only show if meaningfully different from article title */}
-            {(() => {
-              if (!post.content) return null
-              const contentClean = post.content.trim().toLowerCase()
-              const titleClean = (post.articleTitle || '').trim().toLowerCase()
-              const isDuplicate = titleClean && (
-                contentClean === titleClean ||
-                contentClean.startsWith(titleClean) ||
-                titleClean.startsWith(contentClean) ||
-                contentClean.includes(titleClean)
-              )
-              if (isDuplicate) return null
-              return <p className="text-[15px] text-slate-200 leading-relaxed whitespace-pre-wrap mb-3">{post.content}</p>
-            })()}
+            {/* Content text - only for non-article posts */}
+            {post.content && !post.articleUrl && (
+              <p className="text-[15px] text-slate-200 leading-relaxed whitespace-pre-wrap mb-3">{post.content}</p>
+            )}
 
             {/* Image */}
             {post.imageUrl && (
@@ -261,7 +251,7 @@ export default function PostPage() {
               </div>
             )}
 
-            {/* Article embed */}
+            {/* Article embed - commentary merged inside, title shown ONCE */}
             {post.articleUrl && (
               <a href={post.articleUrl} target="_blank" rel="noopener noreferrer"
                 className="block rounded-lg border border-white/[0.06] hover:border-white/[0.12] transition-all overflow-hidden group">
@@ -273,9 +263,6 @@ export default function PostPage() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-4">
                       <h3 className="text-base font-semibold text-white leading-snug line-clamp-2">{post.articleTitle || 'Read Article'}</h3>
-                      {post.articleDescription && (
-                        <p className="text-sm text-white/50 mt-1 line-clamp-2">{post.articleDescription}</p>
-                      )}
                       <div className="flex items-center gap-2 mt-2 text-white/40">
                         {faviconUrl && <img src={faviconUrl} alt="" className="w-3.5 h-3.5 rounded-sm opacity-70" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />}
                         <span className="text-xs">{domain}</span>
@@ -286,12 +273,17 @@ export default function PostPage() {
                 ) : (
                   <div className="p-4 bg-white/[0.02]">
                     <h3 className="text-base font-semibold text-slate-200 group-hover:text-white transition-colors leading-snug">{post.articleTitle || 'Read Article'}</h3>
-                    {post.articleDescription && <p className="text-sm text-slate-400 mt-1.5 leading-relaxed">{post.articleDescription}</p>}
                     <div className="flex items-center gap-2 mt-2 text-slate-500">
                       {faviconUrl && <img src={faviconUrl} alt="" className="w-3.5 h-3.5 rounded-sm opacity-70" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />}
                       <span className="text-xs">{domain}</span>
                       <ExternalLink className="w-3 h-3 ml-auto" />
                     </div>
+                  </div>
+                )}
+                {/* Commentary/description below the embed image */}
+                {post.content && (
+                  <div className="px-4 py-3 border-t border-white/[0.04]">
+                    <p className="text-sm text-slate-300 leading-relaxed">{post.content}</p>
                   </div>
                 )}
               </a>
