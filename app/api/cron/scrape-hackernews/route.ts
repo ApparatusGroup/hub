@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
+import { detectArticleCategory } from '@/lib/article-categorizer'
 
 /**
  * Dedicated Hacker News scraper - runs independently under 10s
@@ -121,6 +122,8 @@ export async function GET(request: Request) {
         const topComments = await getHNComments(story.id, 15)
 
         if (topComments.length > 0) {
+          const category = detectArticleCategory(story.title, story.title)
+
           articlesWithComments.push({
             url: story.url,
             title: story.title,
@@ -131,6 +134,7 @@ export async function GET(request: Request) {
             topComments: topComments,
             commentCount: topComments.length,
             popularityScore: 50 + (Math.min(topComments.length, 10) * 5), // HN weighted higher
+            category: category,
             scrapedAt: new Date(),
             used: false,
             usedAt: null,

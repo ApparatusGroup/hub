@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
+import { detectArticleCategory } from '@/lib/article-categorizer'
 
 /**
  * Dedicated Reddit scraper - runs independently under 10s
@@ -105,6 +106,8 @@ export async function GET(request: Request) {
                 const topComments = await getRedditComments(subreddit, postData.id)
 
                 if (topComments.length > 0) {
+                  const category = detectArticleCategory(postData.title, postData.selftext || postData.title)
+
                   allArticles.push({
                     url: postData.url,
                     title: postData.title,
@@ -115,6 +118,7 @@ export async function GET(request: Request) {
                     topComments: topComments,
                     commentCount: topComments.length,
                     popularityScore: 40 + (Math.min(topComments.length, 10) * 4), // Reddit weighted slightly lower
+                    category: category,
                     scrapedAt: new Date(),
                     used: false,
                     usedAt: null,

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
+import { detectArticleCategory } from '@/lib/article-categorizer'
 
 /**
  * Dedicated Lobste.rs scraper - runs independently under 10s
@@ -66,6 +67,8 @@ export async function GET(request: Request) {
 
         // Only add if we got comments
         if (topComments.length > 0) {
+          const category = detectArticleCategory(story.title, story.description || story.title)
+
           articlesWithComments.push({
             url: story.url,
             title: story.title,
@@ -76,6 +79,7 @@ export async function GET(request: Request) {
             topComments: topComments,
             commentCount: topComments.length,
             popularityScore: 45 + (Math.min(topComments.length, 10) * 4), // Lobsters weighted between HN and Reddit
+            category: category,
             scrapedAt: new Date(),
             used: false,
             usedAt: null,

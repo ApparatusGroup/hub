@@ -28,31 +28,63 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No AI bots found' }, { status: 404 })
     }
 
-    // Get recent posts to check bot distribution (last 2 hours)
-    const twoHoursAgo = new Date()
-    twoHoursAgo.setHours(twoHoursAgo.getHours() - 2)
+    // Get recent posts to check bot distribution (last 6 hours for better diversity)
+    const sixHoursAgo = new Date()
+    sixHoursAgo.setHours(sixHoursAgo.getHours() - 6)
 
     const recentPostsSnapshot = await adminDb
       .collection('posts')
       .where('isAI', '==', true)
-      .where('createdAt', '>=', twoHoursAgo)
+      .where('createdAt', '>=', sixHoursAgo)
       .get()
 
-    // Count posts per bot
+    // Count posts per bot and track last post time
     const botPostCounts = new Map<string, number>()
+    const botLastPostTime = new Map<string, Date>()
+
     recentPostsSnapshot.docs.forEach(doc => {
       const postData = doc.data()
       const count = botPostCounts.get(postData.userId) || 0
       botPostCounts.set(postData.userId, count + 1)
+
+      const postTime = postData.createdAt?.toDate()
+      const lastTime = botLastPostTime.get(postData.userId)
+      if (!lastTime || (postTime && postTime > lastTime)) {
+        botLastPostTime.set(postData.userId, postTime)
+      }
     })
 
     // Exclude lurker bots (they only like, don't create content)
-    // Calculate weights for bot selection (bots with fewer posts get higher weight)
-    const botDocs = botsSnapshot.docs.filter(doc => doc.data().isLurker !== true)
+    // Also exclude bots that posted within last 90 minutes (hard cooldown)
+    const ninetyMinutesAgo = new Date()
+    ninetyMinutesAgo.setMinutes(ninetyMinutesAgo.getMinutes() - 90)
+
+    const botDocs = botsSnapshot.docs.filter(doc => {
+      const data = doc.data()
+      if (data.isLurker === true) return false
+
+      // Hard cooldown: exclude if posted within last 90 minutes
+      const lastPost = botLastPostTime.get(data.uid)
+      if (lastPost && lastPost > ninetyMinutesAgo) {
+        console.log(`⏭️  Excluding ${data.displayName} - posted ${Math.round((Date.now() - lastPost.getTime()) / 60000)} minutes ago`)
+        return false
+      }
+
+      return true
+    })
+
+    if (botDocs.length === 0) {
+      return NextResponse.json({
+        error: 'All bots on cooldown',
+        hint: 'All AI bots have posted recently. Try again in 90 minutes.'
+      }, { status: 429 })
+    }
+
+    // Calculate weights for bot selection (bots with fewer posts get much higher weight)
     const botWeights = botDocs.map(doc => {
       const postCount = botPostCounts.get(doc.data().uid) || 0
-      // Higher weight for bots that haven't posted recently
-      return Math.max(1, 10 - postCount * 3)
+      // More aggressive weighting - heavily favor bots that haven't posted
+      return Math.max(1, 20 - postCount * 5)
     })
 
     // Weighted random selection
@@ -118,8 +150,9 @@ export async function POST(request: Request) {
       }, { status: 429 })
     }
 
-    // Minimum time between posts (varies by bot: 30min to 4 hours)
-    const minTimeBetweenPosts = (dailyPostLimit <= 3 ? 4 : dailyPostLimit <= 6 ? 2 : 0.5) * 60 * 60 * 1000
+    // Minimum time between posts (varies by bot: 90min to 4 hours)
+    // More conservative to prevent power users
+    const minTimeBetweenPosts = (dailyPostLimit <= 3 ? 4 : dailyPostLimit <= 6 ? 2 : 1.5) * 60 * 60 * 1000
     const timeSinceLastPost = now - lastPostTime
 
     if (timeSinceLastPost < minTimeBetweenPosts && lastPostTime > 0) {
@@ -212,6 +245,7 @@ export async function POST(request: Request) {
     let articleImage: string | null = null
     let articleDescription: string | null = null
     let articleTopComments: string[] | null = null
+    let articleCategory: string | null = null
     let imageUrl: string | null = null
 
     if (shouldPostNews) {
@@ -303,10 +337,42 @@ export async function POST(request: Request) {
 
       console.log(`✅ Found ${unpostedArticles.length} unposted articles (filtered from ${articlesWithComments.length} total)`)
 
-      // Pick random article from unposted ones
-      const randomIndex = Math.floor(Math.random() * unpostedArticles.length)
-      const articleDoc = unpostedArticles[randomIndex]
+      // Check recent category distribution to ensure variety
+      const recentCategories = new Map<string, number>()
+      recentPosts.docs.forEach(doc => {
+        const category = doc.data().category
+        if (category) {
+          recentCategories.set(category, (recentCategories.get(category) || 0) + 1)
+        }
+      })
+
+      console.log(`📊 Recent category distribution:`, Array.from(recentCategories.entries()))
+
+      // Weighted selection based on category diversity
+      // Articles from underrepresented categories get higher weight
+      const articleWeights = unpostedArticles.map(doc => {
+        const category = doc.data().category || 'General Tech'
+        const categoryCount = recentCategories.get(category) || 0
+        // Higher weight for less-posted categories (10 - count, minimum 1)
+        return Math.max(1, 10 - categoryCount)
+      })
+
+      const totalWeight = articleWeights.reduce((sum, w) => sum + w, 0)
+      let random = Math.random() * totalWeight
+      let selectedIndex = 0
+
+      for (let i = 0; i < articleWeights.length; i++) {
+        random -= articleWeights[i]
+        if (random <= 0) {
+          selectedIndex = i
+          break
+        }
+      }
+
+      const articleDoc = unpostedArticles[selectedIndex]
       const articleData = articleDoc.data()
+
+      console.log(`🎯 Selected article category: ${articleData.category || 'General Tech'} (weight: ${articleWeights[selectedIndex]})`)
 
       // Use real article title from HN/Reddit (instantly, no AI needed!)
       content = articleData.submissionTitle
@@ -316,6 +382,7 @@ export async function POST(request: Request) {
       articleImage = articleData.urlToImage || null
       articleDescription = articleData.description || null
       articleTopComments = articleData.topComments || []
+      articleCategory = articleData.category || null
 
       // Mark article as used
       await articleDoc.ref.update({
@@ -346,7 +413,11 @@ export async function POST(request: Request) {
     }
 
     // Auto-categorize the post
-    const category = await categorizePost(content, articleTitle || undefined, articleDescription || undefined)
+    // For article posts, use the category from articleData (already detected during scraping)
+    // For original posts, use AI categorization
+    const category = articleCategory
+      ? articleCategory
+      : await categorizePost(content, articleTitle || undefined, articleDescription || undefined)
 
     // CRITICAL VALIDATION: If this is an article post, ensure it has real comments
     // Otherwise, we can't have authentic engagement

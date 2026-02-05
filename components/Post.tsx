@@ -83,11 +83,11 @@ export default function Post({ post }: PostProps) {
   return (
     <div
       onClick={() => router.push(`/post/${post.id}`)}
-      className="post-card cursor-pointer border-l-4 hover:border-opacity-100 transition-all"
+      className="post-card cursor-pointer border-l-3 md:border-l-4 hover:border-opacity-100 transition-all"
       style={borderStyle}
     >
       {/* Header with profile picture and name */}
-      <div className="flex items-center space-x-2.5 mb-3">
+      <div className="flex items-start sm:items-center gap-2 sm:gap-2.5 mb-2 sm:mb-3">
         <button
           onClick={(e) => {
             e.stopPropagation()
@@ -99,30 +99,32 @@ export default function Post({ post }: PostProps) {
             <img
               src={post.userPhoto}
               alt={post.userName}
-              className="w-9 h-9 rounded-full object-cover avatar-ring"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover avatar-ring"
             />
           ) : (
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center text-white font-semibold shadow-sm avatar-ring">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center text-white font-semibold text-sm shadow-sm avatar-ring">
               {post.userName[0].toUpperCase()}
             </div>
           )}
         </button>
-        <div className="flex items-center space-x-2 flex-wrap min-w-0 flex-1">
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              router.push(`/profile/${post.userId}`)
-            }}
-            className="font-semibold text-slate-100 hover:text-primary transition-colors"
-          >
-            {post.userName}
-          </button>
-          <span className="text-sm text-slate-500">
-            · {formatDistanceToNow(post.createdAt, { addSuffix: true })}
-          </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                router.push(`/profile/${post.userId}`)
+              }}
+              className="font-semibold text-sm sm:text-base text-slate-100 hover:text-primary transition-colors truncate max-w-[120px] sm:max-w-none"
+            >
+              {post.userName}
+            </button>
+            <span className="text-xs sm:text-sm text-slate-500 whitespace-nowrap">
+              · {formatDistanceToNow(post.createdAt, { addSuffix: true })}
+            </span>
+          </div>
           {post.category && categoryStyle && (
             <span
-              className="text-xs px-2 py-0.5 rounded-full font-medium"
+              className="inline-block mt-1 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-medium"
               style={badgeStyle}
             >
               {categoryStyle.name}
@@ -131,45 +133,49 @@ export default function Post({ post }: PostProps) {
         </div>
       </div>
 
-      {/* Post content - truncated to 3 lines */}
-      <p className="text-slate-300 leading-relaxed line-clamp-3">{post.content}</p>
+      {/* Post content - responsive truncation */}
+      <p className="text-slate-300 text-sm sm:text-base leading-relaxed line-clamp-3 mb-2">{post.content}</p>
 
-      {/* Article preview - compact */}
+      {/* Article preview - cleaner design */}
       {post.articleUrl && post.articleTitle && (
-        <div className="mt-2 text-xs text-slate-500 flex items-center space-x-2">
-          {faviconUrl && (
-            <img
-              src={faviconUrl}
-              alt=""
-              className="w-4 h-4 flex-shrink-0 rounded-sm"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement
-                target.style.display = 'none'
-              }}
-            />
-          )}
-          <span className="line-clamp-1">{post.articleTitle}</span>
+        <div className="mt-2 mb-2 p-2 sm:p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/40 hover:border-slate-600/60 transition-colors">
+          <div className="flex items-center gap-2">
+            {faviconUrl && (
+              <img
+                src={faviconUrl}
+                alt=""
+                className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 rounded-sm opacity-70"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
+                }}
+              />
+            )}
+            <span className="text-[11px] sm:text-xs text-slate-400 line-clamp-1 flex-1">
+              {post.articleTitle}
+            </span>
+          </div>
         </div>
       )}
 
-      {/* Actions - larger tap targets for mobile */}
-      <div className="mt-3 flex items-center space-x-3">
+      {/* Actions - optimized for mobile */}
+      <div className="flex items-center gap-2 sm:gap-3 pt-1">
         <button
           onClick={(e) => {
             e.stopPropagation()
             handleLike()
           }}
-          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 active:scale-95 ${
+          className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all duration-200 active:scale-95 ${
             liked ? 'text-rose-400 bg-rose-400/10' : 'text-slate-400 hover:text-rose-400 hover:bg-slate-800/50'
           }`}
         >
-          <Heart className={`w-5 h-5 ${liked ? 'fill-current' : ''}`} />
-          <span className="text-sm font-semibold">{likeCount}</span>
+          <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${liked ? 'fill-current' : ''}`} />
+          <span className="text-xs sm:text-sm font-semibold">{likeCount}</span>
         </button>
 
-        <div className="flex items-center space-x-1.5 px-3 py-1.5 text-slate-400">
-          <MessageCircle className="w-5 h-5" />
-          <span className="text-sm font-semibold">{post.commentCount || 0}</span>
+        <div className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-slate-400">
+          <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+          <span className="text-xs sm:text-sm font-semibold">{post.commentCount || 0}</span>
         </div>
       </div>
 
