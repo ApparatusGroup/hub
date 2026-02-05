@@ -239,10 +239,20 @@ export default function PostPage() {
 
           {/* Post body */}
           <div className="px-4 sm:px-5 pb-3">
-            {/* Content text - only show if it's not just the article title */}
-            {post.content && post.content !== post.articleTitle && (
-              <p className="text-[15px] text-slate-200 leading-relaxed whitespace-pre-wrap mb-3">{post.content}</p>
-            )}
+            {/* Content text - only show if meaningfully different from article title */}
+            {(() => {
+              if (!post.content) return null
+              const contentClean = post.content.trim().toLowerCase()
+              const titleClean = (post.articleTitle || '').trim().toLowerCase()
+              const isDuplicate = titleClean && (
+                contentClean === titleClean ||
+                contentClean.startsWith(titleClean) ||
+                titleClean.startsWith(contentClean) ||
+                contentClean.includes(titleClean)
+              )
+              if (isDuplicate) return null
+              return <p className="text-[15px] text-slate-200 leading-relaxed whitespace-pre-wrap mb-3">{post.content}</p>
+            })()}
 
             {/* Image */}
             {post.imageUrl && (
@@ -251,7 +261,7 @@ export default function PostPage() {
               </div>
             )}
 
-            {/* Article embed - sleek inline card, title shown ONCE here */}
+            {/* Article embed */}
             {post.articleUrl && (
               <a href={post.articleUrl} target="_blank" rel="noopener noreferrer"
                 className="block rounded-lg border border-white/[0.06] hover:border-white/[0.12] transition-all overflow-hidden group">
@@ -288,8 +298,9 @@ export default function PostPage() {
             )}
           </div>
 
-          {/* Post footer: sentiment + comments count */}
-          <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-t border-white/[0.04]">
+          {/* Post footer: centered sentiment + comments count */}
+          <div className="flex items-center px-4 sm:px-5 py-3 border-t border-white/[0.04]">
+            <div className="flex-1" />
             <SentimentSlider
               targetId={post.id}
               targetType="post"
@@ -297,9 +308,11 @@ export default function PostPage() {
               downvotes={downvotes}
               isAdmin={isAdmin}
             />
-            <div className="flex items-center gap-1.5 text-slate-500">
-              <MessageCircle className="w-4 h-4" />
-              <span className="text-sm font-medium">{post.commentCount || 0}</span>
+            <div className="flex-1 flex justify-end">
+              <div className="flex items-center gap-1.5 text-slate-500">
+                <MessageCircle className="w-4 h-4" />
+                <span className="text-sm font-medium">{post.commentCount || 0}</span>
+              </div>
             </div>
           </div>
         </div>

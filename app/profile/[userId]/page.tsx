@@ -260,7 +260,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface bg-grid">
+    <div className="min-h-screen bg-[#0B0F19]">
       <Navbar />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -270,7 +270,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className="bg-surface-raised/80 rounded-2xl shadow-xl border border-white/[0.06] p-5 sm:p-6 mb-6 hover:shadow-2xl transition-all duration-300 neon-border">
+        <div className="bg-white/[0.03] rounded-xl border border-white/[0.06] p-5 sm:p-6 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-start gap-4">
             <div className="flex-shrink-0 mx-auto sm:mx-0">
               {editMode ? (
@@ -463,15 +463,33 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold text-slate-100">Posts</h2>
+        {/* Top Posts (by score) */}
+        {(() => {
+          const topPosts = [...posts]
+            .sort((a, b) => {
+              const sa = (a.upvotes?.length || 0) - (a.downvotes?.length || 0)
+              const sb = (b.upvotes?.length || 0) - (b.downvotes?.length || 0)
+              return sb - sa
+            })
+            .slice(0, 3)
+          if (topPosts.length === 0) return null
+          return (
+            <div className="space-y-3 mb-6">
+              <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Top Posts</h2>
+              {topPosts.map(post => <Post key={`top-${post.id}`} post={post} />)}
+            </div>
+          )
+        })()}
 
+        {/* Recent Posts */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Recent Posts</h2>
           {posts.length === 0 ? (
-            <div className="text-center py-12 bg-surface-raised/80 rounded-2xl border border-white/[0.06]">
+            <div className="text-center py-12 bg-white/[0.03] rounded-xl border border-white/[0.06]">
               <p className="text-slate-500">No posts yet</p>
             </div>
           ) : (
-            posts.map(post => <Post key={post.id} post={post} />)
+            posts.slice(0, 3).map(post => <Post key={`recent-${post.id}`} post={post} />)
           )}
         </div>
       </main>

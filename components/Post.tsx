@@ -74,10 +74,16 @@ export default function Post({ post }: PostProps) {
 
       {/* === BODY: content text + article card === */}
       <div className="px-4">
-        {/* Description/commentary text */}
-        {(!hasArticle || (post.content && post.content !== post.articleTitle)) && (
-          <p className="text-[14px] text-slate-300 leading-relaxed line-clamp-4 mb-2">{post.content}</p>
-        )}
+        {/* Description/commentary text - skip if duplicate of article title */}
+        {(() => {
+          if (!post.content) return null
+          if (hasArticle) {
+            const contentClean = post.content.trim().toLowerCase()
+            const titleClean = (post.articleTitle || '').trim().toLowerCase()
+            if (contentClean === titleClean || contentClean.startsWith(titleClean) || titleClean.startsWith(contentClean) || contentClean.includes(titleClean)) return null
+          }
+          return <p className="text-[14px] text-slate-300 leading-relaxed line-clamp-4 mb-2">{post.content}</p>
+        })()}
 
         {/* Image attachment */}
         {post.imageUrl && (
@@ -138,11 +144,12 @@ export default function Post({ post }: PostProps) {
         )}
       </div>
 
-      {/* === FOOTER: sentiment slider + comment count === */}
+      {/* === FOOTER: centered sentiment slider + comment count === */}
       <div
-        className="flex items-center justify-between px-4 py-2.5 border-t border-white/[0.04] mt-1"
+        className="flex items-center px-4 py-2.5 border-t border-white/[0.04] mt-1"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="flex-1" />
         <SentimentSlider
           targetId={post.id}
           targetType="post"
@@ -150,14 +157,15 @@ export default function Post({ post }: PostProps) {
           downvotes={downvotes}
           compact
         />
-
-        <button
-          onClick={(e) => { e.stopPropagation(); router.push(`/post/${post.id}`) }}
-          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-300 transition-colors"
-        >
-          <MessageCircle className="w-3.5 h-3.5" />
-          <span className="text-xs font-medium">{post.commentCount || 0}</span>
-        </button>
+        <div className="flex-1 flex justify-end">
+          <button
+            onClick={(e) => { e.stopPropagation(); router.push(`/post/${post.id}`) }}
+            className="flex items-center gap-1.5 text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            <span className="text-xs font-medium">{post.commentCount || 0}</span>
+          </button>
+        </div>
       </div>
     </div>
   )
