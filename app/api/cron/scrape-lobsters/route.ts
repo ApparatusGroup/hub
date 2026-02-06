@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
 import { detectArticleCategory } from '@/lib/article-categorizer'
+import { extractOgImages } from '@/lib/og-image'
 
 /**
  * Dedicated Lobste.rs scraper - runs independently under 10s
@@ -99,6 +100,22 @@ export async function GET(request: Request) {
       } catch (error) {
         console.error(`Error processing Lobste.rs story:`, error)
       }
+    }
+
+    // Batch-fetch og:image for all articles in parallel (fast — 3s timeout per URL)
+    if (articlesWithComments.length > 0) {
+      const urls = articlesWithComments.map(a => a.url)
+      const ogImages = await extractOgImages(urls, 3000)
+      let imageCount = 0
+
+      for (const article of articlesWithComments) {
+        const ogImage = ogImages.get(article.url)
+        if (ogImage) {
+          article.urlToImage = ogImage
+          imageCount++
+        }
+      }
+      console.log(`🖼️  Lobsters: Extracted og:image for ${imageCount}/${articlesWithComments.length} articles`)
     }
 
     // Write to database

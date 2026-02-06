@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
 import { detectArticleCategory } from '@/lib/article-categorizer'
+import { extractOgImages } from '@/lib/og-image'
 
 /**
  * Dedicated Reddit scraper - runs independently under 10s
@@ -143,6 +144,29 @@ export async function GET(request: Request) {
         }
       } catch (err) {
         console.error(`Error fetching r/${subreddit}:`, err)
+      }
+    }
+
+    // Batch-fetch og:image for articles that don't already have a good image
+    if (allArticles.length > 0) {
+      const urlsNeedingImages = allArticles
+        .filter(a => !a.urlToImage)
+        .map(a => a.url)
+
+      if (urlsNeedingImages.length > 0) {
+        const ogImages = await extractOgImages(urlsNeedingImages, 3000)
+        let imageCount = 0
+
+        for (const article of allArticles) {
+          if (!article.urlToImage) {
+            const ogImage = ogImages.get(article.url)
+            if (ogImage) {
+              article.urlToImage = ogImage
+              imageCount++
+            }
+          }
+        }
+        console.log(`🖼️  Reddit: Extracted og:image for ${imageCount}/${urlsNeedingImages.length} articles without thumbnails`)
       }
     }
 

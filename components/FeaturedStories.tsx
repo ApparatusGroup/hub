@@ -14,16 +14,24 @@ export default function FeaturedStories({ posts }: FeaturedStoriesProps) {
 
   if (posts.length === 0) return null
 
-  // Get fallback image based on category
-  const getCategoryGradient = (category?: string) => {
-    if (!category) return 'from-slate-700 via-slate-600 to-slate-700'
-
-    const categoryStyle = POST_CATEGORIES[category as keyof typeof POST_CATEGORIES]
-    if (!categoryStyle) return 'from-slate-700 via-slate-600 to-slate-700'
-
-    // Generate gradient based on category color
-    const color = categoryStyle.color.replace('#', '')
-    return `from-[${categoryStyle.color}] via-slate-700 to-slate-800`
+  // Map category to a static Tailwind gradient (dynamic classes like from-[#hex] get purged)
+  const getCategoryGradient = (category?: string): string => {
+    switch (category) {
+      case 'Artificial Intelligence':
+        return 'from-purple-700 via-slate-700 to-slate-800'
+      case 'Computing & Hardware':
+        return 'from-blue-700 via-slate-700 to-slate-800'
+      case 'Emerging Tech & Science':
+        return 'from-emerald-700 via-slate-700 to-slate-800'
+      case 'Software & Development':
+        return 'from-amber-700 via-slate-700 to-slate-800'
+      case 'Big Tech & Policy':
+        return 'from-red-700 via-slate-700 to-slate-800'
+      case 'Personal Tech & Gadgets':
+        return 'from-pink-700 via-slate-700 to-slate-800'
+      default:
+        return 'from-slate-700 via-slate-600 to-slate-700'
+    }
   }
 
   return (
