@@ -14,7 +14,6 @@ const CATEGORY_THEMES: Record<string, { bg: string; orb1: string; orb2: string; 
 
 const DEFAULT_THEME = { bg: '#0B0F19', orb1: '#4F46E5', orb2: '#6366F1', orb3: '#818CF8', accent: '#A5B4FC' }
 
-// Simple hash from string to get consistent but varied layouts per title
 function hashCode(s: string): number {
   let h = 0
   for (let i = 0; i < s.length; i++) {
@@ -31,14 +30,12 @@ export async function GET(request: NextRequest) {
   const theme = CATEGORY_THEMES[category] || DEFAULT_THEME
   const hash = hashCode(title)
 
-  // Derive positions from title hash for variety
-  const orb1X = 15 + (hash % 30)          // 15-45%
-  const orb1Y = 10 + ((hash >> 4) % 30)   // 10-40%
-  const orb2X = 55 + ((hash >> 8) % 35)   // 55-90%
-  const orb2Y = 50 + ((hash >> 12) % 40)  // 50-90%
-  const orb3X = 30 + ((hash >> 16) % 40)  // 30-70%
-  const orb3Y = 60 + ((hash >> 20) % 30)  // 60-90%
-  const rotation = (hash % 360)
+  const orb1X = 15 + (hash % 30)
+  const orb1Y = 10 + ((hash >> 4) % 30)
+  const orb2X = 55 + ((hash >> 8) % 35)
+  const orb2Y = 50 + ((hash >> 12) % 40)
+  const orb3X = 30 + ((hash >> 16) % 40)
+  const orb3Y = 60 + ((hash >> 20) % 30)
 
   return new ImageResponse(
     (
@@ -47,6 +44,7 @@ export async function GET(request: NextRequest) {
           width: '100%',
           height: '100%',
           display: 'flex',
+          flexDirection: 'column',
           backgroundColor: theme.bg,
           position: 'relative',
           overflow: 'hidden',
@@ -97,94 +95,99 @@ export async function GET(request: NextRequest) {
           }}
         />
 
-        {/* Geometric ring */}
+        {/* Dark overlay gradient for text readability */}
         <div
           style={{
             position: 'absolute',
-            left: `${orb1X + 5}%`,
-            top: `${orb1Y}%`,
-            width: '280px',
-            height: '280px',
-            borderRadius: '50%',
-            border: `2px solid ${theme.accent}18`,
-            display: 'flex',
-            transform: `rotate(${rotation}deg)`,
-          }}
-        />
-
-        {/* Second geometric ring */}
-        <div
-          style={{
-            position: 'absolute',
-            right: `${100 - orb2X + 5}%`,
-            bottom: `${100 - orb2Y + 10}%`,
-            width: '200px',
-            height: '200px',
-            borderRadius: '50%',
-            border: `1.5px solid ${theme.accent}12`,
+            bottom: '0',
+            left: '0',
+            right: '0',
+            height: '70%',
+            background: `linear-gradient(to top, ${theme.bg}ee 0%, ${theme.bg}cc 40%, transparent 100%)`,
             display: 'flex',
           }}
         />
 
-        {/* Diagonal accent line */}
+        {/* Title text overlay */}
         <div
           style={{
             position: 'absolute',
-            top: '0',
-            left: '40%',
-            width: '1px',
-            height: '100%',
-            background: `linear-gradient(to bottom, transparent 10%, ${theme.accent}15 50%, transparent 90%)`,
-            transform: `rotate(${25 + (hash % 20)}deg)`,
-            transformOrigin: 'top center',
+            bottom: '60px',
+            left: '48px',
+            right: '48px',
             display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
           }}
-        />
-
-        {/* Second diagonal line */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '0',
-            left: '65%',
-            width: '1px',
-            height: '100%',
-            background: `linear-gradient(to bottom, transparent 20%, ${theme.accent}10 60%, transparent 95%)`,
-            transform: `rotate(${-15 - (hash % 15)}deg)`,
-            transformOrigin: 'top center',
-            display: 'flex',
-          }}
-        />
-
-        {/* Small dot cluster */}
-        <div style={{ position: 'absolute', right: '12%', top: '15%', display: 'flex', gap: '8px', opacity: 0.4 }}>
-          <div style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: theme.accent, display: 'flex' }} />
-          <div style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: theme.accent, display: 'flex' }} />
-          <div style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: theme.accent, display: 'flex' }} />
+        >
+          {/* Category badge */}
+          {category && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  backgroundColor: `${theme.orb1}40`,
+                  borderRadius: '4px',
+                  padding: '4px 10px',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: theme.accent,
+                    textTransform: 'uppercase' as const,
+                    letterSpacing: '1px',
+                  }}
+                >
+                  {category}
+                </span>
+              </div>
+            </div>
+          )}
+          {/* Article title */}
+          <span
+            style={{
+              fontSize: title.length > 60 ? '32px' : title.length > 40 ? '38px' : '44px',
+              fontWeight: 800,
+              color: 'white',
+              lineHeight: 1.15,
+              display: 'block',
+              maxWidth: '900px',
+            }}
+          >
+            {title}
+          </span>
         </div>
 
         {/* Algosphere watermark - bottom right corner */}
         <div
           style={{
             position: 'absolute',
-            bottom: '24px',
-            right: '28px',
+            top: '24px',
+            left: '28px',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            opacity: 0.35,
+            opacity: 0.6,
           }}
         >
           <div
             style={{
-              width: '22px',
-              height: '22px',
+              width: '24px',
+              height: '24px',
               borderRadius: '6px',
               background: `linear-gradient(135deg, ${theme.orb1}, ${theme.orb2})`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '12px',
+              fontSize: '13px',
               fontWeight: 800,
               color: 'white',
             }}
@@ -193,7 +196,7 @@ export async function GET(request: NextRequest) {
           </div>
           <span
             style={{
-              fontSize: '13px',
+              fontSize: '14px',
               fontWeight: 600,
               color: theme.accent,
               letterSpacing: '2px',

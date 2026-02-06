@@ -301,6 +301,7 @@ export default function AdminPage() {
           botUser: prepData.botUser,
           authorCredit: prepData.authorCredit,
           contributors: prepData.contributors,
+          imagePrompt: genData.imagePrompt || '',
         }),
       })
       const pubData = await pubRes.json()

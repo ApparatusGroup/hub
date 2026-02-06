@@ -68,14 +68,22 @@ WRITING MECHANICS:
 - Use sentence fragments. Deliberately.
 - Include at least one rhetorical question
 - Include at least one parenthetical aside (like this, even if it's tangential)
-- Reference a personal reaction ("I was surprised to see...", "My first thought was...")
+- Use tentative language sometimes ("Maybe", "I think", "probably") instead of being certain about everything
+- Include a few short emphatic statements. One-word sentences work. "Absolutely." "Exactly." "Right."
+- Use imperatives to address the reader directly ("Think about that.", "Consider this.", "Pay attention.")
 - NEVER use: "notably", "straightforward", "nuanced", "multifaceted", "delve", "tapestry", "pivotal", "crucial", "foster", "leverage", "navigate", "landscape", "robust", "game-changer", "paradigm", "synergy", "ecosystem", "at the end of the day", "in the grand scheme", "it's worth noting", "the reality is"
 - No em dashes, no semicolons
 - No emoji, no hashtags
 
+THINGS THAT LOOK AI-GENERATED (from actual GPTZero reports, avoid these):
+- DO NOT use forced personal anecdotes like "I was baking at 2 AM when..." or "I was doing X when the news broke." GPTZero flags these as HIGH AI probability. They know AI does this now.
+- DO NOT list three technical terms in a row ("package managers, version conflicts, and build systems"). Tricolon technical lists are flagged as "Mechanical Precision."
+- DO NOT write simple bare statements without texture. "Companies are doing the math" reads as AI. "Companies are doing the math, and a few of them don't like what they're finding" reads as human.
+- DO NOT use speculative predictions with specific timeframes like "by Q4" or "within 18 months." GPTZero flags these as "Speculative Focus."
+
 FORMAT: 2-3 sections with ## headers. Use **bold** sparingly. Markdown body only, no title.
 
-Write it now. Bang it out like you have ten minutes before deadline and a strong opinion you need to get on paper.`
+Write it now. You've got something to say and ten minutes before deadline.`
 
     // Find bot user in Firestore
     const botEmail = `${leadAuthor.name.toLowerCase().replace(/\s+/g, '')}@hubai.bot`
@@ -115,16 +123,25 @@ FLAG 6 - "Lacks Creative Grammar": GPTZero flagged "correct grammatical structur
 
 FLAG 7 - "Lacks Complexity": GPTZero flagged "single theme explored in a straightforward manner." FIX by introducing a brief tangent, analogy, or comparison to something unexpected before returning to the main point.
 
+FLAG 8 - "Forced Personal Anecdotes": GPTZero now flags sentences like "I was stress-baking sourdough at 2 AM when the notifications started." REMOVE any forced-sounding personal stories. If there's a personal reference, make it brief and natural, not a setup.
+
+FLAG 9 - "Tricolon Technical Lists": GPTZero flags lists of three technical terms in a row ("package managers, version conflicts, and build systems") as "Mechanical Precision." FIX by either mentioning just one or two, or by adding casual context between them.
+
+FLAG 10 - "Bare Simple Statements": Short simple sentences without texture ("Companies are doing the math") get flagged as "Lacks Creativity." FIX by adding a qualifier or follow-up ("Companies are doing the math, and some of them don't love the answer").
+
+FLAG 11 - "Speculative Timeframes": Phrases like "by Q4" or "within 18 months" get flagged as "Speculative Focus." REMOVE specific timeframe predictions. Use vaguer language ("soon", "before long", "any day now").
+
 WHAT GPTZero MARKED AS HUMAN (do MORE of these):
-- Narrative structure with turning points
-- Qualitative analysis (what things MEAN, not just what they ARE)
+- Tentative language: "Maybe", "I think", "probably" (scored high human)
+- Imperative commands: "Time to learn a new skill." "Think about that." (scored high human)
+- Single-word emphatics: "Absolutely." "Right." "Exactly." (scored high human)
+- Informal persuasion: emphatic, forceful phrases that convey personal conviction
+- Narrative with turning points
 - Mixing technical detail with broad plain-language explanation
-- Journalistic reporting style
-- Precise but varied word choice
 
 BANNED WORDS (instant AI flag): notably, straightforward, nuanced, multifaceted, delve, tapestry, pivotal, crucial, foster, leverage, navigate, landscape, robust, game-changer, paradigm, synergy, ecosystem
 
-Remove all em dashes and semicolons. Add contractions everywhere possible. Keep the same facts and approximate length. Return ONLY the rewritten markdown article body. No title, no commentary about edits.`
+Remove all em dashes and semicolons. Add contractions everywhere. Add at least 2 tentative phrases ("maybe", "probably") and 2 short emphatic statements. Keep the same facts and approximate length. Return ONLY the rewritten markdown article body. No title, no commentary about edits.`
       : null
 
     return NextResponse.json({
