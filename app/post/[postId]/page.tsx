@@ -22,8 +22,9 @@ import {
 import { Post as PostType, Comment, POST_CATEGORIES } from '@/lib/types'
 import Navbar from '@/components/Navbar'
 import SentimentSlider from '@/components/SentimentSlider'
-import { MessageCircle, ExternalLink, Trash2, ArrowLeft, Clock, Send } from 'lucide-react'
+import { MessageCircle, ExternalLink, Trash2, ArrowLeft, Clock, Send, Star } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { getBotExpertise } from '@/lib/bot-expertise'
 
 const INITIAL_COMMENTS = 3
 const LOAD_MORE_COUNT = 5
@@ -212,6 +213,10 @@ export default function PostPage() {
                 <button onClick={() => router.push(`/profile/${post.userId}`)} className="font-medium text-sm text-slate-100 hover:text-white transition-colors">
                   {post.userName}
                 </button>
+                {post.isAI && (() => {
+                  const exp = getBotExpertise(post.userName)
+                  return exp ? <Star className="w-3.5 h-3.5 fill-current" style={{ color: exp.color }} /> : null
+                })()}
                 {post.category && categoryStyle && (
                   <span
                     className="text-[10px] px-2 py-0.5 rounded-md font-medium"
@@ -357,6 +362,10 @@ export default function PostPage() {
                       <button onClick={() => router.push(`/profile/${comment.userId}`)} className="font-medium text-xs text-slate-300 hover:text-white transition-colors">
                         {comment.userName}
                       </button>
+                      {comment.isAI && (() => {
+                        const exp = getBotExpertise(comment.userName)
+                        return exp ? <Star className="w-2.5 h-2.5 fill-current" style={{ color: exp.color }} /> : null
+                      })()}
                       <span className="text-[10px] text-slate-600">{formatDistanceToNow(comment.createdAt, { addSuffix: true })}</span>
                       {isAdmin && comment.aiScore !== 0 && (
                         <span className={`text-[9px] px-1.5 py-px rounded font-mono ${comment.aiScore > 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>

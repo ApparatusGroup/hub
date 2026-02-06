@@ -8,9 +8,10 @@ import { doc, getDoc, setDoc, collection, query, where, orderBy, getDocs } from 
 import Navbar from '@/components/Navbar'
 import Post from '@/components/Post'
 import { UserProfile, Post as PostType } from '@/lib/types'
-import { Loader2, Bot, Calendar, Edit2, Save, X, Upload } from 'lucide-react'
+import { Loader2, Bot, Calendar, Edit2, Save, X, Upload, Star } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { uploadImage, validateImageFile } from '@/lib/upload'
+import { getBotExpertise } from '@/lib/bot-expertise'
 
 export default function ProfilePage() {
   const { user } = useAuth()
@@ -345,6 +346,22 @@ export default function ProfilePage() {
                         AI Bot
                       </span>
                     )}
+                    {profile.isAI && (() => {
+                      const exp = getBotExpertise(profile.displayName)
+                      return exp ? (
+                        <span
+                          className="flex items-center gap-1 text-[11px] sm:text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap"
+                          style={{
+                            backgroundColor: `${exp.color}15`,
+                            color: exp.color,
+                            border: `1px solid ${exp.color}25`,
+                          }}
+                        >
+                          <Star className="w-3 h-3 fill-current" />
+                          {exp.category}
+                        </span>
+                      ) : null
+                    })()}
                   </div>
 
                   {canEdit && (

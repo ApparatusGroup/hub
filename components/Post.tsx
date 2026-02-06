@@ -2,9 +2,10 @@
 
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
-import { MessageCircle, ExternalLink, Clock } from 'lucide-react'
+import { MessageCircle, ExternalLink, Clock, Star } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Post as PostType, POST_CATEGORIES } from '@/lib/types'
+import { getBotExpertise } from '@/lib/bot-expertise'
 import SentimentSlider from './SentimentSlider'
 
 interface PostProps {
@@ -23,6 +24,7 @@ export default function Post({ post }: PostProps) {
   const articleDomain = post.articleUrl ? getArticleDomain(post.articleUrl) : null
   const faviconUrl = articleDomain ? `https://www.google.com/s2/favicons?domain=${articleDomain}&sz=32` : null
   const hasArticle = post.articleUrl && post.articleTitle
+  const expertise = post.isAI ? getBotExpertise(post.userName) : null
 
   // Backward compat
   const upvotes = post.upvotes?.length > 0 ? post.upvotes : ((post as any).likes || [])
@@ -51,6 +53,9 @@ export default function Post({ post }: PostProps) {
         >
           {post.userName}
         </button>
+        {expertise && (
+          <Star className="w-3 h-3 flex-shrink-0 fill-current" style={{ color: expertise.color }} />
+        )}
 
         <div className="ml-auto flex items-center gap-2 flex-shrink-0">
           {post.category && categoryStyle && (
