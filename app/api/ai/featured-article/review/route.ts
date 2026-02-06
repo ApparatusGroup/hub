@@ -31,8 +31,8 @@ ${articleBody}`
       body: JSON.stringify({
         model: 'anthropic/claude-sonnet-4',
         messages: [{ role: 'user', content: fullPrompt }],
-        max_tokens: 1200,
-        temperature: 0.3,
+        max_tokens: 1500,
+        temperature: 0.8,
       }),
     })
 

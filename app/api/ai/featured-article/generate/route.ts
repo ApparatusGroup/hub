@@ -24,8 +24,8 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         model: 'anthropic/claude-sonnet-4',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1000,
-        temperature: 0.85,
+        max_tokens: 1200,
+        temperature: 1.0,
       }),
     })
 

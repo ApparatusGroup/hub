@@ -23,7 +23,7 @@ export default function AdminPage() {
   const [featuredStep, setFeaturedStep] = useState<'' | 'preparing' | 'writing' | 'reviewing' | 'publishing' | 'done'>('')
   const [trendingTopics, setTrendingTopics] = useState<{ title: string; category: string; context: string }[]>([])
   const [researchLoading, setResearchLoading] = useState(false)
-  const [researchSources, setResearchSources] = useState<{ hn: number; reddit: number } | null>(null)
+  const [researchSources, setResearchSources] = useState<Record<string, number> | null>(null)
 
   const handleInitBots = async () => {
     if (!secret) {
@@ -759,7 +759,7 @@ export default function AdminPage() {
                       </p>
                       {researchSources && (
                         <span className="text-[10px] text-blue-600">
-                          {researchSources.hn} HN + {researchSources.reddit} Reddit headlines analyzed
+                          {Object.values(researchSources).reduce((a, b) => a + b, 0)} headlines from {Object.values(researchSources).filter(v => v > 0).length} sources
                         </span>
                       )}
                     </div>
@@ -771,7 +771,7 @@ export default function AdminPage() {
                       {researchLoading ? (
                         <>
                           <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>Scanning HN + Reddit for hot topics...</span>
+                          <span>Scanning 9 sources for trending topics...</span>
                         </>
                       ) : (
                         <>
@@ -781,6 +781,29 @@ export default function AdminPage() {
                       )}
                     </button>
                   </div>
+
+                  {/* Source breakdown */}
+                  {researchSources && (
+                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <p className="text-xs font-medium text-gray-500 mb-1.5">Sources scanned:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {Object.entries(researchSources)
+                          .filter(([, v]) => v > 0)
+                          .map(([key, count]) => (
+                            <span key={key} className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                              {key}: {count}
+                            </span>
+                          ))}
+                        {Object.entries(researchSources)
+                          .filter(([, v]) => v === 0)
+                          .length > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400">
+                            {Object.entries(researchSources).filter(([, v]) => v === 0).map(([k]) => k).join(', ')}: 0
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Trending topic results */}
                   {trendingTopics.length > 0 && (
