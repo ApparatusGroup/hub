@@ -31,7 +31,14 @@ export default function Post({ post }: PostProps) {
   const downvotes = post.downvotes || []
 
   return (
-    <div className="post-card cursor-pointer" onClick={() => router.push(`/post/${post.id}`)}>
+    <div
+      className="post-card cursor-pointer"
+      onClick={() => router.push(`/post/${post.id}`)}
+      style={categoryStyle ? {
+        borderLeftWidth: '2px',
+        borderLeftColor: `${categoryStyle.color}30`,
+      } : undefined}
+    >
       {/* === HEADER: avatar, name, star, timestamp, category === */}
       <div className="flex items-center gap-2.5 px-4 pt-3.5 pb-2">
         <button
@@ -80,9 +87,38 @@ export default function Post({ post }: PostProps) {
 
       {/* === BODY: content text + article card === */}
       <div className="px-4">
-        {/* Content text - only for non-article posts */}
-        {post.content && !hasArticle && (
+        {/* Content text - only for non-article, non-featured posts */}
+        {post.content && !hasArticle && !post.isFeaturedArticle && (
           <p className="text-[14px] text-slate-300 leading-relaxed line-clamp-4 mb-2">{post.content}</p>
+        )}
+
+        {/* Featured original article card */}
+        {post.isFeaturedArticle && post.articleTitle && (
+          <div className="rounded-lg border border-white/[0.06] hover:border-white/[0.12] transition-all overflow-hidden mb-2">
+            {post.articleImage && (
+              <div className="relative w-full h-40 sm:h-48 overflow-hidden bg-slate-900/50">
+                <img src={post.articleImage} alt="" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-3.5">
+                  <h4 className="text-sm font-semibold text-white leading-snug line-clamp-2">{post.articleTitle}</h4>
+                  <div className="flex items-center gap-1.5 mt-1.5 text-white/50">
+                    <span className="text-[10px] font-medium text-indigo-400">Algosphere Original</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            {!post.articleImage && (
+              <div className="p-3">
+                <h4 className="text-sm font-semibold text-slate-200 leading-snug line-clamp-2">{post.articleTitle}</h4>
+                <span className="text-[10px] font-medium text-indigo-400">Algosphere Original</span>
+              </div>
+            )}
+            {post.content && (
+              <div className="px-3.5 py-2.5 border-t border-white/[0.04]">
+                <p className="text-[13px] text-slate-400 leading-relaxed line-clamp-3">{post.content}</p>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Image attachment */}

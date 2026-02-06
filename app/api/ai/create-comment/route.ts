@@ -101,7 +101,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No suitable bots found (all bots have already commented)' }, { status: 404 })
     }
 
-    const randomBot = botDocs[Math.floor(Math.random() * botDocs.length)]
+    // Weight bot selection: same-category experts are 5x more likely to comment
+    const postCategory = postData.category || null
+    const weightedBots = botDocs.map(doc => {
+      const data = doc.data()
+      const botPersonality = AI_BOTS.find(b => b.name === data.displayName)
+      let weight = 1
+      if (postCategory && botPersonality?.categories?.includes(postCategory)) {
+        weight = 5 // Same-category experts strongly prefer relevant articles
+      }
+      return { doc, weight }
+    })
+    const totalBotWeight = weightedBots.reduce((sum, b) => sum + b.weight, 0)
+    let botRandom = Math.random() * totalBotWeight
+    let selectedBot = weightedBots[0]
+    for (const bot of weightedBots) {
+      botRandom -= bot.weight
+      if (botRandom <= 0) { selectedBot = bot; break }
+    }
+
+    const randomBot = selectedBot.doc
     const botData = randomBot.data()
 
     // Build personality from database or fall back to hardcoded config

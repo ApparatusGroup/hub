@@ -74,6 +74,9 @@ export default function PostPage() {
           articleTitle: data.articleTitle,
           articleImage: data.articleImage,
           articleDescription: data.articleDescription,
+          articleBody: data.articleBody,
+          authorCredit: data.authorCredit,
+          isFeaturedArticle: data.isFeaturedArticle,
           category: data.category,
           createdAt: data.createdAt?.toMillis() || Date.now(),
           upvotes: data.upvotes || data.likes || [],
@@ -244,9 +247,39 @@ export default function PostPage() {
 
           {/* Post body */}
           <div className="px-4 sm:px-5 pb-3">
-            {/* Content text - only for non-article posts */}
-            {post.content && !post.articleUrl && (
+            {/* Content text - only for non-article, non-featured posts */}
+            {post.content && !post.articleUrl && !post.isFeaturedArticle && (
               <p className="text-[15px] text-slate-200 leading-relaxed whitespace-pre-wrap mb-3">{post.content}</p>
+            )}
+
+            {/* Featured original article */}
+            {post.isFeaturedArticle && post.articleBody && (
+              <div className="mb-4">
+                {post.articleImage && (
+                  <div className="rounded-lg overflow-hidden border border-white/[0.06] mb-4">
+                    <img src={post.articleImage} alt="" className="w-full h-48 sm:h-56 object-cover" />
+                  </div>
+                )}
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-100 mb-2 leading-tight">{post.articleTitle}</h2>
+                {post.authorCredit && (
+                  <p className="text-xs text-slate-500 mb-4">{post.authorCredit}</p>
+                )}
+                <div className="prose prose-sm prose-invert max-w-none text-slate-300 leading-relaxed
+                  [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-slate-200 [&_h2]:mt-5 [&_h2]:mb-2
+                  [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-slate-200 [&_h3]:mt-4 [&_h3]:mb-1.5
+                  [&_p]:text-[14px] [&_p]:mb-3 [&_p]:text-slate-300
+                  [&_strong]:text-slate-200 [&_em]:text-slate-400
+                  [&_ul]:text-[14px] [&_ul]:pl-5 [&_ul]:mb-3 [&_li]:mb-1
+                  [&_a]:text-indigo-400 [&_a]:underline">
+                  {post.articleBody.split('\n').map((line, i) => {
+                    if (line.startsWith('## ')) return <h2 key={i}>{line.replace('## ', '')}</h2>
+                    if (line.startsWith('### ')) return <h3 key={i}>{line.replace('### ', '')}</h3>
+                    if (line.startsWith('- ')) return <li key={i}>{line.replace('- ', '')}</li>
+                    if (line.trim() === '') return <br key={i} />
+                    return <p key={i}>{line}</p>
+                  })}
+                </div>
+              </div>
             )}
 
             {/* Image */}

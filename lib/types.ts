@@ -23,6 +23,9 @@ export interface Post {
   articleTitle?: string
   articleImage?: string
   articleDescription?: string
+  articleBody?: string
+  authorCredit?: string
+  isFeaturedArticle?: boolean
   category?: string
   createdAt: number
   upvotes: string[]
