@@ -2,10 +2,6 @@ import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
 import { AI_BOTS } from '@/lib/ai-service'
 
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || ''
-
-// Trending topics the platform can write original articles about
 const FEATURED_TOPICS = [
   { title: 'Claude vs OpenAI: The AI Race Heats Up', category: 'Artificial Intelligence', tags: ['claude', 'openai', 'gpt', 'anthropic'] },
   { title: 'The State of Rust in 2026', category: 'Software & Development', tags: ['rust', 'systems', 'memory safety'] },
@@ -28,12 +24,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Pick a topic (custom or random from list)
+    // Pick a topic
     let topic: { title: string; category: string; tags: string[] }
     if (customTopic) {
       topic = { title: customTopic.title, category: customTopic.category || 'Artificial Intelligence', tags: customTopic.tags || [] }
     } else {
-      // Check which topics have already been written about recently
       const recentFeatured = await adminDb
         .collection('posts')
         .where('isFeaturedArticle', '==', true)
@@ -51,7 +46,7 @@ export async function POST(request: Request) {
       topic = availableTopics[Math.floor(Math.random() * availableTopics.length)]
     }
 
-    // Find 2-3 relevant AI bots for this category
+    // Find relevant bots
     const relevantBots = AI_BOTS
       .filter(b => b.categories?.includes(topic.category))
       .slice(0, 3)
@@ -63,60 +58,31 @@ export async function POST(request: Request) {
     const leadAuthor = relevantBots[0]
     const contributors = relevantBots.slice(1)
 
-    // Generate the article body
+    // Build the prompt
     const contributorNames = contributors.map(c => c.name).join(' and ')
     const contributorContext = contributors.length > 0
       ? `\nYou are collaborating with ${contributorNames}. Include perspectives they would bring:
 ${contributors.map(c => `- ${c.name} (${c.occupation}): ${c.personality}`).join('\n')}`
       : ''
 
-    const articlePrompt = `You are ${leadAuthor.name}, a ${leadAuthor.occupation}. ${leadAuthor.personality}
+    const prompt = `You are ${leadAuthor.name}, a ${leadAuthor.occupation}. ${leadAuthor.personality}
 
 Write an original opinion/analysis article titled: "${topic.title}"
 ${contributorContext}
 
 Requirements:
-- Write 400-600 words
+- Write 300-400 words (keep it tight and punchy)
 - Be opinionated and take a clear stance
-- Reference recent real developments and trends in the space
-- Include specific examples and data points where relevant
+- Reference recent real developments and trends
 - Write in a conversational but authoritative journalist voice
 - NO emoji, NO hashtags, NO "as an AI"
-- Structure with 3-4 sections using ## headers
+- Structure with 2-3 sections using ## headers
 - End with a forward-looking conclusion
 - Sound like a real tech journalist, not a press release
-- Be genuinely insightful, not surface-level
 
 Write the article body in markdown (no title, that's already set).`
 
-    const response = await fetch(OPENROUTER_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-sonnet-4',
-        messages: [{ role: 'user', content: articlePrompt }],
-        max_tokens: 1500,
-        temperature: 0.85,
-      }),
-    })
-
-    if (!response.ok) {
-      const err = await response.text()
-      console.error('OpenRouter error:', err)
-      return NextResponse.json({ error: 'AI generation failed' }, { status: 500 })
-    }
-
-    const data = await response.json()
-    const articleBody = data.choices?.[0]?.message?.content?.trim()
-
-    if (!articleBody || articleBody.length < 100) {
-      return NextResponse.json({ error: 'Generated article too short' }, { status: 500 })
-    }
-
-    // Find lead author's Firestore user record
+    // Find bot user in Firestore
     const botEmail = `${leadAuthor.name.toLowerCase().replace(/\s+/g, '')}@hubai.bot`
     const botUserSnapshot = await adminDb.collection('users').where('email', '==', botEmail).limit(1).get()
 
@@ -126,55 +92,23 @@ Write the article body in markdown (no title, that's already set).`
 
     const botUser = botUserSnapshot.docs[0].data()
 
-    // Generate real AI image for the article
-    const imagePrompt = `Professional editorial magazine cover photo for a tech article titled "${topic.title}". Cinematic lighting, modern, sleek, photorealistic, no text, no words, no letters, no watermarks. Category: ${topic.category}. High quality editorial photography style.`
-    const articleImage = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=1200&height=630&nologo=true&seed=${Date.now()}`
-
-    // Create commentary/summary for the post card
-    const commentary = articleBody.split('\n').find((line: string) =>
-      line.trim().length > 50 && !line.startsWith('#')
-    )?.trim().substring(0, 200) || articleBody.substring(0, 200)
-
-    // Build contributor credit
     const authorCredit = contributors.length > 0
       ? `By ${leadAuthor.name} with ${contributors.map(c => c.name).join(' & ')}`
       : `By ${leadAuthor.name}`
 
-    // Store as a featured post
-    const postRef = await adminDb.collection('posts').add({
-      userId: botUser.uid,
-      userName: botUser.displayName,
-      userPhoto: botUser.photoURL,
-      isAI: true,
-      isFeaturedArticle: true,
-      content: commentary,
-      articleTitle: topic.title,
-      articleBody: articleBody,
-      articleImage: articleImage,
-      articleUrl: null, // Original article, no external URL
-      articleDescription: commentary,
-      authorCredit: authorCredit,
-      contributors: [leadAuthor.name, ...contributors.map(c => c.name)],
-      category: topic.category,
-      tags: topic.tags,
-      upvotes: [],
-      downvotes: [],
-      commentCount: 0,
-      createdAt: new Date(),
-    })
-
-    console.log(`📰 Created featured article: "${topic.title}" by ${authorCredit}`)
-
     return NextResponse.json({
-      success: true,
-      postId: postRef.id,
-      title: topic.title,
-      author: authorCredit,
-      category: topic.category,
-      wordCount: articleBody.split(/\s+/).length,
+      topic,
+      prompt,
+      authorCredit,
+      contributors: [leadAuthor.name, ...contributors.map(c => c.name)],
+      botUser: {
+        uid: botUser.uid,
+        displayName: botUser.displayName,
+        photoURL: botUser.photoURL,
+      },
     })
   } catch (error) {
-    console.error('Error creating featured article:', error)
-    return NextResponse.json({ error: 'Failed to create featured article' }, { status: 500 })
+    console.error('Error preparing featured article:', error)
+    return NextResponse.json({ error: 'Failed to prepare featured article' }, { status: 500 })
   }
 }

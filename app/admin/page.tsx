@@ -20,6 +20,7 @@ export default function AdminPage() {
   const [featuredTopic, setFeaturedTopic] = useState('')
   const [featuredCategory, setFeaturedCategory] = useState('Artificial Intelligence')
   const [showFeaturedForm, setShowFeaturedForm] = useState(false)
+  const [featuredStep, setFeaturedStep] = useState<'' | 'preparing' | 'writing' | 'publishing' | 'done'>('')
 
   const handleInitBots = async () => {
     if (!secret) {
@@ -232,29 +233,56 @@ export default function AdminPage() {
     setResult(null)
 
     try {
-      const body: any = { secret }
+      // Step 1: Prepare (pick topic, find bots, build prompt)
+      setFeaturedStep('preparing')
+      const prepBody: any = { secret }
       if (customTitle) {
-        body.topic = { title: customTitle, category: customCategory || 'Artificial Intelligence' }
+        prepBody.topic = { title: customTitle, category: customCategory || 'Artificial Intelligence' }
       }
 
-      const response = await fetch('/api/ai/create-featured-article', {
+      const prepRes = await fetch('/api/ai/featured-article/prepare', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(prepBody),
       })
+      const prepData = await prepRes.json()
+      if (!prepRes.ok) throw new Error(prepData.error || 'Failed to prepare article')
 
-      const data = await response.json()
+      // Step 2: Generate article text (Edge runtime, 25s limit)
+      setFeaturedStep('writing')
+      const genRes = await fetch('/api/ai/featured-article/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret, prompt: prepData.prompt }),
+      })
+      const genData = await genRes.json()
+      if (!genRes.ok) throw new Error(genData.error || 'Failed to generate article')
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create featured article')
-      }
+      // Step 3: Publish to Firestore
+      setFeaturedStep('publishing')
+      const pubRes = await fetch('/api/ai/featured-article/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret,
+          topic: prepData.topic,
+          articleBody: genData.articleBody,
+          botUser: prepData.botUser,
+          authorCredit: prepData.authorCredit,
+          contributors: prepData.contributors,
+        }),
+      })
+      const pubData = await pubRes.json()
+      if (!pubRes.ok) throw new Error(pubData.error || 'Failed to publish article')
 
-      setResult({ ...data, type: 'featured-article' })
+      setFeaturedStep('done')
+      setResult({ ...pubData, type: 'featured-article' })
       setFeaturedTopic('')
     } catch (err: any) {
       setError(err.message)
     } finally {
       setLoading(false)
+      setTimeout(() => setFeaturedStep(''), 3000)
     }
   }
 
@@ -660,6 +688,35 @@ export default function AdminPage() {
 
               {showFeaturedForm && (
                 <div className="space-y-3">
+                  {/* Progress stepper */}
+                  {featuredStep && (
+                    <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                      <div className="flex items-center gap-3 mb-2">
+                        <RefreshCw className="w-4 h-4 text-indigo-600 animate-spin" />
+                        <span className="text-sm font-medium text-indigo-900">
+                          {featuredStep === 'preparing' && 'Step 1/3: Picking topic & assembling writers...'}
+                          {featuredStep === 'writing' && 'Step 2/3: AI is writing the article...'}
+                          {featuredStep === 'publishing' && 'Step 3/3: Publishing & generating image...'}
+                          {featuredStep === 'done' && 'Article published!'}
+                        </span>
+                      </div>
+                      <div className="flex gap-1">
+                        {['preparing', 'writing', 'publishing'].map((step, i) => (
+                          <div
+                            key={step}
+                            className={`h-1.5 flex-1 rounded-full transition-colors ${
+                              featuredStep === 'done' || ['preparing', 'writing', 'publishing'].indexOf(featuredStep) > i
+                                ? 'bg-indigo-600'
+                                : featuredStep === step
+                                  ? 'bg-indigo-400 animate-pulse'
+                                  : 'bg-gray-200'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Quick-pick topics */}
                   <p className="text-sm font-medium text-gray-700">Pick a trending topic:</p>
                   <div className="grid grid-cols-1 gap-2">
