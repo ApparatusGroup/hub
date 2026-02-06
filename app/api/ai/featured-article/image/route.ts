@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     const apiKey = process.env.OPENROUTER_API_KEY || ''
     const seed = Math.floor(Math.random() * 100000)
 
-    // Step 1: If no image prompt was provided, generate one via AI
+    // Generate an image prompt via AI if none provided
     let imagePrompt = providedPrompt || ''
 
     if (!imagePrompt || imagePrompt.length < 10) {
@@ -27,9 +27,9 @@ export async function POST(request: Request) {
             model: 'anthropic/claude-sonnet-4',
             messages: [{
               role: 'user',
-              content: `Generate a short image prompt (under 20 words) for a photorealistic editorial cover image for an article titled: "${title}" (category: ${category}). Describe a specific visual scene with lighting and mood. No text, no logos, no people's faces. Just the prompt, nothing else.`,
+              content: `Write a 10-15 word image generation prompt for an article titled "${title}". Describe a photorealistic scene. No text, no logos, no faces. Just the prompt, nothing else.`,
             }],
-            max_tokens: 60,
+            max_tokens: 40,
             temperature: 0.9,
           }),
         })
@@ -42,55 +42,29 @@ export async function POST(request: Request) {
       }
     }
 
-    // Step 2: Clean up the prompt for Pollinations
-    // Keep it short and simple - long prompts cause failures
-    const cleanPrompt = (imagePrompt || title)
+    // Clean and shorten prompt for Pollinations (shorter = more reliable)
+    const cleanPrompt = (imagePrompt || `${title} editorial photography`)
+      .replace(/"/g, '')
       .replace(/[^a-zA-Z0-9 ,.-]/g, '')
-      .substring(0, 120)
+      .substring(0, 80)
       .trim()
 
-    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}?width=1200&height=630&nologo=true&seed=${seed}`
-
-    // Step 3: Actually fetch the image to verify it generates
-    let imageUrl = ''
-    try {
-      const imgRes = await fetch(pollinationsUrl, {
-        signal: AbortSignal.timeout(18000), // 18s timeout (Edge has 25s)
-      })
-
-      if (imgRes.ok) {
-        const contentType = imgRes.headers.get('content-type') || ''
-        if (contentType.includes('image')) {
-          // Image generated successfully - use the URL
-          imageUrl = pollinationsUrl
-        }
-      }
-    } catch {
-      // Pollinations failed/timed out
-    }
-
-    // Step 4: If Pollinations failed, use OG fallback
-    if (!imageUrl) {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-gray-six.vercel.app'
-      imageUrl = `${baseUrl}/api/og?${new URLSearchParams({
-        title: title || 'Algosphere',
-        ...(category && { category }),
-      }).toString()}`
-    }
+    // Build Pollinations URL with Flux model (faster, more reliable)
+    // DON'T verify server-side - let the browser load it directly.
+    // Server-side fetch was timing out and always falling back to OG.
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}?width=1200&height=630&nologo=true&seed=${seed}&model=flux`
 
     return Response.json({
       imageUrl,
       imagePrompt: cleanPrompt,
-      source: imageUrl.includes('pollinations') ? 'pollinations' : 'og-fallback',
+      source: 'pollinations',
     })
   } catch (error) {
     console.error('Error generating image:', error)
-    // Always return something
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-gray-six.vercel.app'
     return Response.json({
-      imageUrl: `${baseUrl}/api/og?title=Algosphere`,
+      imageUrl: '',
       imagePrompt: '',
-      source: 'error-fallback',
+      source: 'error',
     })
   }
 }
