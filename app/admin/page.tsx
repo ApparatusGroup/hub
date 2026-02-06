@@ -20,7 +20,7 @@ export default function AdminPage() {
   const [featuredTopic, setFeaturedTopic] = useState('')
   const [featuredCategory, setFeaturedCategory] = useState('Artificial Intelligence')
   const [showFeaturedForm, setShowFeaturedForm] = useState(false)
-  const [featuredStep, setFeaturedStep] = useState<'' | 'researching' | 'preparing' | 'writing' | 'publishing' | 'done'>('')
+  const [featuredStep, setFeaturedStep] = useState<'' | 'preparing' | 'writing' | 'reviewing' | 'publishing' | 'done'>('')
   const [trendingTopics, setTrendingTopics] = useState<{ title: string; category: string; context: string }[]>([])
   const [researchLoading, setResearchLoading] = useState(false)
   const [researchSources, setResearchSources] = useState<{ hn: number; reddit: number } | null>(null)
@@ -274,7 +274,22 @@ export default function AdminPage() {
       const genData = await genRes.json()
       if (!genRes.ok) throw new Error(genData.error || 'Failed to generate article')
 
-      // Step 3: Publish to Firestore + generate image
+      // Step 3: Fact-check & edit (Edge runtime, 25s limit)
+      setFeaturedStep('reviewing')
+      const revRes = await fetch('/api/ai/featured-article/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret,
+          reviewPrompt: prepData.reviewPrompt,
+          articleBody: genData.articleBody,
+        }),
+      })
+      const revData = await revRes.json()
+      // Review is optional - use reviewed body if available, otherwise original
+      const finalBody = revData.articleBody || genData.articleBody
+
+      // Step 4: Publish to Firestore + generate image
       setFeaturedStep('publishing')
       const pubRes = await fetch('/api/ai/featured-article/publish', {
         method: 'POST',
@@ -282,7 +297,7 @@ export default function AdminPage() {
         body: JSON.stringify({
           secret,
           topic: prepData.topic,
-          articleBody: genData.articleBody,
+          articleBody: finalBody,
           botUser: prepData.botUser,
           authorCredit: prepData.authorCredit,
           contributors: prepData.contributors,
@@ -712,18 +727,19 @@ export default function AdminPage() {
                           ? <CheckCircle className="w-4 h-4 text-green-600" />
                           : <RefreshCw className="w-4 h-4 text-indigo-600 animate-spin" />}
                         <span className="text-sm font-medium text-indigo-900">
-                          {featuredStep === 'preparing' && 'Step 1/3: Assembling writers & building prompt...'}
-                          {featuredStep === 'writing' && 'Step 2/3: AI is writing the article...'}
-                          {featuredStep === 'publishing' && 'Step 3/3: Publishing & generating cover image...'}
+                          {featuredStep === 'preparing' && 'Step 1/4: Assembling writers & building prompt...'}
+                          {featuredStep === 'writing' && 'Step 2/4: Lead author is writing the article...'}
+                          {featuredStep === 'reviewing' && 'Step 3/4: Fact-checking & editing for quality...'}
+                          {featuredStep === 'publishing' && 'Step 4/4: Publishing & generating cover image...'}
                           {featuredStep === 'done' && 'Article published!'}
                         </span>
                       </div>
                       <div className="flex gap-1">
-                        {['preparing', 'writing', 'publishing'].map((step, i) => (
+                        {['preparing', 'writing', 'reviewing', 'publishing'].map((step, i) => (
                           <div
                             key={step}
                             className={`h-1.5 flex-1 rounded-full transition-colors ${
-                              featuredStep === 'done' || ['preparing', 'writing', 'publishing'].indexOf(featuredStep) > i
+                              featuredStep === 'done' || ['preparing', 'writing', 'reviewing', 'publishing'].indexOf(featuredStep) > i
                                 ? 'bg-indigo-600'
                                 : featuredStep === step
                                   ? 'bg-indigo-400 animate-pulse'

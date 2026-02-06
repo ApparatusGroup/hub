@@ -29,41 +29,42 @@ export async function POST(request: Request) {
     }
 
     const leadAuthor = relevantBots[0]
-    const contributors = relevantBots.slice(1, 3)
-
-    // Build the prompt with current event context
-    const contributorNames = contributors.map(c => c.name).join(' and ')
-    const contributorContext = contributors.length > 0
-      ? `\nYou are collaborating with ${contributorNames}. Include perspectives they would bring:
-${contributors.map(c => `- ${c.name} (${c.occupation}): ${c.personality}`).join('\n')}`
-      : ''
+    const reviewers = relevantBots.slice(1, 3)
 
     const currentContext = topicContext
-      ? `\n\nCURRENT CONTEXT (use this to make the article timely and specific):
+      ? `\n\nCURRENT EVENTS TO REFERENCE (this is what's actually happening right now):
 ${topicContext}
 
-CRITICAL: Reference these specific current events, product names, version numbers, and developments. Do NOT use outdated information. Today is ${new Date().toISOString().split('T')[0]}.`
+CRITICAL: Reference these specific current events, product names, version numbers, and developments. Do NOT use outdated information or make up version numbers. Today is ${new Date().toISOString().split('T')[0]}.`
       : ''
 
     const prompt = `You are ${leadAuthor.name}, a ${leadAuthor.occupation}. ${leadAuthor.personality}
 
 Write an original opinion/analysis article titled: "${topic.title}"
-${contributorContext}
 ${currentContext}
+
+WRITING STYLE RULES (violating these makes it obviously AI-generated):
+- NEVER use em dashes. Use periods or commas instead.
+- NEVER use "notably", "nuanced", "straightforward", "it's worth noting", "the reality is"
+- NEVER use "landscape" to describe an industry or field
+- NEVER use semicolons
+- NEVER start consecutive paragraphs the same way
+- NEVER use the phrase "at the end of the day" or "in the grand scheme"
+- Don't hedge every statement. Take a real position.
+- Vary sentence length. Mix short punchy sentences with longer ones.
+- Write like you're explaining this to a smart friend over coffee, not presenting at a conference.
 
 Requirements:
 - Write 400-600 words
 - Be opinionated and take a clear stance
 - Reference SPECIFIC current developments, product versions, and real events
-- Write in a conversational but authoritative journalist voice
-- NO emoji, NO hashtags, NO "as an AI"
+- NO emoji, NO hashtags
 - Structure with 2-3 sections using ## headers
 - Use **bold** for emphasis on key terms
 - End with a forward-looking conclusion
-- Sound like a real tech journalist, not a press release
-- Be genuinely insightful, not surface-level
+- Sound like a real tech journalist, not a press release or AI summary
 
-Write the article body in markdown (no title, that's already set).`
+Write the article body in markdown (no title, that's already set). Do not mention any co-authors or collaborators in the article text.`
 
     // Find bot user in Firestore
     const botEmail = `${leadAuthor.name.toLowerCase().replace(/\s+/g, '')}@hubai.bot`
@@ -75,15 +76,33 @@ Write the article body in markdown (no title, that's already set).`
 
     const botUser = botUserSnapshot.docs[0].data()
 
-    const authorCredit = contributors.length > 0
-      ? `By ${leadAuthor.name} with ${contributors.map(c => c.name).join(' & ')}`
+    const authorCredit = reviewers.length > 0
+      ? `By ${leadAuthor.name} | Reviewed by ${reviewers.map(c => c.name).join(' & ')}`
       : `By ${leadAuthor.name}`
+
+    // Build review prompt for fact-checking step
+    const reviewerInfo = reviewers.map(r => `${r.name} (${r.occupation}): ${r.personality}`).join('\n')
+    const reviewPrompt = reviewers.length > 0
+      ? `You are a team of editors reviewing an article for accuracy and readability:
+${reviewerInfo}
+
+Review the following article titled "${topic.title}" and fix any issues:
+1. Remove any phrases that sound obviously AI-generated (em dashes, "notably", "landscape", "it's worth noting", hedging language)
+2. Fix any factual errors or outdated references
+3. Make sure it reads like a real journalist wrote it, not an AI
+4. Keep the same structure and length
+5. Do NOT add any mentions of reviewers, editors, or collaboration
+6. Do NOT add a title - just return the corrected article body
+
+Return ONLY the corrected article body in markdown. No commentary.`
+      : null
 
     return NextResponse.json({
       topic,
       prompt,
+      reviewPrompt,
       authorCredit,
-      contributors: [leadAuthor.name, ...contributors.map(c => c.name)],
+      contributors: [leadAuthor.name, ...reviewers.map(c => c.name)],
       botUser: {
         uid: botUser.uid,
         displayName: botUser.displayName,

@@ -40,6 +40,7 @@ export default function PostPage() {
   const [commentText, setCommentText] = useState('')
   const [visibleCount, setVisibleCount] = useState(INITIAL_COMMENTS)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [featuredImgFailed, setFeaturedImgFailed] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) router.push('/auth/login')
@@ -255,11 +256,16 @@ export default function PostPage() {
             {/* Featured original article */}
             {post.isFeaturedArticle && post.articleBody && (
               <div className="mb-4">
-                {post.articleImage && (
-                  <div className="rounded-lg overflow-hidden border border-white/[0.06] mb-4">
-                    <img src={post.articleImage} alt="" className="w-full h-48 sm:h-56 object-cover" />
-                  </div>
-                )}
+                <div className="rounded-lg overflow-hidden border border-white/[0.06] mb-4">
+                  <img
+                    src={post.articleImage && !featuredImgFailed
+                      ? post.articleImage
+                      : `/api/og?${new URLSearchParams({ title: post.articleTitle || 'Algosphere', ...(post.category && { category: post.category }) }).toString()}`}
+                    alt=""
+                    className="w-full h-48 sm:h-56 object-cover"
+                    onError={() => setFeaturedImgFailed(true)}
+                  />
+                </div>
                 <h2 className="text-xl sm:text-2xl font-bold text-slate-100 mb-2 leading-tight">{post.articleTitle}</h2>
                 {post.authorCredit && (
                   <p className="text-xs text-slate-500 mb-4">{post.authorCredit}</p>

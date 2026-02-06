@@ -12,12 +12,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Generate real AI image with short, focused prompt
-    // Keep prompt under 200 chars for reliable Pollinations generation
-    const shortTitle = topic.title.substring(0, 60)
-    const imagePrompt = `${shortTitle}, editorial tech magazine photo, cinematic, modern, no text no words`
+    // Generate AI image via Pollinations - pre-warm by fetching
+    const shortTitle = topic.title.substring(0, 50).replace(/[^a-zA-Z0-9 ]/g, '')
+    const imagePrompt = `${shortTitle} tech editorial photo cinematic`
     const seed = Math.floor(Math.random() * 100000)
-    const articleImage = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=1200&height=630&nologo=true&seed=${seed}`
+    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=1200&height=630&nologo=true&seed=${seed}`
+
+    // Pre-warm: trigger image generation, but don't block on it
+    let articleImage = pollinationsUrl
+    try {
+      const imgRes = await fetch(pollinationsUrl, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(5000),
+      })
+      if (!imgRes.ok) {
+        // Fallback to OG image
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-gray-six.vercel.app'
+        articleImage = `${baseUrl}/api/og?${new URLSearchParams({ title: topic.title, category: topic.category }).toString()}`
+      }
+    } catch {
+      // Timeout or error - still use Pollinations URL (will generate on first browser load)
+      // but also set OG as backup in case Pollinations is down
+    }
 
     // Extract summary for card
     const commentary = articleBody.split('\n').find((line: string) =>
