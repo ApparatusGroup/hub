@@ -272,11 +272,25 @@ export default function PostPage() {
                   [&_ul]:text-[14px] [&_ul]:pl-5 [&_ul]:mb-3 [&_li]:mb-1
                   [&_a]:text-indigo-400 [&_a]:underline">
                   {post.articleBody.split('\n').map((line, i) => {
-                    if (line.startsWith('## ')) return <h2 key={i}>{line.replace('## ', '')}</h2>
-                    if (line.startsWith('### ')) return <h3 key={i}>{line.replace('### ', '')}</h3>
-                    if (line.startsWith('- ')) return <li key={i}>{line.replace('- ', '')}</li>
-                    if (line.trim() === '') return <br key={i} />
-                    return <p key={i}>{line}</p>
+                    // Parse inline markdown: **bold**, *italic*, [links](url)
+                    const renderInline = (text: string) => {
+                      const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g)
+                      return parts.map((part, j) => {
+                        if (part.startsWith('**') && part.endsWith('**'))
+                          return <strong key={j}>{part.slice(2, -2)}</strong>
+                        if (part.startsWith('*') && part.endsWith('*'))
+                          return <em key={j}>{part.slice(1, -1)}</em>
+                        const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
+                        if (linkMatch)
+                          return <a key={j} href={linkMatch[2]} target="_blank" rel="noopener noreferrer">{linkMatch[1]}</a>
+                        return part
+                      })
+                    }
+                    if (line.startsWith('## ')) return <h2 key={i}>{renderInline(line.replace('## ', ''))}</h2>
+                    if (line.startsWith('### ')) return <h3 key={i}>{renderInline(line.replace('### ', ''))}</h3>
+                    if (line.startsWith('- ')) return <li key={i}>{renderInline(line.replace('- ', ''))}</li>
+                    if (line.trim() === '') return null
+                    return <p key={i}>{renderInline(line)}</p>
                   })}
                 </div>
               </div>

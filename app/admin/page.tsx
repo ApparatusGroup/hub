@@ -20,7 +20,10 @@ export default function AdminPage() {
   const [featuredTopic, setFeaturedTopic] = useState('')
   const [featuredCategory, setFeaturedCategory] = useState('Artificial Intelligence')
   const [showFeaturedForm, setShowFeaturedForm] = useState(false)
-  const [featuredStep, setFeaturedStep] = useState<'' | 'preparing' | 'writing' | 'publishing' | 'done'>('')
+  const [featuredStep, setFeaturedStep] = useState<'' | 'researching' | 'preparing' | 'writing' | 'publishing' | 'done'>('')
+  const [trendingTopics, setTrendingTopics] = useState<{ title: string; category: string; context: string }[]>([])
+  const [researchLoading, setResearchLoading] = useState(false)
+  const [researchSources, setResearchSources] = useState<{ hn: number; reddit: number } | null>(null)
 
   const handleInitBots = async () => {
     if (!secret) {
@@ -198,21 +201,6 @@ export default function AdminPage() {
     }
   }
 
-  const FEATURED_TOPICS = [
-    { title: 'Claude vs OpenAI: The AI Race Heats Up', category: 'Artificial Intelligence' },
-    { title: 'The State of Rust in 2026', category: 'Software & Development' },
-    { title: 'Why Every Company Is Becoming an AI Company', category: 'Big Tech & Policy' },
-    { title: 'The Browser Wars Are Back', category: 'Personal Tech & Gadgets' },
-    { title: 'Open Source AI: Liberation or Liability?', category: 'Artificial Intelligence' },
-    { title: 'Cloud Costs Are Out of Control', category: 'Computing & Hardware' },
-    { title: 'The Death of the Traditional Tech Interview', category: 'Software & Development' },
-    { title: 'AI Agents: Hype vs Reality', category: 'Artificial Intelligence' },
-    { title: 'Edge Computing Finally Makes Sense', category: 'Computing & Hardware' },
-    { title: 'The Indie Web Revival', category: 'Personal Tech & Gadgets' },
-    { title: 'Technical Debt Is Eating Your Roadmap', category: 'Software & Development' },
-    { title: 'Regulation Is Coming for AI', category: 'Big Tech & Policy' },
-  ]
-
   const CATEGORIES = [
     'Artificial Intelligence',
     'Computing & Hardware',
@@ -222,7 +210,36 @@ export default function AdminPage() {
     'Personal Tech & Gadgets',
   ]
 
-  const handleCreateFeatured = async (customTitle?: string, customCategory?: string) => {
+  const handleResearchTopics = async () => {
+    if (!secret) {
+      setError('Please enter the AI_BOT_SECRET')
+      return
+    }
+
+    setResearchLoading(true)
+    setError('')
+    setTrendingTopics([])
+    setResearchSources(null)
+
+    try {
+      const res = await fetch('/api/ai/featured-article/research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to research topics')
+
+      setTrendingTopics(data.topics || [])
+      setResearchSources(data.sources || null)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setResearchLoading(false)
+    }
+  }
+
+  const handleCreateFeatured = async (title: string, category: string, context?: string) => {
     if (!secret) {
       setError('Please enter the AI_BOT_SECRET')
       return
@@ -233,17 +250,16 @@ export default function AdminPage() {
     setResult(null)
 
     try {
-      // Step 1: Prepare (pick topic, find bots, build prompt)
+      // Step 1: Prepare (find bots, build prompt with context)
       setFeaturedStep('preparing')
-      const prepBody: any = { secret }
-      if (customTitle) {
-        prepBody.topic = { title: customTitle, category: customCategory || 'Artificial Intelligence' }
-      }
-
       const prepRes = await fetch('/api/ai/featured-article/prepare', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(prepBody),
+        body: JSON.stringify({
+          secret,
+          topic: { title, category },
+          context: context || '',
+        }),
       })
       const prepData = await prepRes.json()
       if (!prepRes.ok) throw new Error(prepData.error || 'Failed to prepare article')
@@ -258,7 +274,7 @@ export default function AdminPage() {
       const genData = await genRes.json()
       if (!genRes.ok) throw new Error(genData.error || 'Failed to generate article')
 
-      // Step 3: Publish to Firestore
+      // Step 3: Publish to Firestore + generate image
       setFeaturedStep('publishing')
       const pubRes = await fetch('/api/ai/featured-article/publish', {
         method: 'POST',
@@ -692,11 +708,13 @@ export default function AdminPage() {
                   {featuredStep && (
                     <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
                       <div className="flex items-center gap-3 mb-2">
-                        <RefreshCw className="w-4 h-4 text-indigo-600 animate-spin" />
+                        {featuredStep === 'done'
+                          ? <CheckCircle className="w-4 h-4 text-green-600" />
+                          : <RefreshCw className="w-4 h-4 text-indigo-600 animate-spin" />}
                         <span className="text-sm font-medium text-indigo-900">
-                          {featuredStep === 'preparing' && 'Step 1/3: Picking topic & assembling writers...'}
+                          {featuredStep === 'preparing' && 'Step 1/3: Assembling writers & building prompt...'}
                           {featuredStep === 'writing' && 'Step 2/3: AI is writing the article...'}
-                          {featuredStep === 'publishing' && 'Step 3/3: Publishing & generating image...'}
+                          {featuredStep === 'publishing' && 'Step 3/3: Publishing & generating cover image...'}
                           {featuredStep === 'done' && 'Article published!'}
                         </span>
                       </div>
@@ -717,21 +735,63 @@ export default function AdminPage() {
                     </div>
                   )}
 
-                  {/* Quick-pick topics */}
-                  <p className="text-sm font-medium text-gray-700">Pick a trending topic:</p>
-                  <div className="grid grid-cols-1 gap-2">
-                    {FEATURED_TOPICS.map((topic) => (
-                      <button
-                        key={topic.title}
-                        onClick={() => handleCreateFeatured(topic.title, topic.category)}
-                        disabled={loading}
-                        className="text-left px-3 py-2 bg-white border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-sm disabled:opacity-50"
-                      >
-                        <span className="font-medium text-gray-900">{topic.title}</span>
-                        <span className="text-xs text-gray-500 ml-2">{topic.category}</span>
-                      </button>
-                    ))}
+                  {/* Step 0: Research trending topics */}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium text-blue-900">
+                        Fetch what&apos;s trending right now
+                      </p>
+                      {researchSources && (
+                        <span className="text-[10px] text-blue-600">
+                          {researchSources.hn} HN + {researchSources.reddit} Reddit headlines analyzed
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleResearchTopics}
+                      disabled={researchLoading || loading}
+                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
+                    >
+                      {researchLoading ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Scanning HN + Reddit for hot topics...</span>
+                        </>
+                      ) : (
+                        <>
+                          <TrendingUp className="w-4 h-4" />
+                          <span>{trendingTopics.length > 0 ? 'Refresh Trending Topics' : 'Research Trending Topics'}</span>
+                        </>
+                      )}
+                    </button>
                   </div>
+
+                  {/* Trending topic results */}
+                  {trendingTopics.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-2">
+                        Hot topics right now (click to write):
+                      </p>
+                      <div className="grid grid-cols-1 gap-2">
+                        {trendingTopics.map((topic, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleCreateFeatured(topic.title, topic.category, topic.context)}
+                            disabled={loading}
+                            className="text-left px-3 py-2.5 bg-white border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors disabled:opacity-50"
+                          >
+                            <span className="text-sm font-medium text-gray-900 block">{topic.title}</span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium">{topic.category}</span>
+                            </div>
+                            {topic.context && (
+                              <p className="text-xs text-gray-500 mt-1 line-clamp-2">{topic.context}</p>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Custom topic */}
                   <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
@@ -761,16 +821,6 @@ export default function AdminPage() {
                       <span>{loading ? 'Writing Article...' : 'Generate Featured Article'}</span>
                     </button>
                   </div>
-
-                  {/* Random topic */}
-                  <button
-                    onClick={() => handleCreateFeatured()}
-                    disabled={loading}
-                    className="w-full bg-gradient-to-r from-cyan-600 to-indigo-600 text-white px-4 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span>{loading ? 'Writing...' : 'Random Featured Article'}</span>
-                  </button>
                 </div>
               )}
             </div>

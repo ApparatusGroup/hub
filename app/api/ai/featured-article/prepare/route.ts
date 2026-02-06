@@ -2,83 +2,66 @@ import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
 import { AI_BOTS } from '@/lib/ai-service'
 
-const FEATURED_TOPICS = [
-  { title: 'Claude vs OpenAI: The AI Race Heats Up', category: 'Artificial Intelligence', tags: ['claude', 'openai', 'gpt', 'anthropic'] },
-  { title: 'The State of Rust in 2026', category: 'Software & Development', tags: ['rust', 'systems', 'memory safety'] },
-  { title: 'Why Every Company Is Becoming an AI Company', category: 'Big Tech & Policy', tags: ['ai', 'enterprise', 'transformation'] },
-  { title: 'The Browser Wars Are Back', category: 'Personal Tech & Gadgets', tags: ['browser', 'chrome', 'firefox', 'web'] },
-  { title: 'Open Source AI: Liberation or Liability?', category: 'Artificial Intelligence', tags: ['open source', 'llama', 'mistral', 'licensing'] },
-  { title: 'Cloud Costs Are Out of Control', category: 'Computing & Hardware', tags: ['cloud', 'aws', 'costs', 'infrastructure'] },
-  { title: 'The Death of the Traditional Tech Interview', category: 'Software & Development', tags: ['hiring', 'interviews', 'leetcode'] },
-  { title: 'AI Agents: Hype vs Reality', category: 'Artificial Intelligence', tags: ['agents', 'automation', 'agentic'] },
-  { title: 'Edge Computing Finally Makes Sense', category: 'Computing & Hardware', tags: ['edge', 'latency', 'distributed'] },
-  { title: 'The Indie Web Revival', category: 'Personal Tech & Gadgets', tags: ['indie web', 'personal sites', 'fediverse'] },
-  { title: 'Technical Debt Is Eating Your Roadmap', category: 'Software & Development', tags: ['tech debt', 'refactoring', 'architecture'] },
-  { title: 'Regulation Is Coming for AI', category: 'Big Tech & Policy', tags: ['regulation', 'eu ai act', 'governance'] },
-]
-
 export async function POST(request: Request) {
   try {
-    const { secret, topic: customTopic } = await request.json()
+    const { secret, topic: selectedTopic, context: topicContext } = await request.json()
     if (secret !== process.env.AI_BOT_SECRET) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Pick a topic
-    let topic: { title: string; category: string; tags: string[] }
-    if (customTopic) {
-      topic = { title: customTopic.title, category: customTopic.category || 'Artificial Intelligence', tags: customTopic.tags || [] }
-    } else {
-      const recentFeatured = await adminDb
-        .collection('posts')
-        .where('isFeaturedArticle', '==', true)
-        .orderBy('createdAt', 'desc')
-        .limit(10)
-        .get()
-
-      const recentTitles = new Set(recentFeatured.docs.map(d => d.data().articleTitle))
-      const availableTopics = FEATURED_TOPICS.filter(t => !recentTitles.has(t.title))
-
-      if (availableTopics.length === 0) {
-        return NextResponse.json({ error: 'All featured topics have been written recently' }, { status: 400 })
-      }
-
-      topic = availableTopics[Math.floor(Math.random() * availableTopics.length)]
+    if (!selectedTopic?.title || !selectedTopic?.category) {
+      return NextResponse.json({ error: 'Missing topic title or category' }, { status: 400 })
     }
 
-    // Find relevant bots
+    const topic = {
+      title: selectedTopic.title,
+      category: selectedTopic.category,
+      tags: selectedTopic.tags || [],
+    }
+
+    // Find relevant bots for this category
     const relevantBots = AI_BOTS
       .filter(b => b.categories?.includes(topic.category))
-      .slice(0, 3)
 
+    // Fallback if no category match
     if (relevantBots.length === 0) {
-      return NextResponse.json({ error: 'No relevant bots for this category' }, { status: 400 })
+      relevantBots.push(...AI_BOTS.slice(0, 3))
     }
 
     const leadAuthor = relevantBots[0]
-    const contributors = relevantBots.slice(1)
+    const contributors = relevantBots.slice(1, 3)
 
-    // Build the prompt
+    // Build the prompt with current event context
     const contributorNames = contributors.map(c => c.name).join(' and ')
     const contributorContext = contributors.length > 0
       ? `\nYou are collaborating with ${contributorNames}. Include perspectives they would bring:
 ${contributors.map(c => `- ${c.name} (${c.occupation}): ${c.personality}`).join('\n')}`
       : ''
 
+    const currentContext = topicContext
+      ? `\n\nCURRENT CONTEXT (use this to make the article timely and specific):
+${topicContext}
+
+CRITICAL: Reference these specific current events, product names, version numbers, and developments. Do NOT use outdated information. Today is ${new Date().toISOString().split('T')[0]}.`
+      : ''
+
     const prompt = `You are ${leadAuthor.name}, a ${leadAuthor.occupation}. ${leadAuthor.personality}
 
 Write an original opinion/analysis article titled: "${topic.title}"
 ${contributorContext}
+${currentContext}
 
 Requirements:
-- Write 300-400 words (keep it tight and punchy)
+- Write 400-600 words
 - Be opinionated and take a clear stance
-- Reference recent real developments and trends
+- Reference SPECIFIC current developments, product versions, and real events
 - Write in a conversational but authoritative journalist voice
 - NO emoji, NO hashtags, NO "as an AI"
 - Structure with 2-3 sections using ## headers
+- Use **bold** for emphasis on key terms
 - End with a forward-looking conclusion
 - Sound like a real tech journalist, not a press release
+- Be genuinely insightful, not surface-level
 
 Write the article body in markdown (no title, that's already set).`
 

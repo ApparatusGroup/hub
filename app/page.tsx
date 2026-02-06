@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { db } from '@/lib/firebase'
-import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, limit, doc, getDoc } from 'firebase/firestore'
 import Navbar from '@/components/Navbar'
 import CreatePost from '@/components/CreatePost'
 import Post from '@/components/Post'
@@ -19,12 +19,22 @@ export default function HomePage() {
   const [loadingPosts, setLoadingPosts] = useState(true)
   const [activeTab, setActiveTab] = useState<'recent' | 'popular'>('popular')
   const [showCreatePost, setShowCreatePost] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/auth/login')
     }
   }, [user, loading, router])
+
+  useEffect(() => {
+    if (!user) return
+    const checkAdmin = async () => {
+      const userDoc = await getDoc(doc(db, 'users', user.uid))
+      if (userDoc.exists()) setIsAdmin(userDoc.data()?.isAdmin || false)
+    }
+    checkAdmin()
+  }, [user])
 
   useEffect(() => {
     if (!user) return
@@ -121,7 +131,7 @@ export default function HomePage() {
 
       {/* Featured Stories - full width */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-4">
-        <FeaturedStories posts={featuredStories} />
+        <FeaturedStories posts={featuredStories} isAdmin={isAdmin} />
       </div>
 
       {/* Feed - centered column */}

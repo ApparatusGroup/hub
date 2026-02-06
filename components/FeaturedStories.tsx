@@ -7,6 +7,7 @@ import { useRef, useState } from 'react'
 
 interface FeaturedStoriesProps {
   posts: PostType[]
+  isAdmin?: boolean
 }
 
 function FeaturedCard({ post, isHero, onClick }: { post: PostType; isHero: boolean; onClick: () => void }) {
@@ -101,7 +102,7 @@ function FeaturedCard({ post, isHero, onClick }: { post: PostType; isHero: boole
   )
 }
 
-export default function FeaturedStories({ posts }: FeaturedStoriesProps) {
+export default function FeaturedStories({ posts, isAdmin }: FeaturedStoriesProps) {
   const router = useRouter()
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -124,13 +125,15 @@ export default function FeaturedStories({ posts }: FeaturedStoriesProps) {
           <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">Trending</h2>
         </div>
         <div className="flex gap-1">
-          <button
-            onClick={() => router.push('/admin')}
-            className="p-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:bg-primary/10 hover:border-primary/20 text-slate-500 hover:text-primary transition-all"
-            title="Create Featured Article"
-          >
-            <PenLine className="w-3.5 h-3.5" />
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => router.push('/admin')}
+              className="p-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:bg-primary/10 hover:border-primary/20 text-slate-500 hover:text-primary transition-all"
+              title="Create Featured Article"
+            >
+              <PenLine className="w-3.5 h-3.5" />
+            </button>
+          )}
           <button
             onClick={() => scroll('left')}
             className="p-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] text-slate-500 hover:text-slate-300 transition-all"

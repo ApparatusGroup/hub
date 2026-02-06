@@ -12,9 +12,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Generate real AI image
-    const imagePrompt = `Professional editorial magazine cover photo for a tech article titled "${topic.title}". Cinematic lighting, modern, sleek, photorealistic, no text, no words, no letters, no watermarks. Category: ${topic.category}. High quality editorial photography style.`
-    const articleImage = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=1200&height=630&nologo=true&seed=${Date.now()}`
+    // Generate real AI image with short, focused prompt
+    // Keep prompt under 200 chars for reliable Pollinations generation
+    const shortTitle = topic.title.substring(0, 60)
+    const imagePrompt = `${shortTitle}, editorial tech magazine photo, cinematic, modern, no text no words`
+    const seed = Math.floor(Math.random() * 100000)
+    const articleImage = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=1200&height=630&nologo=true&seed=${seed}`
 
     // Extract summary for card
     const commentary = articleBody.split('\n').find((line: string) =>
