@@ -20,7 +20,7 @@ export default function AdminPage() {
   const [featuredTopic, setFeaturedTopic] = useState('')
   const [featuredCategory, setFeaturedCategory] = useState('Artificial Intelligence')
   const [showFeaturedForm, setShowFeaturedForm] = useState(false)
-  const [featuredStep, setFeaturedStep] = useState(-1) // -1 = not started, 0-9 = step index, 10 = done
+  const [featuredStep, setFeaturedStep] = useState(-1) // -1 = not started, 0-10 = step index, 11 = done
   const [trendingTopics, setTrendingTopics] = useState<{ title: string; category: string; context: string }[]>([])
   const [researchLoading, setResearchLoading] = useState(false)
   const [researchSources, setResearchSources] = useState<Record<string, number> | null>(null)
@@ -242,6 +242,7 @@ export default function AdminPage() {
   const PIPELINE_STEPS = [
     'Assembling editorial team',
     'Crafting writing brief',
+    'Outlining key arguments',
     'Writing first draft',
     'Extracting cover concept',
     'Fact-checking content',
@@ -281,23 +282,34 @@ export default function AdminPage() {
       setFeaturedStep(1)
       await new Promise(r => setTimeout(r, 400))
 
-      // Step 2: Writing first draft
+      // Step 2: Outlining key arguments (Haiku - fast ~3-5s)
       setFeaturedStep(2)
-      const genRes = await fetch('/api/ai/featured-article/generate', {
+      const outlineRes = await fetch('/api/ai/featured-article/generate-outline', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ secret, prompt: prepData.prompt }),
       })
+      const outlineData = await outlineRes.json()
+      if (!outlineRes.ok) throw new Error(outlineData.error || 'Failed to generate outline')
+
+      const imagePrompt = outlineData.imagePrompt || ''
+
+      // Step 3: Writing first draft (Sonnet - guided by outline, faster)
+      setFeaturedStep(3)
+      const genRes = await fetch('/api/ai/featured-article/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret, prompt: prepData.prompt, outline: outlineData.outline }),
+      })
       const genData = await genRes.json()
       if (!genRes.ok) throw new Error(genData.error || 'Failed to generate article')
 
-      // Step 3: Extracting cover concept (instant - parse imagePrompt from output)
-      setFeaturedStep(3)
-      const imagePrompt = genData.imagePrompt || ''
+      // Step 4: Extracting cover concept (instant - imagePrompt from outline)
+      setFeaturedStep(4)
       await new Promise(r => setTimeout(r, 300))
 
-      // Step 4: Fact-checking content
-      setFeaturedStep(4)
+      // Step 5: Fact-checking content
+      setFeaturedStep(5)
       const revRes = await fetch('/api/ai/featured-article/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -310,8 +322,8 @@ export default function AdminPage() {
       const revData = await revRes.json()
       const checkedBody = revData.articleBody || genData.articleBody
 
-      // Step 5: Humanizing language
-      setFeaturedStep(5)
+      // Step 6: Humanizing language
+      setFeaturedStep(6)
       const humRes = await fetch('/api/ai/featured-article/humanize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -320,8 +332,8 @@ export default function AdminPage() {
       const humData = await humRes.json()
       const finalBody = humData.articleBody || checkedBody
 
-      // Step 6: Generating cover image
-      setFeaturedStep(6)
+      // Step 7: Generating cover image (Together AI FLUX)
+      setFeaturedStep(7)
       const imgRes = await fetch('/api/ai/featured-article/image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -330,12 +342,12 @@ export default function AdminPage() {
       const imgData = await imgRes.json()
       const imageUrl = imgData.imageUrl || ''
 
-      // Step 7: Composing article (instant - assemble metadata)
-      setFeaturedStep(7)
+      // Step 8: Composing article (instant - assemble metadata)
+      setFeaturedStep(8)
       await new Promise(r => setTimeout(r, 300))
 
-      // Step 8: Publishing to Algosphere
-      setFeaturedStep(8)
+      // Step 9: Publishing to Algosphere
+      setFeaturedStep(9)
       const pubRes = await fetch('/api/ai/featured-article/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -352,12 +364,12 @@ export default function AdminPage() {
       const pubData = await pubRes.json()
       if (!pubRes.ok) throw new Error(pubData.error || 'Failed to publish article')
 
-      // Step 9: Verifying publication (instant)
-      setFeaturedStep(9)
+      // Step 10: Verifying publication (instant)
+      setFeaturedStep(10)
       await new Promise(r => setTimeout(r, 500))
 
       // Done
-      setFeaturedStep(10)
+      setFeaturedStep(11)
       setResult({ ...pubData, type: 'featured-article', imageSource: imgData.source })
       setFeaturedTopic('')
     } catch (err: any) {
@@ -771,14 +783,14 @@ export default function AdminPage() {
 
               {showFeaturedForm && (
                 <div className="space-y-3">
-                  {/* 10-step progress pipeline */}
+                  {/* 11-step progress pipeline */}
                   {featuredStep >= 0 && (
                     <div className="p-4 bg-white border border-indigo-200 rounded-lg shadow-sm">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-sm font-semibold text-gray-900">
-                          {featuredStep >= 10 ? 'Article Published!' : `Step ${featuredStep + 1} of 10`}
+                          {featuredStep >= 11 ? 'Article Published!' : `Step ${featuredStep + 1} of 11`}
                         </span>
-                        {featuredStep >= 10
+                        {featuredStep >= 11
                           ? <CheckCircle className="w-5 h-5 text-green-500" />
                           : <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />}
                       </div>
@@ -787,7 +799,7 @@ export default function AdminPage() {
                           <div
                             key={i}
                             className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs transition-all ${
-                              featuredStep >= 10
+                              featuredStep >= 11
                                 ? 'text-green-700'
                                 : i === featuredStep
                                   ? 'bg-indigo-50 text-indigo-700 opacity-60'
@@ -796,14 +808,14 @@ export default function AdminPage() {
                                     : 'text-gray-400'
                             }`}
                           >
-                            {featuredStep >= 10 || i < featuredStep ? (
+                            {featuredStep >= 11 || i < featuredStep ? (
                               <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
                             ) : i === featuredStep ? (
                               <Loader2 className="w-3.5 h-3.5 text-indigo-500 animate-spin flex-shrink-0" />
                             ) : (
                               <span className="w-3.5 h-3.5 flex items-center justify-center text-[9px] font-bold flex-shrink-0">{i + 1}</span>
                             )}
-                            <span className={i === featuredStep && featuredStep < 10 ? 'font-medium' : ''}>{label}</span>
+                            <span className={i === featuredStep && featuredStep < 11 ? 'font-medium' : ''}>{label}</span>
                           </div>
                         ))}
                       </div>
@@ -811,7 +823,7 @@ export default function AdminPage() {
                       <div className="mt-3 h-1 bg-gray-100 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-500"
-                          style={{ width: `${featuredStep >= 10 ? 100 : ((featuredStep + 0.5) / 10) * 100}%` }}
+                          style={{ width: `${featuredStep >= 11 ? 100 : ((featuredStep + 0.5) / 11) * 100}%` }}
                         />
                       </div>
                     </div>

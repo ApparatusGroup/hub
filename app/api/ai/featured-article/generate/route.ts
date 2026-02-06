@@ -4,7 +4,7 @@ const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
 export async function POST(request: Request) {
   try {
-    const { secret, prompt } = await request.json()
+    const { secret, prompt, outline } = await request.json()
     if (secret !== process.env.AI_BOT_SECRET) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -15,10 +15,18 @@ export async function POST(request: Request) {
 
     const apiKey = process.env.OPENROUTER_API_KEY || ''
 
-    // Append image prompt instruction to the main article prompt
-    const fullPrompt = `${prompt}
+    // If we have an outline, instruct the model to follow it (faster, more focused generation)
+    const fullPrompt = outline
+      ? `${prompt}
 
-After the article, on a new line, write exactly "IMAGE_PROMPT:" followed by a single line describing a photorealistic editorial image for this article. Describe a specific scene, setting, or visual concept that would make someone want to click on this article. Be vivid and specific (e.g. "closeup of a robotic hand reaching toward a human hand, warm golden light, shallow depth of field" or "aerial view of a massive data center at night with blue LED lights reflecting off wet pavement"). Keep it under 30 words. No abstract concepts, no text in the image, no logos.`
+Here is your outline. Follow this structure but write it as flowing prose, not bullet points. Do NOT include the outline headers verbatim if they sound like outline headers. Make them natural section titles:
+
+${outline}
+
+Write the article now. Markdown body only, no title. No IMAGE_PROMPT line.`
+      : `${prompt}
+
+After the article, on a new line, write exactly "IMAGE_PROMPT:" followed by a single line describing a photorealistic editorial image for this article. Describe a specific scene, setting, or visual concept. Be vivid and specific. Keep it under 30 words. No abstract concepts, no text in the image, no logos.`
 
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
@@ -29,7 +37,7 @@ After the article, on a new line, write exactly "IMAGE_PROMPT:" followed by a si
       body: JSON.stringify({
         model: 'anthropic/claude-sonnet-4',
         messages: [{ role: 'user', content: fullPrompt }],
-        max_tokens: 1400,
+        max_tokens: outline ? 1000 : 1400,
         temperature: 1.0,
       }),
     })
@@ -43,16 +51,17 @@ After the article, on a new line, write exactly "IMAGE_PROMPT:" followed by a si
     const data = await response.json()
     const raw = data.choices?.[0]?.message?.content?.trim() || ''
 
-    // Split out the image prompt if present
+    // Split out the image prompt if present (only when no outline was provided)
     let articleBody = raw
     let imagePrompt = ''
 
-    const imagePromptIndex = raw.indexOf('IMAGE_PROMPT:')
-    if (imagePromptIndex !== -1) {
-      articleBody = raw.substring(0, imagePromptIndex).trim()
-      imagePrompt = raw.substring(imagePromptIndex + 'IMAGE_PROMPT:'.length).trim()
-      // Clean up - take only first line of image prompt
-      imagePrompt = imagePrompt.split('\n')[0].trim()
+    if (!outline) {
+      const imagePromptIndex = raw.indexOf('IMAGE_PROMPT:')
+      if (imagePromptIndex !== -1) {
+        articleBody = raw.substring(0, imagePromptIndex).trim()
+        imagePrompt = raw.substring(imagePromptIndex + 'IMAGE_PROMPT:'.length).trim()
+        imagePrompt = imagePrompt.split('\n')[0].trim()
+      }
     }
 
     if (!articleBody || articleBody.length < 100) {

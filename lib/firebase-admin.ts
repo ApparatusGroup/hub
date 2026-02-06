@@ -1,6 +1,7 @@
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
+import { getStorage } from 'firebase-admin/storage'
 
 let app: App
 
@@ -27,6 +28,7 @@ if (!getApps().length) {
           clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
           privateKey,
         }),
+        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
       })
     } else {
       // Fallback for local development
@@ -42,5 +44,6 @@ if (!getApps().length) {
 
 const adminAuth = getAuth(app)
 const adminDb = getFirestore(app)
+const adminStorage = getStorage(app)
 
-export { adminAuth, adminDb }
+export { adminAuth, adminDb, adminStorage }
