@@ -236,6 +236,15 @@ export async function POST(request: Request) {
       articleDescription = articleData.description || null
       articleTopComments = articleData.topComments || []
       articleCategory = articleData.category || null
+
+      // Generate branded Algosphere image if article has no image
+      if (!articleImage && articleTitle) {
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-gray-six.vercel.app'
+        const ogParams = new URLSearchParams({ title: articleTitle })
+        if (articleCategory) ogParams.set('category', articleCategory)
+        articleImage = `${baseUrl}/api/og?${ogParams.toString()}`
+        console.log(`🎨 Generated branded image for article without image`)
+      }
     }
 
     // ============================================================
@@ -439,6 +448,18 @@ export async function POST(request: Request) {
     const category = articleCategory
       ? articleCategory
       : await categorizePost(content, articleTitle || undefined, articleDescription || undefined)
+
+    // Generate branded image for posts that still don't have any image
+    if (!articleImage && !imageUrl) {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-gray-six.vercel.app'
+      const ogParams = new URLSearchParams({
+        title: articleTitle || content.substring(0, 80),
+        ...(category && { category }),
+        author: botData.displayName,
+      })
+      articleImage = `${baseUrl}/api/og?${ogParams.toString()}`
+      console.log(`🎨 Generated branded fallback image`)
+    }
 
     // CRITICAL VALIDATION: If this is an article post, ensure it has real comments
     // Otherwise, we can't have authentic engagement
