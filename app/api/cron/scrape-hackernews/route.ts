@@ -20,9 +20,26 @@ interface CommentWithScore {
   sourceScore: number
 }
 
+// Fetch with timeout and retry
+async function fetchWithRetry(url: string, retries = 2): Promise<Response> {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 4000)
+      const res = await fetch(url, { signal: controller.signal })
+      clearTimeout(timeout)
+      return res
+    } catch (err) {
+      if (i === retries) throw err
+      await new Promise(r => setTimeout(r, 500 * (i + 1)))
+    }
+  }
+  throw new Error('fetch failed')
+}
+
 async function getHNComments(storyId: number, limit: number = 15): Promise<CommentWithScore[]> {
   try {
-    const storyRes = await fetch(`https://hacker-news.firebaseio.com/v0/item/${storyId}.json`)
+    const storyRes = await fetchWithRetry(`https://hacker-news.firebaseio.com/v0/item/${storyId}.json`)
     if (!storyRes.ok) return []
 
     const story = await storyRes.json()
@@ -30,9 +47,11 @@ async function getHNComments(storyId: number, limit: number = 15): Promise<Comme
 
     // Fetch top comments
     const commentPromises = story.kids.slice(0, limit).map(async (commentId: number) => {
-      const res = await fetch(`https://hacker-news.firebaseio.com/v0/item/${commentId}.json`)
-      if (!res.ok) return null
-      return res.json()
+      try {
+        const res = await fetchWithRetry(`https://hacker-news.firebaseio.com/v0/item/${commentId}.json`)
+        if (!res.ok) return null
+        return res.json()
+      } catch { return null }
     })
 
     const comments = await Promise.all(commentPromises)
@@ -88,22 +107,34 @@ export async function GET(request: Request) {
     console.log('🔶 Starting Hacker News scraping...')
     const startTime = Date.now()
 
-    // Get top story IDs
-    const topStoriesRes = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json')
+    // Get top story IDs (with retry)
+    const topStoriesRes = await fetchWithRetry('https://hacker-news.firebaseio.com/v0/topstories.json')
     const topStoryIds: number[] = await topStoriesRes.json()
 
-    // Fetch top 60 stories for more selection
-    const storyPromises = topStoryIds.slice(0, 60).map(async (id) => {
-      const res = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)
-      return res.json()
+    // Also fetch best stories for broader coverage
+    let bestStoryIds: number[] = []
+    try {
+      const bestRes = await fetchWithRetry('https://hacker-news.firebaseio.com/v0/beststories.json')
+      bestStoryIds = await bestRes.json()
+    } catch {}
+
+    // Combine top + best, deduplicate
+    const allIds = [...new Set([...topStoryIds.slice(0, 40), ...bestStoryIds.slice(0, 20)])]
+
+    // Fetch top 60 stories for better selection
+    const storyPromises = allIds.slice(0, 60).map(async (id) => {
+      try {
+        const res = await fetchWithRetry(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)
+        return res.json()
+      } catch { return null }
     })
 
-    const stories = await Promise.all(storyPromises)
+    const stories = (await Promise.all(storyPromises)).filter(Boolean)
 
     // Filter for quality stories
     const filteredStories = stories.filter((story: any) => {
       if (!story || story.type !== 'story' || !story.url || !story.title) return false
-      if (story.score <= 50 || story.descendants <= 10) return false
+      if (story.score <= 30 || story.descendants <= 5) return false
 
       const titleLower = story.title.toLowerCase()
       if (titleLower.startsWith('show hn:') || titleLower.startsWith('ask hn:')) return false
@@ -113,13 +144,13 @@ export async function GET(request: Request) {
       return true
     })
 
-    console.log(`📊 HN: Found ${filteredStories.length} quality stories from top 60`)
+    console.log(`HN: Found ${filteredStories.length} quality stories from ${allIds.length} candidates`)
 
     // Get existing URLs to avoid duplicates
     const existingSnapshot = await adminDb.collection('scrapedArticles').get()
     const existingUrls = new Set(existingSnapshot.docs.map(doc => doc.data().url))
 
-    // Scrape up to 20 articles with comments
+    // Scrape up to 10 articles with comments (stay within 10s)
     const articlesWithComments: any[] = []
     const maxStories = Math.min(filteredStories.length, 30)
 
@@ -130,7 +161,7 @@ export async function GET(request: Request) {
       if (existingUrls.has(story.url)) continue
 
       try {
-        const topComments = await getHNComments(story.id, 15)
+        const topComments = await getHNComments(story.id, 8)
 
         if (topComments.length > 0) {
           const category = detectArticleCategory(story.title, story.title)
@@ -152,11 +183,8 @@ export async function GET(request: Request) {
           })
         }
 
-        // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 30))
-
-        // Stop at 20 articles
-        if (articlesWithComments.length >= 20) break
+        // Stop at 15 articles (stay within 10s Vercel limit)
+        if (articlesWithComments.length >= 15) break
       } catch (error) {
         console.error(`Error processing HN story ${story.id}:`, error)
       }

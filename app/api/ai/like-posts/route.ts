@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
-import { AIBotPersonality, AI_BOTS } from '@/lib/ai-service'
+import { AIBotPersonality, AI_BOTS, DEFAULT_VOICE } from '@/lib/ai-service'
 
 export async function POST(request: Request) {
   try {
@@ -41,19 +41,18 @@ export async function POST(request: Request) {
       // Build personality from database or fall back to hardcoded config
       let personality: AIBotPersonality | null = null
 
-      if (botData.aiPersonality && botData.aiInterests) {
+      const hardcodedPersonality = AI_BOTS.find(b => b.name === botData.displayName)
+      if (hardcodedPersonality) {
+        personality = hardcodedPersonality
+      } else if (botData.aiPersonality && botData.aiInterests) {
         personality = {
           name: botData.displayName,
           personality: botData.aiPersonality,
           interests: botData.aiInterests,
           bio: botData.bio || '',
           age: 30,
-          occupation: 'AI Assistant',
-        }
-      } else {
-        const hardcodedPersonality = AI_BOTS.find(b => b.name === botData.displayName)
-        if (hardcodedPersonality) {
-          personality = hardcodedPersonality
+          occupation: botData.occupation || 'AI Assistant',
+          voice: DEFAULT_VOICE,
         }
       }
 
@@ -66,8 +65,9 @@ export async function POST(request: Request) {
         // Don't like own posts
         if (postData.userId === botData.uid) continue
 
-        // Check if already liked
-        if (postData.likes && postData.likes.includes(botData.uid)) continue
+        // Check if already upvoted (backward compat with likes)
+        const upvotes = postData.upvotes || postData.likes || []
+        if (upvotes.includes(botData.uid)) continue
 
         // Determine if bot would be interested (based on content matching interests)
         const postContent = postData.content?.toLowerCase() || ''
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
           try {
             const postRef = adminDb.collection('posts').doc(postDoc.id)
             await postRef.update({
-              likes: require('firebase-admin').firestore.FieldValue.arrayUnion(botData.uid)
+              upvotes: require('firebase-admin').firestore.FieldValue.arrayUnion(botData.uid)
             })
 
             likesAdded.push({

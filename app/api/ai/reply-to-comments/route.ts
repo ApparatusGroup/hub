@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
-import { generateAIComment, AI_BOTS, AIBotPersonality } from '@/lib/ai-service'
-import { getAIMemory, updateAIMemoryAfterComment } from '@/lib/ai-memory'
 
 export async function POST(request: Request) {
   try {
@@ -56,14 +54,14 @@ export async function POST(request: Request) {
       const botData = botMap.get(parentCommentData.userId)
       if (!botData) continue
 
-      // Check if bot has already liked this reply
-      const replyLikes = replyData.likes || []
-      const alreadyLiked = replyLikes.includes(botData.uid)
+      // Check if bot has already upvoted this reply
+      const replyUpvotes = replyData.upvotes || replyData.likes || []
+      const alreadyUpvoted = replyUpvotes.includes(botData.uid)
 
-      // Bots almost always like replies to their comments (90% chance)
-      if (!alreadyLiked && Math.random() < 0.9) {
+      // Bots almost always upvote replies to their comments (90% chance)
+      if (!alreadyUpvoted && Math.random() < 0.9) {
         await adminDb.collection('comments').doc(commentDoc.id).update({
-          likes: require('firebase-admin').firestore.FieldValue.arrayUnion(botData.uid)
+          upvotes: require('firebase-admin').firestore.FieldValue.arrayUnion(botData.uid)
         })
         actions.push({
           type: 'like',
@@ -72,113 +70,7 @@ export async function POST(request: Request) {
         })
       }
 
-      // Check reply depth to limit to 4 levels
-      let depth = 1
-      let currentParentId = replyData.parentId
-      while (currentParentId && depth < 5) {
-        const parentDoc = await adminDb.collection('comments').doc(currentParentId).get()
-        if (!parentDoc.exists) break
-        const parentData = parentDoc.data()
-        if (parentData?.parentId) {
-          currentParentId = parentData.parentId
-          depth++
-        } else {
-          break
-        }
-      }
-
-      // Don't reply if we're at max depth (4)
-      if (depth >= 4) continue
-
-      // Check if bot already replied to this comment
-      const existingReplies = await adminDb
-        .collection('comments')
-        .where('parentId', '==', commentDoc.id)
-        .where('userId', '==', botData.uid)
-        .get()
-
-      if (!existingReplies.empty) continue
-
-      // Occasionally reply back (25% chance) if the reply asks a question or is engaging
-      const shouldReply = Math.random() < 0.25
-      if (!shouldReply) continue
-
-      // Get bot personality
-      let personality: AIBotPersonality
-
-      if (botData.aiPersonality && botData.aiInterests) {
-        personality = {
-          name: botData.displayName,
-          personality: botData.aiPersonality,
-          interests: botData.aiInterests,
-          bio: botData.bio || '',
-          age: 30,
-          occupation: 'AI Assistant',
-        }
-      } else {
-        const hardcodedPersonality = AI_BOTS.find(b => b.name === botData.displayName)
-        if (!hardcodedPersonality) continue
-        personality = hardcodedPersonality
-      }
-
-      // Get AI memory for context
-      const memory = await getAIMemory(botData.uid)
-
-      // Get the original post to check for article context
-      const postRef = await adminDb.collection('posts').doc(replyData.postId).get()
-      const postData = postRef.exists ? postRef.data() : null
-
-      // Prepare article context if this conversation is about a news article
-      const articleContext = postData?.articleTitle && postData?.articleDescription
-        ? {
-            title: postData.articleTitle,
-            description: postData.articleDescription
-          }
-        : null
-
-      // Generate reply (bot will "read" the article if present)
-      const replyContent = await generateAIComment(
-        personality,
-        `${parentCommentData.content}\n\nUser replied: ${replyData.content}`,
-        replyData.userName,
-        memory,
-        articleContext,
-        null // No need to check existing comments for replies
-      )
-
-      // Create the reply
-      const newReplyRef = await adminDb.collection('comments').add({
-        postId: replyData.postId,
-        userId: botData.uid,
-        userName: botData.displayName,
-        userPhoto: botData.photoURL,
-        isAI: true,
-        content: replyContent,
-        createdAt: new Date(),
-        likes: [],
-        parentId: commentDoc.id,
-        replyCount: 0
-      })
-
-      // Increment reply count on parent (the user's reply)
-      await adminDb.collection('comments').doc(commentDoc.id).update({
-        replyCount: require('firebase-admin').firestore.FieldValue.increment(1)
-      })
-
-      // Increment comment count on post
-      await adminDb.collection('posts').doc(replyData.postId).update({
-        commentCount: require('firebase-admin').firestore.FieldValue.increment(1)
-      })
-
-      // Update AI memory
-      await updateAIMemoryAfterComment(botData.uid, botData.displayName, replyContent)
-
-      actions.push({
-        type: 'reply',
-        botName: botData.displayName,
-        replyTo: replyData.userName,
-        content: replyContent.substring(0, 50) + '...'
-      })
+      // Replies disabled - only liking replies to bot comments is active
     }
 
     return NextResponse.json({

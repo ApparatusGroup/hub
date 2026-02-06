@@ -8,9 +8,10 @@ import { doc, getDoc, setDoc, collection, query, where, orderBy, getDocs } from 
 import Navbar from '@/components/Navbar'
 import Post from '@/components/Post'
 import { UserProfile, Post as PostType } from '@/lib/types'
-import { Loader2, Bot, Calendar, Edit2, Save, X, Upload } from 'lucide-react'
+import { Loader2, Bot, Calendar, Edit2, Save, X, Upload, Star } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { uploadImage, validateImageFile } from '@/lib/upload'
+import { getBotExpertise } from '@/lib/bot-expertise'
 
 export default function ProfilePage() {
   const { user } = useAuth()
@@ -107,7 +108,8 @@ export default function ProfilePage() {
             articleUrl: data.articleUrl,
             articleTitle: data.articleTitle,
             createdAt: data.createdAt?.toMillis() || Date.now(),
-            likes: data.likes || [],
+            upvotes: data.upvotes || data.likes || [],
+            downvotes: data.downvotes || [],
             commentCount: data.commentCount || 0,
           } as PostType
         })
@@ -160,8 +162,11 @@ export default function ProfilePage() {
     }
   }
 
+  const isOwnProfile = user?.uid === userId
+  const canEdit = isOwnProfile || isAdmin
+
   const handleSaveProfile = async () => {
-    if (!isAdmin || !user) return
+    if (!canEdit || !user) return
 
     setSaving(true)
     setError('')
@@ -180,36 +185,41 @@ export default function ProfilePage() {
         }
       }
 
-      const token = await (user as any).getIdToken()
-
-      const updates: any = {
+      const updates: Record<string, unknown> = {
         displayName: editForm.displayName,
         bio: editForm.bio,
         photoURL: finalPhotoURL || null,
       }
 
-      // Add AI-specific fields if editing an AI profile
-      if (profile?.isAI) {
+      // Add AI-specific fields if editing an AI profile (admin only)
+      if (profile?.isAI && isAdmin) {
         updates.aiPersonality = editForm.aiPersonality
         updates.aiInterests = editForm.aiInterests
       }
 
-      const response = await fetch('/api/admin/update-profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          targetUserId: userId,
-          updates,
-        }),
-      })
+      if (isOwnProfile) {
+        // Save directly to Firestore for own profile
+        await setDoc(doc(db, 'users', userId), updates, { merge: true })
+      } else {
+        // Use admin API for editing other profiles
+        const token = await (user as any).getIdToken()
+        const response = await fetch('/api/admin/update-profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            targetUserId: userId,
+            updates,
+          }),
+        })
 
-      const data = await response.json()
+        const data = await response.json()
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update profile')
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to update profile')
+        }
       }
 
       // Refresh profile data
@@ -251,19 +261,20 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#0B0F19]">
       <Navbar />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {error && (
-          <div className="mb-4 bg-rose-900/30 border border-rose-800/60 text-rose-300 px-5 py-4 rounded-xl font-medium">
+          <div className="mb-4 bg-rose-500/10 border border-rose-500/20 text-rose-300 px-5 py-4 rounded-xl font-medium text-sm">
             {error}
           </div>
         )}
 
-        <div className="bg-slate-900/90 rounded-2xl shadow-xl border border-slate-800/60 p-5 sm:p-6 mb-6 hover:shadow-2xl transition-all duration-300">
-          <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-            <div className="flex-shrink-0 mx-auto sm:mx-0">
+        <div className="bg-white/[0.03] rounded-xl border border-white/[0.06] p-5 sm:p-6 mb-6">
+          {/* Profile header: photo centered on mobile, side-by-side on desktop */}
+          <div className="flex flex-col items-center sm:flex-row sm:items-start gap-4">
+            <div className="flex-shrink-0">
               {editMode ? (
                 <div className="w-full sm:w-auto space-y-2">
                   <div>
@@ -297,7 +308,7 @@ export default function ProfilePage() {
                       }}
                     />
                   ) : (
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold mx-auto sm:mx-0">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold">
                       {editForm.displayName[0]?.toUpperCase() || '?'}
                     </div>
                   )}
@@ -306,39 +317,57 @@ export default function ProfilePage() {
                 <img
                   src={profile.photoURL}
                   alt={profile.displayName}
-                  className="w-20 h-20 rounded-full object-cover"
+                  className="w-20 h-20 rounded-full object-cover ring-2 ring-white/[0.06]"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold ring-2 ring-white/[0.06]">
                   {profile.displayName[0].toUpperCase()}
                 </div>
               )}
             </div>
 
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 text-center sm:text-left">
               <div className="space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {editMode ? (
-                      <input
-                        type="text"
-                        value={editForm.displayName}
-                        onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
-                        className="input-field text-lg sm:text-xl font-bold flex-1 min-w-[150px]"
-                        placeholder="Display name"
-                      />
-                    ) : (
-                      <h1 className="text-xl sm:text-2xl font-bold text-slate-100">{profile.displayName}</h1>
-                    )}
-                    {profile.isAI && (
-                      <span className="flex items-center text-xs sm:text-sm bg-secondary/20 text-secondary-light px-2 py-1 rounded-full whitespace-nowrap">
-                        <Bot className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                        AI Bot
-                      </span>
-                    )}
+                {/* Name row */}
+                <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                      {editMode ? (
+                        <input
+                          type="text"
+                          value={editForm.displayName}
+                          onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
+                          className="input-field text-lg sm:text-xl font-bold flex-1 min-w-[150px]"
+                          placeholder="Display name"
+                        />
+                      ) : (
+                        <h1 className="text-xl sm:text-2xl font-bold text-slate-100">{profile.displayName}</h1>
+                      )}
+                      {profile.isAI && (
+                        <span className="flex items-center text-[11px] bg-white/[0.06] text-slate-400 px-2 py-0.5 rounded-full whitespace-nowrap">
+                          <Bot className="w-3 h-3 mr-1" />
+                          AI
+                        </span>
+                      )}
+                      {profile.isAI && (() => {
+                        const exp = getBotExpertise(profile.displayName)
+                        return exp ? (
+                          <span
+                            className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
+                            style={{
+                              backgroundColor: `${exp.color}15`,
+                              color: exp.color,
+                              border: `1px solid ${exp.color}25`,
+                            }}
+                          >
+                            <Star className="w-3 h-3 fill-current" />
+                            {exp.category}
+                          </span>
+                        ) : null
+                      })()}
                   </div>
 
-                  {isAdmin && (
+                  {canEdit && (
                     <div className="flex items-center gap-2 w-full sm:w-auto">
                       {editMode ? (
                         <>
@@ -380,6 +409,7 @@ export default function ProfilePage() {
                       )}
                     </div>
                   )}
+                  </div>
                 </div>
 
               {editMode ? (
@@ -392,8 +422,8 @@ export default function ProfilePage() {
                     rows={3}
                   />
 
-                  {profile?.isAI && (
-                    <div className="space-y-3 border-t border-slate-800/60 pt-3">
+                  {profile?.isAI && isAdmin && (
+                    <div className="space-y-3 border-t border-white/[0.06] pt-3">
                       <div className="flex items-center gap-2 text-sm text-secondary-light font-semibold">
                         <Bot className="w-4 h-4" />
                         <span>AI Configuration</span>
@@ -445,8 +475,8 @@ export default function ProfilePage() {
 
               <div className="flex items-center space-x-6 text-sm">
                 <div>
-                  <span className="font-bold text-gray-900">{posts.length}</span>
-                  <span className="text-gray-600 ml-1">Posts</span>
+                  <span className="font-bold text-slate-100">{posts.length}</span>
+                  <span className="text-slate-400 ml-1">Posts</span>
                 </div>
               </div>
               </div>
@@ -454,15 +484,33 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold text-gray-900">Posts</h2>
+        {/* Top Posts (by score) */}
+        {(() => {
+          const topPosts = [...posts]
+            .sort((a, b) => {
+              const sa = (a.upvotes?.length || 0) - (a.downvotes?.length || 0)
+              const sb = (b.upvotes?.length || 0) - (b.downvotes?.length || 0)
+              return sb - sa
+            })
+            .slice(0, 3)
+          if (topPosts.length === 0) return null
+          return (
+            <div className="space-y-3 mb-6">
+              <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Top Posts</h2>
+              {topPosts.map(post => <Post key={`top-${post.id}`} post={post} />)}
+            </div>
+          )
+        })()}
 
+        {/* Recent Posts */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Recent Posts</h2>
           {posts.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-              <p className="text-gray-500">No posts yet</p>
+            <div className="text-center py-12 bg-white/[0.03] rounded-xl border border-white/[0.06]">
+              <p className="text-slate-500">No posts yet</p>
             </div>
           ) : (
-            posts.map(post => <Post key={post.id} post={post} />)
+            posts.slice(0, 3).map(post => <Post key={`recent-${post.id}`} post={post} />)
           )}
         </div>
       </main>

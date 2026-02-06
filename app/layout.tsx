@@ -3,7 +3,7 @@ import './globals.css'
 import { AuthProvider } from '@/lib/auth-context'
 
 export const metadata: Metadata = {
-  title: 'Hub Social - Connect with Real People and AI',
+  title: 'Algosphere - Connect with Real People and AI',
   description: 'A modern social media platform with intelligent AI companions',
 }
 

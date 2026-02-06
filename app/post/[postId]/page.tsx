@@ -21,8 +21,13 @@ import {
 } from 'firebase/firestore'
 import { Post as PostType, Comment, POST_CATEGORIES } from '@/lib/types'
 import Navbar from '@/components/Navbar'
-import { Heart, MessageCircle, ExternalLink, Trash2, ArrowLeft, Reply } from 'lucide-react'
+import SentimentSlider from '@/components/SentimentSlider'
+import { MessageCircle, ExternalLink, Trash2, ArrowLeft, Clock, Send, Star } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { getBotExpertise } from '@/lib/bot-expertise'
+
+const INITIAL_COMMENTS = 3
+const LOAD_MORE_COUNT = 5
 
 export default function PostPage() {
   const { user, loading } = useAuth()
@@ -33,42 +38,32 @@ export default function PostPage() {
   const [post, setPost] = useState<PostType | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
   const [commentText, setCommentText] = useState('')
-  const [replyingTo, setReplyingTo] = useState<string | null>(null)
-  const [liked, setLiked] = useState(false)
-  const [likeCount, setLikeCount] = useState(0)
+  const [visibleCount, setVisibleCount] = useState(INITIAL_COMMENTS)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [featuredImgFailed, setFeaturedImgFailed] = useState(false)
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/auth/login')
-    }
+    if (!loading && !user) router.push('/auth/login')
   }, [user, loading, router])
 
-  // Check if user is admin
   useEffect(() => {
     if (!user) return
-
     const checkAdmin = async () => {
       const userDoc = await getDoc(doc(db, 'users', user.uid))
-      if (userDoc.exists()) {
-        setIsAdmin(userDoc.data()?.isAdmin || false)
-      }
+      if (userDoc.exists()) setIsAdmin(userDoc.data()?.isAdmin || false)
     }
-
     checkAdmin()
   }, [user])
 
   // Load post
   useEffect(() => {
     if (!postId) return
-
     const loadPost = async () => {
       const postRef = doc(db, 'posts', postId)
       const postSnap = await getDoc(postRef)
-
       if (postSnap.exists()) {
         const data = postSnap.data()
-        const postData = {
+        setPost({
           id: postSnap.id,
           userId: data.userId,
           userName: data.userName,
@@ -80,93 +75,57 @@ export default function PostPage() {
           articleTitle: data.articleTitle,
           articleImage: data.articleImage,
           articleDescription: data.articleDescription,
+          articleBody: data.articleBody,
+          authorCredit: data.authorCredit,
+          isFeaturedArticle: data.isFeaturedArticle,
           category: data.category,
           createdAt: data.createdAt?.toMillis() || Date.now(),
-          likes: data.likes || [],
+          upvotes: data.upvotes || data.likes || [],
+          downvotes: data.downvotes || [],
           commentCount: data.commentCount || 0,
-        } as PostType
-
-        setPost(postData)
-        setLiked(user ? postData.likes.includes(user.uid) : false)
-        setLikeCount(postData.likes.length)
+        } as PostType)
       } else {
         router.push('/')
       }
     }
-
     loadPost()
   }, [postId, user, router])
 
-  // Load comments with real-time updates
+  // Load comments (realtime)
   useEffect(() => {
     if (!postId) return
-
     const q = query(collection(db, 'comments'), where('postId', '==', postId))
-
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const commentsData = snapshot.docs.map((doc) => {
-        const data = doc.data()
+      const data = snapshot.docs.map((d) => {
+        const c = d.data()
         return {
-          id: doc.id,
-          postId: data.postId,
-          userId: data.userId,
-          userName: data.userName,
-          userPhoto: data.userPhoto,
-          isAI: data.isAI,
-          content: data.content,
-          createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : Date.now(),
-          likes: data.likes || [],
-          parentId: data.parentId,
-          replyCount: data.replyCount || 0,
+          id: d.id,
+          postId: c.postId,
+          userId: c.userId,
+          userName: c.userName,
+          userPhoto: c.userPhoto,
+          isAI: c.isAI,
+          content: c.content,
+          createdAt: c.createdAt?.toMillis ? c.createdAt.toMillis() : Date.now(),
+          upvotes: c.upvotes || c.likes || [],
+          downvotes: c.downvotes || [],
+          aiScore: c.aiScore || 0,
         } as Comment
       })
-
-      // Sort by popularity (likes)
-      commentsData.sort((a, b) => {
-        // Top-level comments sorted by likes
-        if (!a.parentId && !b.parentId) {
-          return b.likes.length - a.likes.length
-        }
-        // Replies sorted by time (newest first within thread)
-        if (a.parentId && b.parentId && a.parentId === b.parentId) {
-          return b.createdAt - a.createdAt
-        }
-        return 0
+      data.sort((a, b) => {
+        const sa = (a.upvotes?.length || 0) - (a.downvotes?.length || 0)
+        const sb = (b.upvotes?.length || 0) - (b.downvotes?.length || 0)
+        if (sb !== sa) return sb - sa
+        return b.createdAt - a.createdAt
       })
-
-      setComments(commentsData)
+      setComments(data)
     })
-
     return () => unsubscribe()
   }, [postId])
-
-  const handleLike = async () => {
-    if (!user || !post) return
-
-    const postRef = doc(db, 'posts', post.id)
-    try {
-      if (liked) {
-        await updateDoc(postRef, {
-          likes: arrayRemove(user.uid),
-        })
-        setLiked(false)
-        setLikeCount((prev) => prev - 1)
-      } else {
-        await updateDoc(postRef, {
-          likes: arrayUnion(user.uid),
-        })
-        setLiked(true)
-        setLikeCount((prev) => prev + 1)
-      }
-    } catch (error) {
-      console.error('Error updating like:', error)
-    }
-  }
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user || !commentText.trim() || !post) return
-
     try {
       await addDoc(collection(db, 'comments'), {
         postId: post.id,
@@ -176,67 +135,23 @@ export default function PostPage() {
         isAI: false,
         content: commentText.trim(),
         createdAt: serverTimestamp(),
-        likes: [],
-        parentId: replyingTo || null,
-        replyCount: 0,
+        upvotes: [],
+        downvotes: [],
+        aiScore: 0,
       })
-
-      // Increment comment count on the post
-      await updateDoc(doc(db, 'posts', post.id), {
-        commentCount: increment(1),
-      })
-
-      // If replying, increment reply count on parent comment
-      if (replyingTo) {
-        await updateDoc(doc(db, 'comments', replyingTo), {
-          replyCount: increment(1),
-        })
-      }
-
+      await updateDoc(doc(db, 'posts', post.id), { commentCount: increment(1) })
       setCommentText('')
-      setReplyingTo(null)
     } catch (error) {
       console.error('Error adding comment:', error)
-    }
-  }
-
-  const handleLikeComment = async (commentId: string, currentLikes: string[]) => {
-    if (!user) return
-
-    const commentRef = doc(db, 'comments', commentId)
-    try {
-      if (currentLikes.includes(user.uid)) {
-        await updateDoc(commentRef, {
-          likes: arrayRemove(user.uid),
-        })
-      } else {
-        await updateDoc(commentRef, {
-          likes: arrayUnion(user.uid),
-        })
-      }
-    } catch (error) {
-      console.error('Error updating comment like:', error)
     }
   }
 
   const handleDeletePost = async () => {
     if (!user || !post) return
     if (user.uid !== post.userId && !isAdmin) return
-
-    if (!confirm('Are you sure you want to delete this post?')) return
-
+    if (!confirm('Delete this post?')) return
     try {
-      // Delete all comments
-      const commentsSnapshot = await query(
-        collection(db, 'comments'),
-        where('postId', '==', post.id)
-      )
-
-      comments.forEach(async (comment) => {
-        await deleteDoc(doc(db, 'comments', comment.id))
-      })
-
-      // Delete post
+      for (const comment of comments) await deleteDoc(doc(db, 'comments', comment.id))
       await deleteDoc(doc(db, 'posts', post.id))
       router.push('/')
     } catch (error) {
@@ -246,430 +161,302 @@ export default function PostPage() {
 
   const handleDeleteComment = async (commentId: string) => {
     if (!user) return
-
-    const comment = comments.find((c) => c.id === commentId)
-    if (!comment) return
-    if (user.uid !== comment.userId && !isAdmin) return
-
-    if (!confirm('Are you sure you want to delete this comment?')) return
-
+    const c = comments.find((x) => x.id === commentId)
+    if (!c || (user.uid !== c.userId && !isAdmin)) return
+    if (!confirm('Delete this comment?')) return
     try {
-      // Delete all replies to this comment
-      const replies = comments.filter((c) => c.parentId === commentId)
-      for (const reply of replies) {
-        await deleteDoc(doc(db, 'comments', reply.id))
-      }
-
-      // Delete the comment
       await deleteDoc(doc(db, 'comments', commentId))
-
-      // Decrement comment count on post
-      if (post) {
-        await updateDoc(doc(db, 'posts', post.id), {
-          commentCount: increment(-(1 + replies.length)),
-        })
-      }
-
-      // If this was a reply, decrement parent reply count
-      if (comment.parentId) {
-        await updateDoc(doc(db, 'comments', comment.parentId), {
-          replyCount: increment(-1),
-        })
-      }
+      if (post) await updateDoc(doc(db, 'posts', post.id), { commentCount: increment(-1) })
     } catch (error) {
       console.error('Error deleting comment:', error)
     }
   }
 
-  // Get top-level comments (no parent)
-  const topLevelComments = comments.filter((c) => !c.parentId)
-
-  // Get replies for a specific comment
-  const getReplies = (commentId: string) => {
-    return comments.filter((c) => c.parentId === commentId)
-  }
-
-  // Calculate reply depth for a comment
-  const getCommentDepth = (comment: Comment): number => {
-    let depth = 0
-    let currentParentId = comment.parentId
-
-    while (currentParentId && depth < 10) {
-      const parent = comments.find((c) => c.id === currentParentId)
-      if (!parent) break
-      depth++
-      currentParentId = parent.parentId
-    }
-
-    return depth
-  }
+  const visibleComments = comments.slice(0, visibleCount)
+  const hasMore = comments.length > visibleCount
 
   if (loading || !user || !post) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
-  // Get category styling
   const categoryStyle = post.category && POST_CATEGORIES[post.category as keyof typeof POST_CATEGORIES]
-
-  // Create inline styles for border and badge colors to prevent disappearance on scroll
-  const borderStyle = categoryStyle
-    ? { borderLeftColor: categoryStyle.color, borderLeftWidth: '4px' }
-    : { borderLeftColor: 'rgb(30 41 59 / 0.6)', borderLeftWidth: '4px' }
-
-  const badgeStyle = categoryStyle
-    ? {
-        backgroundColor: `${categoryStyle.color}1A`, // 10% opacity
-        color: categoryStyle.color,
-      }
-    : {}
+  const upvotes = post.upvotes?.length > 0 ? post.upvotes : ((post as any).likes || [])
+  const downvotes = post.downvotes || []
+  const domain = post.articleUrl ? (() => { try { return new URL(post.articleUrl!).hostname.replace('www.', '') } catch { return 'article' } })() : null
+  const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=32` : null
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#0B0F19]">
       <Navbar />
-
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         {/* Back button */}
-        <button
-          onClick={() => router.back()}
-          className="flex items-center space-x-2 text-slate-400 hover:text-primary transition-colors mb-4"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="text-sm font-medium">Back</span>
+        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-slate-500 hover:text-slate-300 transition-colors mb-4 text-sm">
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back
         </button>
 
-        {/* Post */}
-        <div className="post-card mb-6 border-l-4" style={borderStyle}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-2.5">
-              <button
-                onClick={() => router.push(`/profile/${post.userId}`)}
-                className="flex-shrink-0 cursor-pointer"
-              >
-                {post.userPhoto ? (
-                  <img
-                    src={post.userPhoto}
-                    alt={post.userName}
-                    className="w-10 h-10 rounded-full object-cover avatar-ring"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center text-white font-semibold shadow-sm avatar-ring">
-                    {post.userName[0].toUpperCase()}
-                  </div>
-                )}
-              </button>
-              <div className="flex flex-col">
-                <div className="flex items-center space-x-2 flex-wrap">
-                  <button
-                    onClick={() => router.push(`/profile/${post.userId}`)}
-                    className="font-semibold text-slate-100 hover:text-primary transition-colors"
-                  >
-                    {post.userName}
-                  </button>
-                  {post.category && categoryStyle && (
-                    <span
-                      className="text-xs px-2 py-0.5 rounded-full font-medium"
-                      style={badgeStyle}
-                    >
-                      {categoryStyle.name}
-                    </span>
-                  )}
+        {/* ===== POST CARD ===== */}
+        <div className="bg-white/[0.03] rounded-xl border border-white/[0.06] mb-5 overflow-hidden">
+          {/* Post header */}
+          <div className="flex items-center gap-2.5 px-4 sm:px-5 pt-4 pb-2">
+            <button onClick={() => router.push(`/profile/${post.userId}`)} className="flex-shrink-0">
+              {post.userPhoto ? (
+                <img src={post.userPhoto} alt={post.userName} className="w-9 h-9 rounded-full object-cover ring-1 ring-white/10" />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-xs ring-1 ring-white/10">
+                  {post.userName[0].toUpperCase()}
                 </div>
-                <span className="text-xs text-slate-500">
-                  {formatDistanceToNow(post.createdAt, { addSuffix: true })}
-                </span>
+              )}
+            </button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <button onClick={() => router.push(`/profile/${post.userId}`)} className="font-medium text-sm text-slate-100 hover:text-white transition-colors">
+                  {post.userName}
+                </button>
+                {post.isAI && (() => {
+                  const exp = getBotExpertise(post.userName)
+                  return exp ? <Star className="w-3.5 h-3.5 fill-current" style={{ color: exp.color }} /> : null
+                })()}
+                {post.category && categoryStyle && (
+                  <span
+                    className="text-[10px] px-2 py-0.5 rounded-md font-medium"
+                    style={{
+                      backgroundColor: `${categoryStyle.color}12`,
+                      color: categoryStyle.color,
+                      border: `1px solid ${categoryStyle.color}20`,
+                    }}
+                  >
+                    {categoryStyle.name}
+                  </span>
+                )}
               </div>
+              <span className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                <Clock className="w-3 h-3" />
+                {formatDistanceToNow(post.createdAt, { addSuffix: true })}
+              </span>
             </div>
-
-            {/* Delete button for post author or admin */}
             {(user.uid === post.userId || isAdmin) && (
-              <button
-                onClick={handleDeletePost}
-                className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
-              >
+              <button onClick={handleDeletePost} className="p-1.5 text-slate-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all">
                 <Trash2 className="w-4 h-4" />
               </button>
             )}
           </div>
 
-          <p className="text-slate-300 leading-relaxed whitespace-pre-wrap text-lg">
-            {post.content}
-          </p>
+          {/* Post body */}
+          <div className="px-4 sm:px-5 pb-3">
+            {/* Content text - only for non-article, non-featured posts */}
+            {post.content && !post.articleUrl && !post.isFeaturedArticle && (
+              <p className="text-[15px] text-slate-200 leading-relaxed whitespace-pre-wrap mb-3">{post.content}</p>
+            )}
 
-          {post.imageUrl && (
-            <div className="mt-4 rounded-xl overflow-hidden border border-slate-800/60 aspect-square">
-              <img
-                src={post.imageUrl}
-                alt="Post"
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )}
-
-          {post.articleUrl && (
-            <a
-              href={post.articleUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 flex items-start space-x-3 p-3 bg-slate-800/50 border border-slate-700/60 rounded-xl hover:border-primary/40 hover:shadow-lg transition-all duration-200 group cursor-pointer"
-            >
-              {post.articleImage && (
-                <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-slate-900">
+            {/* Featured original article */}
+            {post.isFeaturedArticle && post.articleBody && (
+              <div className="mb-4">
+                <div className="rounded-lg overflow-hidden border border-white/[0.06] mb-4">
                   <img
-                    src={post.articleImage}
-                    alt={post.articleTitle || 'Article'}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    src={post.articleImage && !featuredImgFailed
+                      ? post.articleImage
+                      : `/api/og?${new URLSearchParams({ title: post.articleTitle || 'Algosphere', ...(post.category && { category: post.category }) }).toString()}`}
+                    alt=""
+                    className="w-full h-48 sm:h-56 object-cover"
+                    onError={() => setFeaturedImgFailed(true)}
                   />
                 </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-slate-200 group-hover:text-primary transition-colors line-clamp-2 leading-snug">
-                  {post.articleTitle || 'Read Article'}
-                </h4>
-                {post.articleDescription && (
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                    {post.articleDescription}
-                  </p>
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-100 mb-2 leading-tight">{post.articleTitle}</h2>
+                {post.authorCredit && (
+                  <p className="text-xs text-slate-500 mb-4">{post.authorCredit}</p>
                 )}
+                <div className="prose prose-sm prose-invert max-w-none text-slate-300 leading-relaxed
+                  [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-slate-200 [&_h2]:mt-5 [&_h2]:mb-2
+                  [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-slate-200 [&_h3]:mt-4 [&_h3]:mb-1.5
+                  [&_p]:text-[14px] [&_p]:mb-3 [&_p]:text-slate-300
+                  [&_strong]:text-slate-200 [&_em]:text-slate-400
+                  [&_ul]:text-[14px] [&_ul]:pl-5 [&_ul]:mb-3 [&_li]:mb-1
+                  [&_a]:text-indigo-400 [&_a]:underline">
+                  {post.articleBody.split('\n').map((line, i) => {
+                    // Parse inline markdown: **bold**, *italic*, [links](url)
+                    const renderInline = (text: string) => {
+                      const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g)
+                      return parts.map((part, j) => {
+                        if (part.startsWith('**') && part.endsWith('**'))
+                          return <strong key={j}>{part.slice(2, -2)}</strong>
+                        if (part.startsWith('*') && part.endsWith('*'))
+                          return <em key={j}>{part.slice(1, -1)}</em>
+                        const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
+                        if (linkMatch)
+                          return <a key={j} href={linkMatch[2]} target="_blank" rel="noopener noreferrer">{linkMatch[1]}</a>
+                        return part
+                      })
+                    }
+                    if (line.startsWith('## ')) return <h2 key={i}>{renderInline(line.replace('## ', ''))}</h2>
+                    if (line.startsWith('### ')) return <h3 key={i}>{renderInline(line.replace('### ', ''))}</h3>
+                    if (line.startsWith('- ')) return <li key={i}>{renderInline(line.replace('- ', ''))}</li>
+                    if (line.trim() === '') return null
+                    return <p key={i}>{renderInline(line)}</p>
+                  })}
+                </div>
               </div>
-            </a>
-          )}
+            )}
 
-          <div className="mt-4 flex items-center space-x-3">
-            <button
-              onClick={handleLike}
-              className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg transition-all duration-200 active:scale-95 ${
-                liked ? 'text-rose-400 bg-rose-400/10' : 'text-slate-400 hover:text-rose-400 hover:bg-slate-800/50'
-              }`}
-            >
-              <Heart className={`w-6 h-6 ${liked ? 'fill-current' : ''}`} />
-              <span className="text-base font-semibold">{likeCount}</span>
-            </button>
+            {/* Image */}
+            {post.imageUrl && (
+              <div className="rounded-lg overflow-hidden border border-white/[0.06] mb-3">
+                <img src={post.imageUrl} alt="Post" className="w-full h-auto object-cover" />
+              </div>
+            )}
 
-            <div className="flex items-center space-x-2 px-4 py-2.5 text-slate-400">
-              <MessageCircle className="w-6 h-6" />
-              <span className="text-base font-semibold">{post.commentCount || 0}</span>
+            {/* Article embed - commentary merged inside, title shown ONCE */}
+            {post.articleUrl && (
+              <a href={post.articleUrl} target="_blank" rel="noopener noreferrer"
+                className="block rounded-lg border border-white/[0.06] hover:border-white/[0.12] transition-all overflow-hidden group">
+                {post.articleImage ? (
+                  <div className="relative">
+                    <div className="w-full h-52 sm:h-64 overflow-hidden bg-slate-900/50">
+                      <img src={post.articleImage} alt="" className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500" />
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-4">
+                      <h3 className="text-base font-semibold text-white leading-snug line-clamp-2">{post.articleTitle || 'Read Article'}</h3>
+                      <div className="flex items-center gap-2 mt-2 text-white/40">
+                        {faviconUrl && <img src={faviconUrl} alt="" className="w-3.5 h-3.5 rounded-sm opacity-70" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />}
+                        <span className="text-xs">{domain}</span>
+                        <ExternalLink className="w-3 h-3 ml-auto" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-white/[0.02]">
+                    <h3 className="text-base font-semibold text-slate-200 group-hover:text-white transition-colors leading-snug">{post.articleTitle || 'Read Article'}</h3>
+                    <div className="flex items-center gap-2 mt-2 text-slate-500">
+                      {faviconUrl && <img src={faviconUrl} alt="" className="w-3.5 h-3.5 rounded-sm opacity-70" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />}
+                      <span className="text-xs">{domain}</span>
+                      <ExternalLink className="w-3 h-3 ml-auto" />
+                    </div>
+                  </div>
+                )}
+                {/* Commentary/description below the embed image */}
+                {post.content && (
+                  <div className="px-4 py-3 border-t border-white/[0.04]">
+                    <p className="text-sm text-slate-300 leading-relaxed">{post.content}</p>
+                  </div>
+                )}
+              </a>
+            )}
+          </div>
+
+          {/* Post footer: vote buttons left, comment count right */}
+          <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-t border-white/[0.04]">
+            <SentimentSlider
+              targetId={post.id}
+              targetType="post"
+              upvotes={upvotes}
+              downvotes={downvotes}
+              isAdmin={isAdmin}
+            />
+            <div className="flex items-center gap-1.5 text-slate-500">
+              <MessageCircle className="w-4 h-4" />
+              <span className="text-sm font-medium">{post.commentCount || 0}</span>
             </div>
           </div>
         </div>
 
-        {/* Comment form */}
-        <div className="post-card mb-6">
-          <form onSubmit={handleCommentSubmit}>
-            {replyingTo && (
-              <div className="mb-2 flex items-center justify-between bg-slate-800/50 px-3 py-2 rounded-lg">
-                <span className="text-sm text-slate-400">
-                  Replying to {comments.find((c) => c.id === replyingTo)?.userName}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setReplyingTo(null)}
-                  className="text-xs text-slate-500 hover:text-slate-300"
-                >
-                  Cancel
-                </button>
+        {/* ===== COMMENT INPUT ===== */}
+        <form onSubmit={handleCommentSubmit} className="flex items-center gap-2 mb-5">
+          <div className="flex-shrink-0">
+            {user.photoURL ? (
+              <img src={user.photoURL} alt="" className="w-7 h-7 rounded-full object-cover ring-1 ring-white/10" />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-medium ring-1 ring-white/10">
+                {(user.displayName || 'A')[0].toUpperCase()}
               </div>
             )}
-            <textarea
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              placeholder={replyingTo ? 'Write a reply...' : 'Add a comment...'}
-              className="w-full px-4 py-3 bg-slate-800/90 text-white border border-slate-700/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all placeholder:text-slate-400 resize-none"
-              rows={3}
-            />
-            <div className="mt-2 flex justify-end">
-              <button
-                type="submit"
-                disabled={!commentText.trim()}
-                className="px-4 py-2 bg-gradient-to-r from-primary to-primary-dark text-white rounded-lg font-semibold hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              >
-                {replyingTo ? 'Reply' : 'Comment'}
-              </button>
-            </div>
-          </form>
-        </div>
+          </div>
+          <input
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            placeholder="Add a comment..."
+            className="flex-1 px-3.5 py-2 bg-white/[0.04] text-white text-sm border border-white/[0.08] rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all placeholder:text-slate-600"
+          />
+          <button
+            type="submit"
+            disabled={!commentText.trim()}
+            className="p-2 rounded-lg bg-indigo-500 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-indigo-400 transition-all"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        </form>
 
-        {/* Comments */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-bold text-slate-200">
-            {post.commentCount || 0} {post.commentCount === 1 ? 'Comment' : 'Comments'}
-          </h3>
-
-          {topLevelComments.length === 0 ? (
-            <p className="text-center py-8 text-slate-500">No comments yet. Be the first!</p>
+        {/* ===== COMMENTS ===== */}
+        <div className="space-y-0">
+          {visibleComments.length === 0 ? (
+            <p className="text-center py-8 text-slate-600 text-sm">No comments yet</p>
           ) : (
-            topLevelComments.map((comment) => (
-              <div key={comment.id} className="post-card">
-                {/* Comment Header */}
-                <div className="flex items-center space-x-2.5 mb-2">
-                  <button
-                    onClick={() => router.push(`/profile/${comment.userId}`)}
-                    className="flex-shrink-0 cursor-pointer"
-                  >
+            visibleComments.map((comment) => (
+              <div key={comment.id} className="py-3 border-b border-white/[0.04] last:border-0">
+                <div className="flex items-start gap-2.5">
+                  {/* Avatar */}
+                  <button onClick={() => router.push(`/profile/${comment.userId}`)} className="flex-shrink-0 mt-0.5">
                     {comment.userPhoto ? (
-                      <img
-                        src={comment.userPhoto}
-                        alt={comment.userName}
-                        className="w-8 h-8 rounded-full object-cover avatar-ring"
-                      />
+                      <img src={comment.userPhoto} alt={comment.userName} className="w-6 h-6 rounded-full object-cover" />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center text-white text-sm font-semibold avatar-ring">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-[8px] font-medium">
                         {comment.userName[0].toUpperCase()}
                       </div>
                     )}
                   </button>
-                  <div className="flex items-center space-x-2 flex-wrap min-w-0 flex-1">
-                    <button
-                      onClick={() => router.push(`/profile/${comment.userId}`)}
-                      className="font-semibold text-sm text-slate-100 hover:text-primary transition-colors"
-                    >
-                      {comment.userName}
-                    </button>
-                    <span className="text-xs text-slate-500">
-                      · {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
-                    </span>
-                  </div>
 
-                  {/* Delete button for comment author or admin */}
-                  {(user.uid === comment.userId || isAdmin) && (
-                    <button
-                      onClick={() => handleDeleteComment(comment.id)}
-                      className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-all flex-shrink-0"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Comment Content */}
-                <p className="text-slate-200 leading-relaxed break-words">
-                  {comment.content}
-                </p>
-
-                <div className="mt-3">
-                  <div className="flex items-center gap-4">
-
-                    <button
-                      onClick={() => handleLikeComment(comment.id, comment.likes)}
-                      className={`flex items-center gap-1.5 text-sm transition-colors ${
-                        user && comment.likes.includes(user.uid)
-                          ? 'text-rose-400'
-                          : 'text-slate-500 hover:text-rose-400'
-                      }`}
-                    >
-                      <Heart
-                        className={`w-4 h-4 ${
-                          user && comment.likes.includes(user.uid) ? 'fill-current' : ''
-                        }`}
-                      />
-                      <span className="font-medium">
-                        {comment.likes.length > 0 ? comment.likes.length : ''}
-                      </span>
-                    </button>
-
-                    {/* Only show Reply button if depth < 4 */}
-                    {getCommentDepth(comment) < 3 && (
-                      <button
-                        onClick={() => setReplyingTo(comment.id)}
-                        className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-primary transition-colors"
-                      >
-                        <Reply className="w-4 h-4" />
-                        <span className="font-medium">Reply</span>
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <button onClick={() => router.push(`/profile/${comment.userId}`)} className="font-medium text-xs text-slate-300 hover:text-white transition-colors">
+                        {comment.userName}
                       </button>
-                    )}
+                      {comment.isAI && (() => {
+                        const exp = getBotExpertise(comment.userName)
+                        return exp ? <Star className="w-2.5 h-2.5 fill-current" style={{ color: exp.color }} /> : null
+                      })()}
+                      <span className="text-[10px] text-slate-600">{formatDistanceToNow(comment.createdAt, { addSuffix: true })}</span>
+                      {isAdmin && comment.aiScore !== 0 && (
+                        <span className={`text-[9px] px-1.5 py-px rounded font-mono ${comment.aiScore > 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                          AI: {comment.aiScore > 0 ? '+' : ''}{comment.aiScore}
+                        </span>
+                      )}
+                      {(user.uid === comment.userId || isAdmin) && (
+                        <button onClick={() => handleDeleteComment(comment.id)} className="ml-auto text-slate-700 hover:text-red-400 transition-colors p-0.5">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-300 leading-relaxed break-words">{comment.content}</p>
+
+                    {/* Comment sentiment slider */}
+                    <div className="mt-1.5">
+                      <SentimentSlider
+                        targetId={comment.id}
+                        targetType="comment"
+                        upvotes={comment.upvotes || []}
+                        downvotes={comment.downvotes || []}
+                        isAdmin={isAdmin}
+                        compact
+                      />
+                    </div>
                   </div>
                 </div>
-
-                {/* Replies */}
-                {(comment.replyCount || 0) > 0 && (
-                  <div className="mt-4 space-y-3 pl-4 border-l-2 border-slate-800">
-                    {getReplies(comment.id).map((reply) => (
-                      <div key={reply.id}>
-                        {/* Reply Header */}
-                        <div className="flex items-center space-x-2 mb-1.5">
-                          <button
-                            onClick={() => router.push(`/profile/${reply.userId}`)}
-                            className="flex-shrink-0 cursor-pointer"
-                          >
-                            {reply.userPhoto ? (
-                              <img
-                                src={reply.userPhoto}
-                                alt={reply.userName}
-                                className="w-7 h-7 rounded-full object-cover avatar-ring"
-                              />
-                            ) : (
-                              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center text-white text-xs font-semibold avatar-ring">
-                                {reply.userName[0].toUpperCase()}
-                              </div>
-                            )}
-                          </button>
-                          <div className="flex items-center space-x-2 flex-wrap min-w-0 flex-1">
-                            <button
-                              onClick={() => router.push(`/profile/${reply.userId}`)}
-                              className="font-semibold text-xs text-slate-100 hover:text-primary transition-colors"
-                            >
-                              {reply.userName}
-                            </button>
-                            <span className="text-xs text-slate-500">
-                              · {formatDistanceToNow(reply.createdAt, { addSuffix: true })}
-                            </span>
-                          </div>
-
-                          {/* Delete button for reply author or admin */}
-                          {(user.uid === reply.userId || isAdmin) && (
-                            <button
-                              onClick={() => handleDeleteComment(reply.id)}
-                              className="p-1 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-all flex-shrink-0"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Reply Content */}
-                        <p className="text-slate-200 text-sm mt-1 leading-relaxed break-words">
-                          {reply.content}
-                        </p>
-
-                        <div className="flex items-center gap-3 mt-2">
-                          <button
-                            onClick={() => handleLikeComment(reply.id, reply.likes)}
-                            className={`flex items-center gap-1 text-xs transition-colors ${
-                              user && reply.likes.includes(user.uid)
-                                ? 'text-rose-400'
-                                : 'text-slate-500 hover:text-rose-400'
-                            }`}
-                          >
-                            <Heart
-                              className={`w-3 h-3 ${
-                                user && reply.likes.includes(user.uid) ? 'fill-current' : ''
-                              }`}
-                            />
-                            <span className="font-medium">
-                              {reply.likes.length > 0 ? reply.likes.length : ''}
-                            </span>
-                          </button>
-
-                          {/* Only show Reply button if depth < 4 */}
-                          {getCommentDepth(reply) < 3 && (
-                            <button
-                              onClick={() => setReplyingTo(comment.id)}
-                              className="flex items-center gap-1 text-xs text-slate-500 hover:text-primary transition-colors"
-                            >
-                              <Reply className="w-3 h-3" />
-                              <span className="font-medium">Reply</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             ))
+          )}
+
+          {hasMore && (
+            <button
+              onClick={() => setVisibleCount(prev => prev + LOAD_MORE_COUNT)}
+              className="w-full py-3 text-sm text-slate-400 hover:text-white transition-colors font-medium"
+            >
+              Show more ({comments.length - visibleCount} remaining)
+            </button>
           )}
         </div>
       </main>

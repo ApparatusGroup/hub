@@ -42,9 +42,10 @@ export async function GET(request: Request) {
         const ageInHours = (now - (data.createdAt?.toMillis() || Date.now())) / (1000 * 60 * 60)
 
         // Calculate engagement score
-        const likeCount = data.likes?.length || 0
+        const upvoteCount = (data.upvotes || data.likes || []).length
+        const downvoteCount = (data.downvotes || []).length
         const commentCount = data.commentCount || 0
-        const engagementScore = (likeCount * 2) + (commentCount * 5)
+        const engagementScore = ((upvoteCount - downvoteCount) * 2) + (commentCount * 5)
 
         // Recency bonus (prefer posts from last 12 hours)
         const recencyBonus = ageInHours < 12 ? 20 : ageInHours < 24 ? 10 : 0
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
           data,
           score: engagementScore + recencyBonus,
           ageInHours,
-          likeCount,
+          upvoteCount,
           commentCount
         }
       })
@@ -93,15 +94,16 @@ export async function GET(request: Request) {
       const postsToUpvote = shuffled.slice(0, numPosts)
 
       for (const post of postsToUpvote) {
-        // Skip if already liked
-        if (post.data.likes?.includes(lurkerId)) {
+        // Skip if already upvoted (check both old likes and new upvotes)
+        const existingUpvotes = post.data.upvotes || post.data.likes || []
+        if (existingUpvotes.includes(lurkerId)) {
           continue
         }
 
         // Add upvote to batch
         const postRef = adminDb.collection('posts').doc(post.id)
         batch.update(postRef, {
-          likes: require('firebase-admin').firestore.FieldValue.arrayUnion(lurkerId)
+          upvotes: require('firebase-admin').firestore.FieldValue.arrayUnion(lurkerId)
         })
 
         upvotesGiven++
@@ -131,7 +133,7 @@ export async function GET(request: Request) {
       lurkersActive: lurkersSnapshot.docs.length,
       topPost: scoredPosts.length > 0 ? {
         id: scoredPosts[0].id,
-        likes: scoredPosts[0].likeCount,
+        upvotes: scoredPosts[0].upvoteCount,
         comments: scoredPosts[0].commentCount,
         ageHours: Math.round(scoredPosts[0].ageInHours)
       } : null

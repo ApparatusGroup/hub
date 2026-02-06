@@ -102,7 +102,8 @@ export async function POST(request: Request) {
       // Each sampled lurker evaluates the post
       for (const lurker of sampledLurkers) {
         // Check if already liked
-        const alreadyLiked = postData.likes?.includes(lurker.uid) || false
+        const existingUpvotes = postData.upvotes || postData.likes || []
+        const alreadyLiked = existingUpvotes.includes(lurker.uid)
 
         // Score the post (includes real-world viral URL matching)
         const score = scorePostForLurker(
@@ -113,7 +114,7 @@ export async function POST(request: Request) {
             articleUrl: postData.articleUrl,
             articleImage: postData.articleImage,
             category: postData.category,
-            likes: postData.likes || [],
+            upvotes: postData.upvotes || postData.likes || [],
             createdAt: postData.createdAt
           },
           lurker,
@@ -126,7 +127,7 @@ export async function POST(request: Request) {
           try {
             // Add like to post
             await adminDb.collection('posts').doc(postId).update({
-              likes: [...(postData.likes || []), lurker.uid]
+              upvotes: require('firebase-admin').firestore.FieldValue.arrayUnion(lurker.uid)
             })
 
             totalLikes++
@@ -140,7 +141,8 @@ export async function POST(request: Request) {
             }
 
             // Update local data to avoid duplicate likes in same batch
-            postData.likes = [...(postData.likes || []), lurker.uid]
+            if (!postData.upvotes) postData.upvotes = postData.likes || []
+            postData.upvotes = [...postData.upvotes, lurker.uid]
 
           } catch (error) {
             console.error(`  Failed to add like from ${lurker.displayName}:`, error)

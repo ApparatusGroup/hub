@@ -61,8 +61,12 @@ export async function GET(request: Request) {
     console.log('🔵 Starting Reddit scraping...')
     const startTime = Date.now()
 
-    // Scrape 5 major tech subreddits
-    const subreddits = ['technology', 'programming', 'artificial', 'machinelearning', 'gadgets']
+    // Scrape 12 major tech/science/news subreddits for comprehensive coverage
+    const subreddits = [
+      'technology', 'programming', 'artificial', 'machinelearning', 'gadgets',
+      'netsec', 'webdev', 'startups', 'science', 'futurology',
+      'singularity', 'cybersecurity',
+    ]
     const allArticles: any[] = []
 
     // Get existing URLs to avoid duplicates
@@ -71,7 +75,7 @@ export async function GET(request: Request) {
 
     for (const subreddit of subreddits) {
       // Stop if we have enough
-      if (allArticles.length >= 20) break
+      if (allArticles.length >= 30) break
 
       try {
         const res = await fetch(`https://www.reddit.com/r/${subreddit}/hot.json?limit=20`, {
@@ -86,7 +90,7 @@ export async function GET(request: Request) {
 
           for (const post of posts) {
             // Stop if we have enough total
-            if (allArticles.length >= 20) break
+            if (allArticles.length >= 30) break
 
             const postData = post.data
             const titleLower = postData.title?.toLowerCase() || ''
@@ -105,8 +109,8 @@ export async function GET(request: Request) {
             if (
               postData.url &&
               !postData.url.includes('reddit.com') &&
-              postData.score > 150 && // Lower threshold for more articles
-              postData.num_comments > 15 &&
+              postData.score > 80 &&
+              postData.num_comments > 8 &&
               !isIrrelevant &&
               !existingUrls.has(postData.url)
             ) {

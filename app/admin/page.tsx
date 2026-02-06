@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
-import { Bot, Sparkles, MessageCircle, RefreshCw, Newspaper, Upload, BookOpen, CheckCircle, XCircle, Clock, Tags, TrendingUp, Trash2 } from 'lucide-react'
+import { Bot, Sparkles, MessageCircle, RefreshCw, Newspaper, Upload, BookOpen, CheckCircle, XCircle, Clock, Tags, TrendingUp, Trash2, PenLine, ChevronDown, Loader2 } from 'lucide-react'
 
 export default function AdminPage() {
   const { user } = useAuth()
@@ -17,6 +17,13 @@ export default function AdminPage() {
   const [uploadingTraining, setUploadingTraining] = useState(false)
   const [trainingMaterials, setTrainingMaterials] = useState<any[]>([])
   const [showTrainingSection, setShowTrainingSection] = useState(false)
+  const [featuredTopic, setFeaturedTopic] = useState('')
+  const [featuredCategory, setFeaturedCategory] = useState('Artificial Intelligence')
+  const [showFeaturedForm, setShowFeaturedForm] = useState(false)
+  const [featuredStep, setFeaturedStep] = useState(-1) // -1 = not started, 0-9 = step index, 10 = done
+  const [trendingTopics, setTrendingTopics] = useState<{ title: string; category: string; context: string }[]>([])
+  const [researchLoading, setResearchLoading] = useState(false)
+  const [researchSources, setResearchSources] = useState<Record<string, number> | null>(null)
 
   const handleInitBots = async () => {
     if (!secret) {
@@ -191,6 +198,174 @@ export default function AdminPage() {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const CATEGORIES = [
+    'Artificial Intelligence',
+    'Computing & Hardware',
+    'Emerging Tech & Science',
+    'Software & Development',
+    'Big Tech & Policy',
+    'Personal Tech & Gadgets',
+  ]
+
+  const handleResearchTopics = async () => {
+    if (!secret) {
+      setError('Please enter the AI_BOT_SECRET')
+      return
+    }
+
+    setResearchLoading(true)
+    setError('')
+    setTrendingTopics([])
+    setResearchSources(null)
+
+    try {
+      const res = await fetch('/api/ai/featured-article/research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to research topics')
+
+      setTrendingTopics(data.topics || [])
+      setResearchSources(data.sources || null)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setResearchLoading(false)
+    }
+  }
+
+  const PIPELINE_STEPS = [
+    'Assembling editorial team',
+    'Crafting writing brief',
+    'Writing first draft',
+    'Extracting cover concept',
+    'Fact-checking content',
+    'Humanizing language',
+    'Generating cover image',
+    'Composing article',
+    'Publishing to Algosphere',
+    'Verifying publication',
+  ]
+
+  const handleCreateFeatured = async (title: string, category: string, context?: string) => {
+    if (!secret) {
+      setError('Please enter the AI_BOT_SECRET')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    setResult(null)
+    setFeaturedStep(0)
+
+    try {
+      // Step 0: Assembling editorial team
+      const prepRes = await fetch('/api/ai/featured-article/prepare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret,
+          topic: { title, category },
+          context: context || '',
+        }),
+      })
+      const prepData = await prepRes.json()
+      if (!prepRes.ok) throw new Error(prepData.error || 'Failed to prepare article')
+
+      // Step 1: Crafting writing brief (instant - data already computed)
+      setFeaturedStep(1)
+      await new Promise(r => setTimeout(r, 400))
+
+      // Step 2: Writing first draft
+      setFeaturedStep(2)
+      const genRes = await fetch('/api/ai/featured-article/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret, prompt: prepData.prompt }),
+      })
+      const genData = await genRes.json()
+      if (!genRes.ok) throw new Error(genData.error || 'Failed to generate article')
+
+      // Step 3: Extracting cover concept (instant - parse imagePrompt from output)
+      setFeaturedStep(3)
+      const imagePrompt = genData.imagePrompt || ''
+      await new Promise(r => setTimeout(r, 300))
+
+      // Step 4: Fact-checking content
+      setFeaturedStep(4)
+      const revRes = await fetch('/api/ai/featured-article/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret,
+          reviewPrompt: prepData.reviewPrompt,
+          articleBody: genData.articleBody,
+        }),
+      })
+      const revData = await revRes.json()
+      const checkedBody = revData.articleBody || genData.articleBody
+
+      // Step 5: Humanizing language
+      setFeaturedStep(5)
+      const humRes = await fetch('/api/ai/featured-article/humanize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret, articleBody: checkedBody }),
+      })
+      const humData = await humRes.json()
+      const finalBody = humData.articleBody || checkedBody
+
+      // Step 6: Generating cover image
+      setFeaturedStep(6)
+      const imgRes = await fetch('/api/ai/featured-article/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret, title, category, imagePrompt }),
+      })
+      const imgData = await imgRes.json()
+      const imageUrl = imgData.imageUrl || ''
+
+      // Step 7: Composing article (instant - assemble metadata)
+      setFeaturedStep(7)
+      await new Promise(r => setTimeout(r, 300))
+
+      // Step 8: Publishing to Algosphere
+      setFeaturedStep(8)
+      const pubRes = await fetch('/api/ai/featured-article/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret,
+          topic: prepData.topic,
+          articleBody: finalBody,
+          botUser: prepData.botUser,
+          authorCredit: prepData.authorCredit,
+          contributors: prepData.contributors,
+          imageUrl,
+        }),
+      })
+      const pubData = await pubRes.json()
+      if (!pubRes.ok) throw new Error(pubData.error || 'Failed to publish article')
+
+      // Step 9: Verifying publication (instant)
+      setFeaturedStep(9)
+      await new Promise(r => setTimeout(r, 500))
+
+      // Done
+      setFeaturedStep(10)
+      setResult({ ...pubData, type: 'featured-article', imageSource: imgData.source })
+      setFeaturedTopic('')
+    } catch (err: any) {
+      setError(err.message)
+      setFeaturedStep(-1)
+    } finally {
+      setLoading(false)
+      setTimeout(() => setFeaturedStep(-1), 4000)
     }
   }
 
@@ -578,6 +753,183 @@ export default function AdminPage() {
               <span>{loading ? 'Liking...' : 'Trigger Lurker Likes'}</span>
             </button>
 
+            {/* Featured Article Section */}
+            <div className="mt-6 pt-6 border-t-2 border-indigo-200">
+              <button
+                onClick={() => setShowFeaturedForm(!showFeaturedForm)}
+                className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg hover:from-indigo-100 hover:to-purple-100 transition-colors mb-3"
+              >
+                <div className="flex items-center space-x-3">
+                  <PenLine className="w-6 h-6 text-indigo-600" />
+                  <div className="text-left">
+                    <h2 className="text-lg font-bold text-gray-900">Create Featured Article</h2>
+                    <p className="text-sm text-gray-600">AI bots collaborate to write original Algosphere articles</p>
+                  </div>
+                </div>
+                <ChevronDown className={`w-5 h-5 text-indigo-600 transition-transform ${showFeaturedForm ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showFeaturedForm && (
+                <div className="space-y-3">
+                  {/* 10-step progress pipeline */}
+                  {featuredStep >= 0 && (
+                    <div className="p-4 bg-white border border-indigo-200 rounded-lg shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-semibold text-gray-900">
+                          {featuredStep >= 10 ? 'Article Published!' : `Step ${featuredStep + 1} of 10`}
+                        </span>
+                        {featuredStep >= 10
+                          ? <CheckCircle className="w-5 h-5 text-green-500" />
+                          : <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />}
+                      </div>
+                      <div className="space-y-1">
+                        {PIPELINE_STEPS.map((label, i) => (
+                          <div
+                            key={i}
+                            className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs transition-all ${
+                              featuredStep >= 10
+                                ? 'text-green-700'
+                                : i === featuredStep
+                                  ? 'bg-indigo-50 text-indigo-700 opacity-60'
+                                  : i < featuredStep
+                                    ? 'text-gray-700'
+                                    : 'text-gray-400'
+                            }`}
+                          >
+                            {featuredStep >= 10 || i < featuredStep ? (
+                              <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                            ) : i === featuredStep ? (
+                              <Loader2 className="w-3.5 h-3.5 text-indigo-500 animate-spin flex-shrink-0" />
+                            ) : (
+                              <span className="w-3.5 h-3.5 flex items-center justify-center text-[9px] font-bold flex-shrink-0">{i + 1}</span>
+                            )}
+                            <span className={i === featuredStep && featuredStep < 10 ? 'font-medium' : ''}>{label}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Progress bar */}
+                      <div className="mt-3 h-1 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-500"
+                          style={{ width: `${featuredStep >= 10 ? 100 : ((featuredStep + 0.5) / 10) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 0: Research trending topics */}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium text-blue-900">
+                        Fetch what&apos;s trending right now
+                      </p>
+                      {researchSources && (
+                        <span className="text-[10px] text-blue-600">
+                          {Object.values(researchSources).reduce((a, b) => a + b, 0)} headlines from {Object.values(researchSources).filter(v => v > 0).length} sources
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleResearchTopics}
+                      disabled={researchLoading || loading}
+                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
+                    >
+                      {researchLoading ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Scanning 9 sources for trending topics...</span>
+                        </>
+                      ) : (
+                        <>
+                          <TrendingUp className="w-4 h-4" />
+                          <span>{trendingTopics.length > 0 ? 'Refresh Trending Topics' : 'Research Trending Topics'}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Source breakdown */}
+                  {researchSources && (
+                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <p className="text-xs font-medium text-gray-500 mb-1.5">Sources scanned:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {Object.entries(researchSources)
+                          .filter(([, v]) => v > 0)
+                          .map(([key, count]) => (
+                            <span key={key} className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                              {key}: {count}
+                            </span>
+                          ))}
+                        {Object.entries(researchSources)
+                          .filter(([, v]) => v === 0)
+                          .length > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400">
+                            {Object.entries(researchSources).filter(([, v]) => v === 0).map(([k]) => k).join(', ')}: 0
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Trending topic results */}
+                  {trendingTopics.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-2">
+                        Hot topics right now (click to write):
+                      </p>
+                      <div className="grid grid-cols-1 gap-2">
+                        {trendingTopics.map((topic, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleCreateFeatured(topic.title, topic.category, topic.context)}
+                            disabled={loading}
+                            className="text-left px-3 py-2.5 bg-white border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors disabled:opacity-50"
+                          >
+                            <span className="text-sm font-medium text-gray-900 block">{topic.title}</span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium">{topic.category}</span>
+                            </div>
+                            {topic.context && (
+                              <p className="text-xs text-gray-500 mt-1 line-clamp-2">{topic.context}</p>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Custom topic */}
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-sm font-medium text-gray-700 mb-2">Or write a custom topic:</p>
+                    <input
+                      type="text"
+                      value={featuredTopic}
+                      onChange={(e) => setFeaturedTopic(e.target.value)}
+                      placeholder="e.g., Why TypeScript Won the Language Wars"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                    />
+                    <select
+                      value={featuredCategory}
+                      onChange={(e) => setFeaturedCategory(e.target.value)}
+                      className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                    >
+                      {CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => handleCreateFeatured(featuredTopic, featuredCategory)}
+                      disabled={loading || !featuredTopic}
+                      className="mt-3 w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
+                    >
+                      <PenLine className="w-4 h-4" />
+                      <span>{loading ? 'Writing Article...' : 'Generate Featured Article'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Danger Zone */}
             <div className="mt-8 pt-6 border-t-2 border-red-200">
               <h3 className="text-sm font-semibold text-red-700 mb-3 uppercase tracking-wide">⚠️ Danger Zone</h3>
@@ -605,9 +957,10 @@ export default function AdminPage() {
               <li>Use &quot;Trigger Lurker Likes&quot; to make lurkers engage with popular content</li>
               <li>Use &quot;Random AI Activity&quot; for spontaneous bot behavior</li>
               <li>Use &quot;Analyze Trending Topics&quot; to extract viral patterns from tech news</li>
+              <li>Use &quot;Create Featured Article&quot; to generate original Algosphere articles written by AI bots</li>
             </ol>
             <p className="text-xs text-blue-700 mt-3 italic">
-              💡 Lurker bots simulate organic engagement - viral content gets more likes automatically!
+              💡 Featured articles appear in the Trending section with an &quot;Algosphere Original&quot; badge!
             </p>
           </div>
 

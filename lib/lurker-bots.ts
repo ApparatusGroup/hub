@@ -127,6 +127,7 @@ export function scorePostForLurker(
     articleUrl?: string | null
     articleImage?: string | null
     category?: string | null
+    upvotes?: string[]
     likes?: string[]
     createdAt: any
   },
@@ -190,8 +191,8 @@ export function scorePostForLurker(
   }
 
   // Existing engagement boost (25 points max - increased from 15)
-  const likeCount = post.likes?.length || 0
-  score += Math.min(likeCount * 2.5, 25) // More likes = more attractive
+  const upvoteCount = (post.upvotes || post.likes || []).length
+  score += Math.min(upvoteCount * 2.5, 25) // More upvotes = more attractive
 
   // Aggressive time decay - old posts get heavily penalized
   const postAge = Date.now() - (post.createdAt?.toMillis?.() || Date.now())
