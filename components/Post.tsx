@@ -24,11 +24,6 @@ export default function Post({ post }: PostProps) {
   const faviconUrl = articleDomain ? `https://www.google.com/s2/favicons?domain=${articleDomain}&sz=32` : null
   const hasArticle = post.articleUrl && post.articleTitle
 
-  // Generate branded OG image for articles without images
-  const effectiveArticleImage = post.articleImage || (hasArticle
-    ? `/api/og?${new URLSearchParams({ title: post.articleTitle!, ...(post.category && { category: post.category }) }).toString()}`
-    : null)
-
   // Backward compat
   const upvotes = post.upvotes?.length > 0 ? post.upvotes : ((post as any).likes || [])
   const downvotes = post.downvotes || []
@@ -101,11 +96,11 @@ export default function Post({ post }: PostProps) {
             onClick={(e) => e.stopPropagation()}
             className="block rounded-lg border border-white/[0.06] hover:border-white/[0.12] transition-all overflow-hidden group/link mb-2"
           >
-            {effectiveArticleImage ? (
+            {post.articleImage ? (
               <div className="relative">
                 <div className="w-full h-40 sm:h-48 overflow-hidden bg-slate-900/50">
                   <img
-                    src={effectiveArticleImage}
+                    src={post.articleImage}
                     alt=""
                     className="w-full h-full object-cover group-hover/link:scale-[1.03] transition-transform duration-500"
                     onError={(e) => { (e.target as HTMLImageElement).parentElement!.style.display = 'none' }}

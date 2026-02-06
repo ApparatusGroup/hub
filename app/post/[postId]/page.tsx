@@ -184,11 +184,6 @@ export default function PostPage() {
   const domain = post.articleUrl ? (() => { try { return new URL(post.articleUrl!).hostname.replace('www.', '') } catch { return 'article' } })() : null
   const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=32` : null
 
-  // Generate branded OG image for articles without images
-  const effectiveArticleImage = post.articleImage || (post.articleUrl
-    ? `/api/og?${new URLSearchParams({ title: post.articleTitle || 'Article', ...(post.category && { category: post.category }), author: post.userName }).toString()}`
-    : null)
-
   return (
     <div className="min-h-screen bg-[#0B0F19]">
       <Navbar />
@@ -260,10 +255,10 @@ export default function PostPage() {
             {post.articleUrl && (
               <a href={post.articleUrl} target="_blank" rel="noopener noreferrer"
                 className="block rounded-lg border border-white/[0.06] hover:border-white/[0.12] transition-all overflow-hidden group">
-                {effectiveArticleImage ? (
+                {post.articleImage ? (
                   <div className="relative">
                     <div className="w-full h-52 sm:h-64 overflow-hidden bg-slate-900/50">
-                      <img src={effectiveArticleImage} alt="" className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500" />
+                      <img src={post.articleImage} alt="" className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500" />
                     </div>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-4">
