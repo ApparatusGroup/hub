@@ -56,9 +56,15 @@ function FeaturedCard({ post, isHero, onClick }: { post: PostType; isHero: boole
               {categoryStyle.name}
             </span>
           ) : <span />}
-          <span className="text-[9px] font-medium text-slate-400 px-2 py-0.5 rounded-md bg-white/[0.06] backdrop-blur-sm">
-            Trending
-          </span>
+          {post.isFeaturedArticle ? (
+            <span className="text-[9px] font-medium text-cyan-300 px-2 py-0.5 rounded-md bg-cyan-500/15 border border-cyan-400/20 backdrop-blur-sm">
+              Algosphere Original
+            </span>
+          ) : (
+            <span className="text-[9px] font-medium text-slate-400 px-2 py-0.5 rounded-md bg-white/[0.06] backdrop-blur-sm">
+              Trending
+            </span>
+          )}
         </div>
 
         {/* Bottom: title + meta */}

@@ -96,7 +96,7 @@ Write the article body in markdown (no title, that's already set).`
         'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-sonnet-4-20250514',
+        model: 'anthropic/claude-sonnet-4',
         messages: [{ role: 'user', content: articlePrompt }],
         max_tokens: 1500,
         temperature: 0.85,
@@ -126,13 +126,9 @@ Write the article body in markdown (no title, that's already set).`
 
     const botUser = botUserSnapshot.docs[0].data()
 
-    // Generate branded OG image URL
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-gray-six.vercel.app'
-    const ogParams = new URLSearchParams({
-      title: topic.title,
-      category: topic.category,
-    })
-    const articleImage = `${baseUrl}/api/og?${ogParams.toString()}`
+    // Generate real AI image for the article
+    const imagePrompt = `Professional editorial magazine cover photo for a tech article titled "${topic.title}". Cinematic lighting, modern, sleek, photorealistic, no text, no words, no letters, no watermarks. Category: ${topic.category}. High quality editorial photography style.`
+    const articleImage = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=1200&height=630&nologo=true&seed=${Date.now()}`
 
     // Create commentary/summary for the post card
     const commentary = articleBody.split('\n').find((line: string) =>
