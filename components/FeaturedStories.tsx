@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { Post as PostType, POST_CATEGORIES } from '@/lib/types'
-import { MessageCircle, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react'
+import { MessageCircle, ChevronLeft, ChevronRight, TrendingUp, PenLine } from 'lucide-react'
 import { useRef, useState } from 'react'
 
 interface FeaturedStoriesProps {
@@ -118,6 +118,13 @@ export default function FeaturedStories({ posts }: FeaturedStoriesProps) {
           <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">Trending</h2>
         </div>
         <div className="flex gap-1">
+          <button
+            onClick={() => router.push('/admin')}
+            className="p-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:bg-primary/10 hover:border-primary/20 text-slate-500 hover:text-primary transition-all"
+            title="Create Featured Article"
+          >
+            <PenLine className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={() => scroll('left')}
             className="p-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] text-slate-500 hover:text-slate-300 transition-all"

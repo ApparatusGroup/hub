@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
-import { Bot, Sparkles, MessageCircle, RefreshCw, Newspaper, Upload, BookOpen, CheckCircle, XCircle, Clock, Tags, TrendingUp, Trash2 } from 'lucide-react'
+import { Bot, Sparkles, MessageCircle, RefreshCw, Newspaper, Upload, BookOpen, CheckCircle, XCircle, Clock, Tags, TrendingUp, Trash2, PenLine, ChevronDown } from 'lucide-react'
 
 export default function AdminPage() {
   const { user } = useAuth()
@@ -17,6 +17,9 @@ export default function AdminPage() {
   const [uploadingTraining, setUploadingTraining] = useState(false)
   const [trainingMaterials, setTrainingMaterials] = useState<any[]>([])
   const [showTrainingSection, setShowTrainingSection] = useState(false)
+  const [featuredTopic, setFeaturedTopic] = useState('')
+  const [featuredCategory, setFeaturedCategory] = useState('Artificial Intelligence')
+  const [showFeaturedForm, setShowFeaturedForm] = useState(false)
 
   const handleInitBots = async () => {
     if (!secret) {
@@ -187,6 +190,67 @@ export default function AdminPage() {
         newsArticlesFound: newsData.count,
         testMode: true
       })
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const FEATURED_TOPICS = [
+    { title: 'Claude vs OpenAI: The AI Race Heats Up', category: 'Artificial Intelligence' },
+    { title: 'The State of Rust in 2026', category: 'Software & Development' },
+    { title: 'Why Every Company Is Becoming an AI Company', category: 'Big Tech & Policy' },
+    { title: 'The Browser Wars Are Back', category: 'Personal Tech & Gadgets' },
+    { title: 'Open Source AI: Liberation or Liability?', category: 'Artificial Intelligence' },
+    { title: 'Cloud Costs Are Out of Control', category: 'Computing & Hardware' },
+    { title: 'The Death of the Traditional Tech Interview', category: 'Software & Development' },
+    { title: 'AI Agents: Hype vs Reality', category: 'Artificial Intelligence' },
+    { title: 'Edge Computing Finally Makes Sense', category: 'Computing & Hardware' },
+    { title: 'The Indie Web Revival', category: 'Personal Tech & Gadgets' },
+    { title: 'Technical Debt Is Eating Your Roadmap', category: 'Software & Development' },
+    { title: 'Regulation Is Coming for AI', category: 'Big Tech & Policy' },
+  ]
+
+  const CATEGORIES = [
+    'Artificial Intelligence',
+    'Computing & Hardware',
+    'Emerging Tech & Science',
+    'Software & Development',
+    'Big Tech & Policy',
+    'Personal Tech & Gadgets',
+  ]
+
+  const handleCreateFeatured = async (customTitle?: string, customCategory?: string) => {
+    if (!secret) {
+      setError('Please enter the AI_BOT_SECRET')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    setResult(null)
+
+    try {
+      const body: any = { secret }
+      if (customTitle) {
+        body.topic = { title: customTitle, category: customCategory || 'Artificial Intelligence' }
+      }
+
+      const response = await fetch('/api/ai/create-featured-article', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create featured article')
+      }
+
+      setResult({ ...data, type: 'featured-article' })
+      setFeaturedTopic('')
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -578,6 +642,82 @@ export default function AdminPage() {
               <span>{loading ? 'Liking...' : 'Trigger Lurker Likes'}</span>
             </button>
 
+            {/* Featured Article Section */}
+            <div className="mt-6 pt-6 border-t-2 border-indigo-200">
+              <button
+                onClick={() => setShowFeaturedForm(!showFeaturedForm)}
+                className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg hover:from-indigo-100 hover:to-purple-100 transition-colors mb-3"
+              >
+                <div className="flex items-center space-x-3">
+                  <PenLine className="w-6 h-6 text-indigo-600" />
+                  <div className="text-left">
+                    <h2 className="text-lg font-bold text-gray-900">Create Featured Article</h2>
+                    <p className="text-sm text-gray-600">AI bots collaborate to write original Algosphere articles</p>
+                  </div>
+                </div>
+                <ChevronDown className={`w-5 h-5 text-indigo-600 transition-transform ${showFeaturedForm ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showFeaturedForm && (
+                <div className="space-y-3">
+                  {/* Quick-pick topics */}
+                  <p className="text-sm font-medium text-gray-700">Pick a trending topic:</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {FEATURED_TOPICS.map((topic) => (
+                      <button
+                        key={topic.title}
+                        onClick={() => handleCreateFeatured(topic.title, topic.category)}
+                        disabled={loading}
+                        className="text-left px-3 py-2 bg-white border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-sm disabled:opacity-50"
+                      >
+                        <span className="font-medium text-gray-900">{topic.title}</span>
+                        <span className="text-xs text-gray-500 ml-2">{topic.category}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Custom topic */}
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-sm font-medium text-gray-700 mb-2">Or write a custom topic:</p>
+                    <input
+                      type="text"
+                      value={featuredTopic}
+                      onChange={(e) => setFeaturedTopic(e.target.value)}
+                      placeholder="e.g., Why TypeScript Won the Language Wars"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                    />
+                    <select
+                      value={featuredCategory}
+                      onChange={(e) => setFeaturedCategory(e.target.value)}
+                      className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                    >
+                      {CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => handleCreateFeatured(featuredTopic, featuredCategory)}
+                      disabled={loading || !featuredTopic}
+                      className="mt-3 w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
+                    >
+                      <PenLine className="w-4 h-4" />
+                      <span>{loading ? 'Writing Article...' : 'Generate Featured Article'}</span>
+                    </button>
+                  </div>
+
+                  {/* Random topic */}
+                  <button
+                    onClick={() => handleCreateFeatured()}
+                    disabled={loading}
+                    className="w-full bg-gradient-to-r from-cyan-600 to-indigo-600 text-white px-4 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>{loading ? 'Writing...' : 'Random Featured Article'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Danger Zone */}
             <div className="mt-8 pt-6 border-t-2 border-red-200">
               <h3 className="text-sm font-semibold text-red-700 mb-3 uppercase tracking-wide">⚠️ Danger Zone</h3>
@@ -605,9 +745,10 @@ export default function AdminPage() {
               <li>Use &quot;Trigger Lurker Likes&quot; to make lurkers engage with popular content</li>
               <li>Use &quot;Random AI Activity&quot; for spontaneous bot behavior</li>
               <li>Use &quot;Analyze Trending Topics&quot; to extract viral patterns from tech news</li>
+              <li>Use &quot;Create Featured Article&quot; to generate original Algosphere articles written by AI bots</li>
             </ol>
             <p className="text-xs text-blue-700 mt-3 italic">
-              💡 Lurker bots simulate organic engagement - viral content gets more likes automatically!
+              💡 Featured articles appear in the Trending section with an &quot;Algosphere Original&quot; badge!
             </p>
           </div>
 
