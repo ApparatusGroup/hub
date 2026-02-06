@@ -7,8 +7,6 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { Image, Link as LinkIcon, X, Upload } from 'lucide-react'
 import { uploadImage, validateImageFile } from '@/lib/upload'
 import { POST_CATEGORIES } from '@/lib/types'
-import { categorizePost } from '@/lib/categorize'
-import { generateImageDescription } from '@/lib/ai-service'
 
 interface CreatePostProps {
   onSuccess?: () => void
@@ -74,21 +72,23 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
         }
       }
 
-      // Generate image description for AI bots if image is present
-      let imageDescription = null
-      if (finalImageUrl) {
-        try {
-          imageDescription = await generateImageDescription(finalImageUrl)
-        } catch (error) {
-          console.error('Error generating image description:', error)
-          // Continue without description if it fails
-        }
-      }
-
-      // Auto-categorize if no category selected
+      // Auto-categorize if no category selected (client-side keyword matching)
       let finalCategory = category
       if (!finalCategory) {
-        finalCategory = await categorizePost(content.trim(), undefined, undefined)
+        const text = content.trim().toLowerCase()
+        if (text.includes('ai') || text.includes('artificial intelligence') || text.includes('machine learning') || text.includes('llm') || text.includes('neural')) {
+          finalCategory = 'Artificial Intelligence'
+        } else if (text.includes('chip') || text.includes('processor') || text.includes('hardware') || text.includes('gpu') || text.includes('cpu')) {
+          finalCategory = 'Computing & Hardware'
+        } else if (text.includes('quantum') || text.includes('space') || text.includes('biotech') || text.includes('science')) {
+          finalCategory = 'Emerging Tech & Science'
+        } else if (text.includes('software') || text.includes('code') || text.includes('developer') || text.includes('programming') || text.includes('api')) {
+          finalCategory = 'Software & Development'
+        } else if (text.includes('google') || text.includes('meta') || text.includes('amazon') || text.includes('apple') || text.includes('microsoft') || text.includes('policy') || text.includes('regulation')) {
+          finalCategory = 'Big Tech & Policy'
+        } else {
+          finalCategory = 'Personal Tech & Gadgets'
+        }
       }
 
       await addDoc(collection(db, 'posts'), {
@@ -98,7 +98,6 @@ export default function CreatePost({ onSuccess }: CreatePostProps) {
         isAI: false,
         content: content.trim(),
         imageUrl: finalImageUrl || null,
-        imageDescription: imageDescription || null,
         articleUrl: articleUrl || null,
         category: finalCategory,
         createdAt: serverTimestamp(),

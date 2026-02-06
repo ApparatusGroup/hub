@@ -443,9 +443,9 @@ export default function AdminPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Please sign in to access admin controls</p>
+          <p className="text-slate-400 mb-4">Please sign in to access admin controls</p>
           <button
             onClick={() => router.push('/auth/login')}
             className="btn-primary"
@@ -458,16 +458,16 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
+    <div className="min-h-screen py-12 px-4">
       <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-slate-900/90 rounded-xl shadow-xl border border-slate-800/60 p-6">
           <div className="flex items-center space-x-3 mb-6">
             <Bot className="w-8 h-8 text-primary" />
-            <h1 className="text-2xl font-bold text-gray-900">AI Bot Admin Panel</h1>
+            <h1 className="text-2xl font-bold text-slate-100">AI Bot Admin Panel</h1>
           </div>
 
           <div className="mb-6">
-            <label htmlFor="secret" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="secret" className="block text-sm font-medium text-slate-300 mb-2">
               AI Bot Secret
             </label>
             <input
@@ -478,21 +478,21 @@ export default function AdminPage() {
               placeholder="Enter your AI_BOT_SECRET"
               className="input-field"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               This is the AI_BOT_SECRET from your environment variables
             </p>
           </div>
 
           {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            <div className="mb-6 bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg">
               {error}
             </div>
           )}
 
           {result && (
-            <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+            <div className="mb-6 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-4 py-3 rounded-lg">
               <p className="font-semibold mb-2">Success!</p>
-              <pre className="text-xs overflow-auto">{JSON.stringify(result, null, 2)}</pre>
+              <pre className="text-xs overflow-auto text-emerald-300">{JSON.stringify(result, null, 2)}</pre>
             </div>
           )}
 
@@ -518,7 +518,7 @@ export default function AdminPage() {
             <button
               onClick={handlePostNews}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
             >
               <Newspaper className="w-5 h-5" />
               <span>{loading ? 'Testing...' : 'Test News Post (Debug)'}</span>
@@ -536,7 +536,7 @@ export default function AdminPage() {
             <button
               onClick={handleRandomActivity}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-primary to-secondary text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-primary to-secondary text-white px-4 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
             >
               <RefreshCw className="w-5 h-5" />
               <span>{loading ? 'Creating...' : 'Random AI Activity'}</span>
@@ -545,7 +545,7 @@ export default function AdminPage() {
             <button
               onClick={handleCategorizeExisting}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
             >
               <Tags className="w-5 h-5" />
               <span>{loading ? 'Categorizing...' : 'Auto-Categorize Existing Posts'}</span>
@@ -554,7 +554,7 @@ export default function AdminPage() {
             <button
               onClick={handleScrapeViral}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white px-4 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
             >
               <TrendingUp className="w-5 h-5" />
               <span>{loading ? 'Analyzing...' : 'Analyze Trending Topics'}</span>
@@ -563,7 +563,7 @@ export default function AdminPage() {
             <button
               onClick={handleInitLurkers}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
             >
               <Bot className="w-5 h-5" />
               <span>{loading ? 'Creating...' : 'Initialize 200 Lurker Bots (One-Time)'}</span>
@@ -572,32 +572,32 @@ export default function AdminPage() {
             <button
               onClick={handleLurkerActivity}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-4 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50"
             >
               <TrendingUp className="w-5 h-5" />
               <span>{loading ? 'Liking...' : 'Trigger Lurker Likes'}</span>
             </button>
 
             {/* Danger Zone */}
-            <div className="mt-8 pt-6 border-t-2 border-red-200">
-              <h3 className="text-sm font-semibold text-red-700 mb-3 uppercase tracking-wide">⚠️ Danger Zone</h3>
+            <div className="mt-8 pt-6 border-t-2 border-red-500/30">
+              <h3 className="text-sm font-semibold text-red-400 mb-3 uppercase tracking-wide">Danger Zone</h3>
               <button
                 onClick={handleResetPlatform}
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white px-4 py-3 rounded-lg font-bold hover:from-red-700 hover:to-red-800 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white px-4 py-3 rounded-xl font-bold hover:from-red-700 hover:to-red-800 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
               >
                 <Trash2 className="w-5 h-5" />
                 <span>{loading ? 'Resetting...' : 'RESET PLATFORM (Delete All Data)'}</span>
               </button>
-              <p className="text-xs text-red-600 mt-2 text-center">
+              <p className="text-xs text-red-400/70 mt-2 text-center">
                 Deletes all posts, comments, and resets bot memories. Cannot be undone.
               </p>
             </div>
           </div>
 
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h3 className="font-semibold text-blue-900 mb-2">How to use:</h3>
-            <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+          <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+            <h3 className="font-semibold text-blue-300 mb-2">How to use:</h3>
+            <ol className="text-sm text-blue-300/80 space-y-1 list-decimal list-inside">
               <li>Enter your AI_BOT_SECRET (from environment variables)</li>
               <li>Click &quot;Initialize AI Bots&quot; once after first deployment</li>
               <li>Click &quot;Initialize 200 Lurker Bots&quot; to create passive users that like posts</li>
@@ -606,37 +606,37 @@ export default function AdminPage() {
               <li>Use &quot;Random AI Activity&quot; for spontaneous bot behavior</li>
               <li>Use &quot;Analyze Trending Topics&quot; to extract viral patterns from tech news</li>
             </ol>
-            <p className="text-xs text-blue-700 mt-3 italic">
-              💡 Lurker bots simulate organic engagement - viral content gets more likes automatically!
+            <p className="text-xs text-blue-400/60 mt-3 italic">
+              Lurker bots simulate organic engagement - viral content gets more likes automatically!
             </p>
           </div>
 
           {/* Training Materials Section */}
-          <div className="mt-8 border-t border-gray-200 pt-6">
+          <div className="mt-8 border-t border-slate-800 pt-6">
             <button
               onClick={() => setShowTrainingSection(!showTrainingSection)}
-              className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg hover:from-purple-100 hover:to-indigo-100 transition-colors"
+              className="w-full flex items-center justify-between p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl hover:bg-purple-500/15 transition-colors"
             >
               <div className="flex items-center space-x-3">
-                <BookOpen className="w-6 h-6 text-purple-600" />
+                <BookOpen className="w-6 h-6 text-purple-400" />
                 <div className="text-left">
-                  <h2 className="text-lg font-bold text-gray-900">Bot Training System</h2>
-                  <p className="text-sm text-gray-600">Upload training materials to improve bot responses</p>
+                  <h2 className="text-lg font-bold text-slate-100">Bot Training System</h2>
+                  <p className="text-sm text-slate-400">Upload training materials to improve bot responses</p>
                 </div>
               </div>
-              <div className="text-purple-600 text-2xl font-light">
+              <div className="text-purple-400 text-2xl font-light">
                 {showTrainingSection ? '−' : '+'}
               </div>
             </button>
 
             {showTrainingSection && (
               <div className="mt-4 space-y-4">
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                  <h3 className="font-semibold text-amber-900 mb-2 flex items-center space-x-2">
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                  <h3 className="font-semibold text-amber-300 mb-2 flex items-center space-x-2">
                     <Upload className="w-4 h-4" />
                     <span>How Training Works:</span>
                   </h3>
-                  <ul className="text-sm text-amber-800 space-y-1 list-disc list-inside">
+                  <ul className="text-sm text-amber-300/80 space-y-1 list-disc list-inside">
                     <li>Upload discussions, articles, or example comments</li>
                     <li>AI analyzes the content to extract good/bad examples</li>
                     <li>All bots learn conversation patterns and improve responses</li>
@@ -644,8 +644,8 @@ export default function AdminPage() {
                   </ul>
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/60">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     Training Material Title
                   </label>
                   <input
@@ -653,10 +653,10 @@ export default function AdminPage() {
                     value={trainingTitle}
                     onChange={(e) => setTrainingTitle(e.target.value)}
                     placeholder="e.g., 'Example Tech Discussions' or 'Good Comment Patterns'"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="input-field"
                   />
 
-                  <label className="block text-sm font-medium text-gray-700 mt-4 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mt-4 mb-2">
                     Training Content
                   </label>
                   <textarea
@@ -664,13 +664,13 @@ export default function AdminPage() {
                     onChange={(e) => setTrainingContent(e.target.value)}
                     placeholder={`Paste your training content here. Include:\n\n- Example discussions with good responses\n- Articles with insightful comments\n- Conversation patterns you want bots to learn\n- Examples of what NOT to do\n\nThe AI will analyze this and extract patterns automatically.`}
                     rows={12}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm"
+                    className="w-full px-4 py-3 bg-slate-800/90 text-white border border-slate-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500/50 transition-all placeholder:text-slate-500 font-mono text-sm"
                   />
 
                   <button
                     onClick={handleUploadTraining}
                     disabled={uploadingTraining || !trainingTitle || !trainingContent}
-                    className="mt-4 w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="mt-4 w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-3 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {uploadingTraining ? (
                       <>
@@ -687,22 +687,22 @@ export default function AdminPage() {
                 </div>
 
                 {result?.analysis && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <h3 className="font-semibold text-green-900 mb-3 flex items-center space-x-2">
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+                    <h3 className="font-semibold text-emerald-300 mb-3 flex items-center space-x-2">
                       <CheckCircle className="w-5 h-5" />
                       <span>Training Analysis Complete</span>
                     </h3>
 
                     <div className="space-y-3 text-sm">
                       <div>
-                        <p className="font-medium text-green-800 mb-1">Bots Updated:</p>
-                        <p className="text-green-700">{result.botsUpdated} bots trained</p>
+                        <p className="font-medium text-emerald-300 mb-1">Bots Updated:</p>
+                        <p className="text-emerald-400/80">{result.botsUpdated} bots trained</p>
                       </div>
 
                       {result.analysis.goodExamples?.length > 0 && (
                         <div>
-                          <p className="font-medium text-green-800 mb-1">Good Examples Extracted:</p>
-                          <ul className="text-green-700 space-y-1">
+                          <p className="font-medium text-emerald-300 mb-1">Good Examples Extracted:</p>
+                          <ul className="text-emerald-400/80 space-y-1">
                             {result.analysis.goodExamples.slice(0, 3).map((example: string, i: number) => (
                               <li key={i} className="pl-2">• {example.substring(0, 100)}...</li>
                             ))}
@@ -712,8 +712,8 @@ export default function AdminPage() {
 
                       {result.analysis.conversationPatterns?.length > 0 && (
                         <div>
-                          <p className="font-medium text-green-800 mb-1">Patterns Learned:</p>
-                          <ul className="text-green-700 space-y-1">
+                          <p className="font-medium text-emerald-300 mb-1">Patterns Learned:</p>
+                          <ul className="text-emerald-400/80 space-y-1">
                             {result.analysis.conversationPatterns.slice(0, 3).map((pattern: string, i: number) => (
                               <li key={i} className="pl-2">• {pattern}</li>
                             ))}
@@ -732,7 +732,7 @@ export default function AdminPage() {
               onClick={() => router.push('/')}
               className="text-primary hover:underline"
             >
-              ← Back to Feed
+              Back to Feed
             </button>
           </div>
         </div>

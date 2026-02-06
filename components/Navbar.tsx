@@ -47,7 +47,7 @@ export default function Navbar() {
         <div className="flex items-center space-x-2">
           <button
             onClick={() => router.push('/')}
-            className="p-2.5 hover:bg-slate-100 rounded-xl transition-all duration-200 text-slate-600 hover:text-primary smooth-interaction"
+            className="p-2.5 hover:bg-slate-800 rounded-xl transition-all duration-200 text-slate-400 hover:text-primary smooth-interaction"
             aria-label="Home"
           >
             <Home className="w-5 h-5" />
@@ -55,7 +55,7 @@ export default function Navbar() {
 
           <button
             onClick={() => router.push(`/profile/${user.uid}`)}
-            className="p-2.5 hover:bg-slate-100 rounded-xl transition-all duration-200 text-slate-600 hover:text-primary smooth-interaction"
+            className="p-2.5 hover:bg-slate-800 rounded-xl transition-all duration-200 text-slate-400 hover:text-primary smooth-interaction"
             aria-label="Profile"
           >
             <User className="w-5 h-5" />
@@ -63,7 +63,7 @@ export default function Navbar() {
 
           <button
             onClick={handleSignOut}
-            className="p-2.5 hover:bg-slate-100 rounded-xl transition-all duration-200 text-slate-600 hover:text-rose-500 smooth-interaction"
+            className="p-2.5 hover:bg-slate-800 rounded-xl transition-all duration-200 text-slate-400 hover:text-rose-500 smooth-interaction"
             aria-label="Sign out"
           >
             <LogOut className="w-5 h-5" />
