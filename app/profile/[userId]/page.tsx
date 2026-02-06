@@ -272,8 +272,9 @@ export default function ProfilePage() {
         )}
 
         <div className="bg-white/[0.03] rounded-xl border border-white/[0.06] p-5 sm:p-6 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-            <div className="flex-shrink-0 mx-auto sm:mx-0">
+          {/* Profile header: photo centered on mobile, side-by-side on desktop */}
+          <div className="flex flex-col items-center sm:flex-row sm:items-start gap-4">
+            <div className="flex-shrink-0">
               {editMode ? (
                 <div className="w-full sm:w-auto space-y-2">
                   <div>
@@ -307,7 +308,7 @@ export default function ProfilePage() {
                       }}
                     />
                   ) : (
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold mx-auto sm:mx-0">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold">
                       {editForm.displayName[0]?.toUpperCase() || '?'}
                     </div>
                   )}
@@ -316,52 +317,54 @@ export default function ProfilePage() {
                 <img
                   src={profile.photoURL}
                   alt={profile.displayName}
-                  className="w-20 h-20 rounded-full object-cover"
+                  className="w-20 h-20 rounded-full object-cover ring-2 ring-white/[0.06]"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold ring-2 ring-white/[0.06]">
                   {profile.displayName[0].toUpperCase()}
                 </div>
               )}
             </div>
 
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 text-center sm:text-left">
               <div className="space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {editMode ? (
-                      <input
-                        type="text"
-                        value={editForm.displayName}
-                        onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
-                        className="input-field text-lg sm:text-xl font-bold flex-1 min-w-[150px]"
-                        placeholder="Display name"
-                      />
-                    ) : (
-                      <h1 className="text-xl sm:text-2xl font-bold text-slate-100">{profile.displayName}</h1>
-                    )}
-                    {profile.isAI && (
-                      <span className="flex items-center text-xs sm:text-sm bg-secondary/20 text-secondary-light px-2 py-1 rounded-full whitespace-nowrap">
-                        <Bot className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                        AI Bot
-                      </span>
-                    )}
-                    {profile.isAI && (() => {
-                      const exp = getBotExpertise(profile.displayName)
-                      return exp ? (
-                        <span
-                          className="flex items-center gap-1 text-[11px] sm:text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap"
-                          style={{
-                            backgroundColor: `${exp.color}15`,
-                            color: exp.color,
-                            border: `1px solid ${exp.color}25`,
-                          }}
-                        >
-                          <Star className="w-3 h-3 fill-current" />
-                          {exp.category}
+                {/* Name row */}
+                <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                      {editMode ? (
+                        <input
+                          type="text"
+                          value={editForm.displayName}
+                          onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
+                          className="input-field text-lg sm:text-xl font-bold flex-1 min-w-[150px]"
+                          placeholder="Display name"
+                        />
+                      ) : (
+                        <h1 className="text-xl sm:text-2xl font-bold text-slate-100">{profile.displayName}</h1>
+                      )}
+                      {profile.isAI && (
+                        <span className="flex items-center text-[11px] bg-white/[0.06] text-slate-400 px-2 py-0.5 rounded-full whitespace-nowrap">
+                          <Bot className="w-3 h-3 mr-1" />
+                          AI
                         </span>
-                      ) : null
-                    })()}
+                      )}
+                      {profile.isAI && (() => {
+                        const exp = getBotExpertise(profile.displayName)
+                        return exp ? (
+                          <span
+                            className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
+                            style={{
+                              backgroundColor: `${exp.color}15`,
+                              color: exp.color,
+                              border: `1px solid ${exp.color}25`,
+                            }}
+                          >
+                            <Star className="w-3 h-3 fill-current" />
+                            {exp.category}
+                          </span>
+                        ) : null
+                      })()}
                   </div>
 
                   {canEdit && (
@@ -406,6 +409,7 @@ export default function ProfilePage() {
                       )}
                     </div>
                   )}
+                  </div>
                 </div>
 
               {editMode ? (

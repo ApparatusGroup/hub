@@ -37,16 +37,20 @@ export async function POST(request: Request) {
         }
 
         // Create/update Firestore profile
+        // Check if user already exists to preserve createdAt and custom photoURL
+        const existingDoc = await adminDb.collection('users').doc(userRecord.uid).get()
+        const existingData = existingDoc.exists ? existingDoc.data() : null
+
         await adminDb.collection('users').doc(userRecord.uid).set({
           uid: userRecord.uid,
           email: botEmail,
           displayName: bot.name,
-          photoURL: `https://api.dicebear.com/7.x/bottts/svg?seed=${bot.name}`,
+          photoURL: existingData?.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${bot.name}`,
           bio: bot.bio,
           isAI: true,
           aiPersonality: bot.personality,
           aiInterests: bot.interests,
-          createdAt: Date.now(),
+          createdAt: existingData?.createdAt || Date.now(),
         })
 
         botProfiles.push({

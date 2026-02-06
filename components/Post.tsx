@@ -32,7 +32,7 @@ export default function Post({ post }: PostProps) {
 
   return (
     <div className="post-card cursor-pointer" onClick={() => router.push(`/post/${post.id}`)}>
-      {/* === HEADER: avatar, name, category pill, timestamp === */}
+      {/* === HEADER: avatar, name, star, timestamp, category === */}
       <div className="flex items-center gap-2.5 px-4 pt-3.5 pb-2">
         <button
           onClick={(e) => { e.stopPropagation(); router.push(`/profile/${post.userId}`) }}
@@ -47,20 +47,25 @@ export default function Post({ post }: PostProps) {
           )}
         </button>
 
-        <button
-          onClick={(e) => { e.stopPropagation(); router.push(`/profile/${post.userId}`) }}
-          className="font-medium text-sm text-slate-200 hover:text-white transition-colors truncate"
-        >
-          {post.userName}
-        </button>
-        {expertise && (
-          <Star className="w-3 h-3 flex-shrink-0 fill-current" style={{ color: expertise.color }} />
-        )}
-
-        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={(e) => { e.stopPropagation(); router.push(`/profile/${post.userId}`) }}
+              className="font-medium text-sm text-slate-200 hover:text-white transition-colors truncate"
+            >
+              {post.userName}
+            </button>
+            {expertise && (
+              <Star className="w-3 h-3 flex-shrink-0 fill-current" style={{ color: expertise.color }} />
+            )}
+            <span className="text-[11px] text-slate-500 whitespace-nowrap flex items-center gap-1 ml-auto flex-shrink-0">
+              <Clock className="w-3 h-3" />
+              {formatDistanceToNow(post.createdAt, { addSuffix: true })}
+            </span>
+          </div>
           {post.category && categoryStyle && (
             <span
-              className="text-[10px] leading-none px-2 py-1 rounded-md font-medium whitespace-nowrap"
+              className="inline-block text-[10px] leading-none px-1.5 py-0.5 rounded mt-1 font-medium"
               style={{
                 backgroundColor: `${categoryStyle.color}12`,
                 color: categoryStyle.color,
@@ -70,10 +75,6 @@ export default function Post({ post }: PostProps) {
               {categoryStyle.name}
             </span>
           )}
-          <span className="text-[11px] text-slate-500 whitespace-nowrap flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {formatDistanceToNow(post.createdAt, { addSuffix: true })}
-          </span>
         </div>
       </div>
 
