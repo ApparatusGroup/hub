@@ -99,49 +99,21 @@ Write it now. You've got something to say and ten minutes before deadline.`
       ? `By ${leadAuthor.name} | Reviewed by ${reviewers.map(c => c.name).join(' & ')}`
       : `By ${leadAuthor.name}`
 
-    // Build review prompt - based on GPTZero's specific detection criteria
+    // Build fact-check prompt (humanization is now a separate step)
     const reviewerInfo = reviewers.map(r => `${r.name} (${r.occupation}): ${r.personality}`).join('\n')
     const reviewPrompt = reviewers.length > 0
-      ? `You are a rewriter. The article below was flagged by GPTZero as AI-generated. Your job: rewrite it so it passes as human.
+      ? `You are a fact-checker reviewing an article for accuracy.
 
 Editors: ${reviewerInfo}
 Article: "${topic.title}"
 
-Here is the EXACT feedback from GPTZero's detection report on what flags text as AI. Fix every single one of these:
+Review the article below and fix ONLY:
+1. Factual errors or outdated information
+2. Incorrect version numbers, dates, or product names
+3. Misleading claims or unsupported assertions
+4. Any mention of reviewers/editors/collaboration in the body text
 
-FLAG 1 - "Formulaic Transitions": GPTZero flagged sentences like "It would mean X" repeated multiple times. FIND any repeated sentence structures and rewrite each one differently. No two transitions should use the same pattern.
-
-FLAG 2 - "Robotic Formality": GPTZero flagged "formal and polished language" with "clear and orderly" tone. FIX by adding casual phrases ("look", "honestly", "here's the thing"), contractions, and at least one slightly rough/imperfect sentence.
-
-FLAG 3 - "Predictable Syntax": GPTZero flagged "declarative structure, using a straightforward and repetitive pattern." FIX by varying sentence structure wildly. Add questions. Add fragments. Add one long rambling sentence. Don't let 3 sentences in a row use the same subject-verb-object pattern.
-
-FLAG 4 - "Mechanical Transitions": GPTZero flagged smooth subordinate clauses connecting ideas. FIX by sometimes just placing ideas next to each other without a connector. Let some transitions be abrupt.
-
-FLAG 5 - "Mechanical Precision": GPTZero flagged "technical terms to provide a clear and specific solution." FIX by wrapping technical terms in casual language. Instead of "continuous monitoring of driver behavior", try "actually keeping tabs on how drivers behave, not just running a background check once and calling it a day."
-
-FLAG 6 - "Lacks Creative Grammar": GPTZero flagged "correct grammatical structures" with no "creative deviations." FIX by starting a sentence with "And" or "But", using a fragment, or bending grammar slightly the way a real writer would.
-
-FLAG 7 - "Lacks Complexity": GPTZero flagged "single theme explored in a straightforward manner." FIX by introducing a brief tangent, analogy, or comparison to something unexpected before returning to the main point.
-
-FLAG 8 - "Forced Personal Anecdotes": GPTZero now flags sentences like "I was stress-baking sourdough at 2 AM when the notifications started." REMOVE any forced-sounding personal stories. If there's a personal reference, make it brief and natural, not a setup.
-
-FLAG 9 - "Tricolon Technical Lists": GPTZero flags lists of three technical terms in a row ("package managers, version conflicts, and build systems") as "Mechanical Precision." FIX by either mentioning just one or two, or by adding casual context between them.
-
-FLAG 10 - "Bare Simple Statements": Short simple sentences without texture ("Companies are doing the math") get flagged as "Lacks Creativity." FIX by adding a qualifier or follow-up ("Companies are doing the math, and some of them don't love the answer").
-
-FLAG 11 - "Speculative Timeframes": Phrases like "by Q4" or "within 18 months" get flagged as "Speculative Focus." REMOVE specific timeframe predictions. Use vaguer language ("soon", "before long", "any day now").
-
-WHAT GPTZero MARKED AS HUMAN (do MORE of these):
-- Tentative language: "Maybe", "I think", "probably" (scored high human)
-- Imperative commands: "Time to learn a new skill." "Think about that." (scored high human)
-- Single-word emphatics: "Absolutely." "Right." "Exactly." (scored high human)
-- Informal persuasion: emphatic, forceful phrases that convey personal conviction
-- Narrative with turning points
-- Mixing technical detail with broad plain-language explanation
-
-BANNED WORDS (instant AI flag): notably, straightforward, nuanced, multifaceted, delve, tapestry, pivotal, crucial, foster, leverage, navigate, landscape, robust, game-changer, paradigm, synergy, ecosystem
-
-Remove all em dashes and semicolons. Add contractions everywhere. Add at least 2 tentative phrases ("maybe", "probably") and 2 short emphatic statements. Keep the same facts and approximate length. Return ONLY the rewritten markdown article body. No title, no commentary about edits.`
+Keep the same writing style, tone, length, and formatting. Do NOT change the voice or add your own commentary. Return ONLY the corrected article body in markdown. No title.`
       : null
 
     return NextResponse.json({
