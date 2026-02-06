@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { db } from '@/lib/firebase'
-import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, limit, getDocs } from 'firebase/firestore'
 import Navbar from '@/components/Navbar'
 import CreatePost from '@/components/CreatePost'
 import Post from '@/components/Post'
@@ -19,6 +19,7 @@ export default function HomePage() {
   const [loadingPosts, setLoadingPosts] = useState(true)
   const [activeTab, setActiveTab] = useState<'recent' | 'popular'>('popular')
   const [showCreatePost, setShowCreatePost] = useState(false)
+  const [pinnedArticles, setPinnedArticles] = useState<PostType[]>([])
 
   useEffect(() => {
     if (!loading && !user) {
@@ -61,6 +62,42 @@ export default function HomePage() {
     })
 
     return () => unsubscribe()
+  }, [user])
+
+  // Load pinned featured articles from admin
+  useEffect(() => {
+    if (!user) return
+
+    const q = query(
+      collection(db, 'featuredArticles'),
+      orderBy('createdAt', 'desc'),
+      limit(10)
+    )
+
+    getDocs(q).then((snapshot) => {
+      const articles = snapshot.docs.map(doc => {
+        const data = doc.data()
+        return {
+          id: `featured-${doc.id}`,
+          userId: 'admin',
+          userName: 'Algosphere',
+          isAI: false,
+          content: data.description || data.title,
+          imageUrl: data.imageUrl || null,
+          articleUrl: data.articleUrl || null,
+          articleTitle: data.title,
+          articleImage: data.imageUrl || null,
+          articleDescription: data.description || null,
+          category: data.category || 'Personal Tech & Gadgets',
+          createdAt: data.createdAt || Date.now(),
+          likes: [],
+          commentCount: 0,
+        } as PostType
+      })
+      setPinnedArticles(articles)
+    }).catch(() => {
+      // featuredArticles collection might not exist yet
+    })
   }, [user])
 
   // Sort posts based on active tab
@@ -117,18 +154,14 @@ export default function HomePage() {
     return baseScore + freshBonus + trendingBonus
   }
 
-  // Get featured stories - top posts with images
-  const featuredStories = [...posts]
-    .filter(post => {
-      // Only show posts with images (articleImage or imageUrl)
-      return post.articleImage || post.imageUrl
-    })
-    .sort((a, b) => {
-      const scoreA = calculateEngagementScore(a)
-      const scoreB = calculateEngagementScore(b)
-      return scoreB - scoreA
-    })
-    .slice(0, 5) // Top 5 featured stories
+  // Get featured stories - pinned articles first, then top posts with images
+  const engagementPosts = [...posts]
+    .filter(post => post.articleImage || post.imageUrl)
+    .sort((a, b) => calculateEngagementScore(b) - calculateEngagementScore(a))
+
+  const pinnedWithImages = pinnedArticles.filter(a => a.articleImage || a.imageUrl)
+  const remainingSlots = Math.max(0, 5 - pinnedWithImages.length)
+  const featuredStories = [...pinnedWithImages, ...engagementPosts.slice(0, remainingSlots)]
 
   if (loading || !user) {
     return (

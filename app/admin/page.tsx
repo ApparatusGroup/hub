@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
-import { Bot, Sparkles, MessageCircle, RefreshCw, Newspaper, Upload, BookOpen, CheckCircle, XCircle, Clock, Tags, TrendingUp, Trash2 } from 'lucide-react'
+import { Bot, Sparkles, MessageCircle, RefreshCw, Newspaper, Upload, BookOpen, CheckCircle, XCircle, Clock, Tags, TrendingUp, Trash2, Star, Download, Plus, Image, X } from 'lucide-react'
+import { uploadImage, validateImageFile } from '@/lib/upload'
+import { POST_CATEGORIES } from '@/lib/types'
 
 export default function AdminPage() {
   const { user } = useAuth()
@@ -17,6 +19,19 @@ export default function AdminPage() {
   const [uploadingTraining, setUploadingTraining] = useState(false)
   const [trainingMaterials, setTrainingMaterials] = useState<any[]>([])
   const [showTrainingSection, setShowTrainingSection] = useState(false)
+
+  // Featured Article Maker state
+  const [showFeaturedSection, setShowFeaturedSection] = useState(false)
+  const [featuredArticles, setFeaturedArticles] = useState<any[]>([])
+  const [featuredTitle, setFeaturedTitle] = useState('')
+  const [featuredDescription, setFeaturedDescription] = useState('')
+  const [featuredUrl, setFeaturedUrl] = useState('')
+  const [featuredImageUrl, setFeaturedImageUrl] = useState('')
+  const [featuredImageFile, setFeaturedImageFile] = useState<File | null>(null)
+  const [featuredImagePreview, setFeaturedImagePreview] = useState('')
+  const [featuredCategory, setFeaturedCategory] = useState('')
+  const [uploadingFeatured, setUploadingFeatured] = useState(false)
+  const [loadingFeatured, setLoadingFeatured] = useState(false)
 
   const handleInitBots = async () => {
     if (!secret) {
@@ -266,6 +281,111 @@ export default function AdminPage() {
     }
   }
 
+  // Featured Article Maker handlers
+  const fetchFeaturedArticles = async () => {
+    if (!secret) return
+    setLoadingFeatured(true)
+    try {
+      const res = await fetch(`/api/admin/featured-articles?secret=${encodeURIComponent(secret)}`)
+      const data = await res.json()
+      if (res.ok) {
+        setFeaturedArticles(data.articles || [])
+      }
+    } catch (err) {
+      console.error('Error fetching featured articles:', err)
+    } finally {
+      setLoadingFeatured(false)
+    }
+  }
+
+  const handleCreateFeatured = async () => {
+    if (!secret) {
+      setError('Please enter the AI_BOT_SECRET')
+      return
+    }
+    if (!featuredTitle) {
+      setError('Featured article needs a title')
+      return
+    }
+
+    setUploadingFeatured(true)
+    setError('')
+
+    try {
+      // Upload image file if selected
+      let finalImageUrl = featuredImageUrl
+      if (featuredImageFile) {
+        finalImageUrl = await uploadImage(featuredImageFile, 'featured')
+      }
+
+      const res = await fetch('/api/admin/featured-articles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret,
+          title: featuredTitle,
+          description: featuredDescription,
+          articleUrl: featuredUrl,
+          imageUrl: finalImageUrl,
+          category: featuredCategory || 'Personal Tech & Gadgets',
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to create featured article')
+
+      setResult(data)
+      setFeaturedTitle('')
+      setFeaturedDescription('')
+      setFeaturedUrl('')
+      setFeaturedImageUrl('')
+      setFeaturedImageFile(null)
+      setFeaturedImagePreview('')
+      setFeaturedCategory('')
+      fetchFeaturedArticles()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setUploadingFeatured(false)
+    }
+  }
+
+  const handleDeleteFeatured = async (id: string) => {
+    if (!secret) return
+    try {
+      const res = await fetch('/api/admin/featured-articles', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret, id }),
+      })
+      if (res.ok) {
+        setFeaturedArticles(prev => prev.filter(a => a.id !== id))
+      }
+    } catch (err) {
+      console.error('Error deleting featured article:', err)
+    }
+  }
+
+  const handleDownloadFeatured = () => {
+    if (!secret) return
+    window.open(`/api/admin/featured-articles?secret=${encodeURIComponent(secret)}&download=true`, '_blank')
+  }
+
+  const handleFeaturedImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const validation = validateImageFile(file)
+    if (!validation.valid) {
+      setError(validation.error || 'Invalid file')
+      return
+    }
+    setFeaturedImageFile(file)
+    setFeaturedImageUrl('')
+    const reader = new FileReader()
+    reader.onloadend = () => setFeaturedImagePreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
   const fetchTrainingMaterials = async () => {
     // This would need a separate API endpoint to list materials
     // For now, we'll skip this and show status in the result
@@ -441,6 +561,12 @@ export default function AdminPage() {
     }
   }, [secret, showTrainingSection])
 
+  useEffect(() => {
+    if (secret && showFeaturedSection) {
+      fetchFeaturedArticles()
+    }
+  }, [secret, showFeaturedSection])
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -609,6 +735,219 @@ export default function AdminPage() {
             <p className="text-xs text-blue-400/60 mt-3 italic">
               Lurker bots simulate organic engagement - viral content gets more likes automatically!
             </p>
+          </div>
+
+          {/* Featured Article Maker */}
+          <div className="mt-8 border-t border-slate-800 pt-6">
+            <button
+              onClick={() => setShowFeaturedSection(!showFeaturedSection)}
+              className="w-full flex items-center justify-between p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl hover:bg-amber-500/15 transition-colors"
+            >
+              <div className="flex items-center space-x-3">
+                <Star className="w-6 h-6 text-amber-400" />
+                <div className="text-left">
+                  <h2 className="text-lg font-bold text-slate-100">Featured Article Maker</h2>
+                  <p className="text-sm text-slate-400">Create, upload, and manage pinned featured stories</p>
+                </div>
+              </div>
+              <div className="text-amber-400 text-2xl font-light">
+                {showFeaturedSection ? '−' : '+'}
+              </div>
+            </button>
+
+            {showFeaturedSection && (
+              <div className="mt-4 space-y-4">
+                {/* Create new featured article form */}
+                <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/60">
+                  <h3 className="font-semibold text-slate-200 mb-3 flex items-center space-x-2">
+                    <Plus className="w-4 h-4" />
+                    <span>Create Featured Article</span>
+                  </h3>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">Title *</label>
+                      <input
+                        type="text"
+                        value={featuredTitle}
+                        onChange={(e) => setFeaturedTitle(e.target.value)}
+                        placeholder="Article headline"
+                        className="input-field text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">Description</label>
+                      <textarea
+                        value={featuredDescription}
+                        onChange={(e) => setFeaturedDescription(e.target.value)}
+                        placeholder="Brief summary of the article..."
+                        rows={3}
+                        className="w-full px-4 py-3 bg-slate-800/90 text-white border border-slate-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all placeholder:text-slate-500 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">Article URL</label>
+                      <input
+                        type="url"
+                        value={featuredUrl}
+                        onChange={(e) => setFeaturedUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="input-field text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">Category</label>
+                      <select
+                        value={featuredCategory}
+                        onChange={(e) => setFeaturedCategory(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-800/90 text-white border border-slate-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/30 text-sm"
+                      >
+                        <option value="">Select category</option>
+                        {Object.keys(POST_CATEGORIES).map((cat) => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">Cover Image</label>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="flex-1">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFeaturedImageFile}
+                            disabled={!!featuredImageUrl}
+                            className="block w-full text-sm text-slate-300 file:mr-2 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gradient-to-r file:from-amber-600 file:to-orange-600 file:text-white hover:file:shadow-md disabled:opacity-50 transition-all"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <input
+                            type="url"
+                            value={featuredImageUrl}
+                            onChange={(e) => { setFeaturedImageUrl(e.target.value); setFeaturedImageFile(null); setFeaturedImagePreview('') }}
+                            disabled={!!featuredImageFile}
+                            placeholder="Or paste image URL..."
+                            className="input-field text-sm disabled:opacity-50"
+                          />
+                        </div>
+                      </div>
+
+                      {(featuredImagePreview || featuredImageUrl) && (
+                        <div className="mt-2 relative rounded-xl overflow-hidden">
+                          <img
+                            src={featuredImagePreview || featuredImageUrl}
+                            alt="Preview"
+                            className="rounded-xl max-h-48 w-full object-cover border border-slate-700/60"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => { setFeaturedImageFile(null); setFeaturedImagePreview(''); setFeaturedImageUrl('') }}
+                            className="absolute top-2 right-2 p-1.5 bg-slate-900/70 hover:bg-slate-900/90 backdrop-blur-sm rounded-lg"
+                          >
+                            <X className="w-3.5 h-3.5 text-white" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={handleCreateFeatured}
+                      disabled={uploadingFeatured || !featuredTitle}
+                      className="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white px-4 py-3 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {uploadingFeatured ? (
+                        <>
+                          <RefreshCw className="w-5 h-5 animate-spin" />
+                          <span>Uploading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Star className="w-5 h-5" />
+                          <span>Create Featured Article</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Existing featured articles list */}
+                <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/60">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-slate-200 flex items-center space-x-2">
+                      <Image className="w-4 h-4" />
+                      <span>Current Featured Articles ({featuredArticles.length})</span>
+                    </h3>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={fetchFeaturedArticles}
+                        disabled={loadingFeatured}
+                        className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-slate-200"
+                        title="Refresh"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${loadingFeatured ? 'animate-spin' : ''}`} />
+                      </button>
+                      <button
+                        onClick={handleDownloadFeatured}
+                        disabled={featuredArticles.length === 0}
+                        className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-slate-200 disabled:opacity-30"
+                        title="Download JSON"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {loadingFeatured ? (
+                    <div className="text-center py-4">
+                      <RefreshCw className="w-5 h-5 animate-spin text-slate-500 mx-auto" />
+                    </div>
+                  ) : featuredArticles.length === 0 ? (
+                    <p className="text-sm text-slate-500 text-center py-4">No featured articles yet. Create one above.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {featuredArticles.map((article) => (
+                        <div key={article.id} className="flex items-start gap-3 p-3 bg-slate-900/50 rounded-lg border border-slate-700/40">
+                          {article.imageUrl && (
+                            <img
+                              src={article.imageUrl}
+                              alt=""
+                              className="w-16 h-12 rounded-lg object-cover flex-shrink-0"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-200 truncate">{article.title}</p>
+                            {article.description && (
+                              <p className="text-xs text-slate-400 truncate mt-0.5">{article.description}</p>
+                            )}
+                            <div className="flex items-center gap-2 mt-1">
+                              {article.category && (
+                                <span className="text-[10px] px-1.5 py-0.5 bg-slate-700/50 rounded text-slate-400">{article.category}</span>
+                              )}
+                              <span className="text-[10px] text-slate-500">
+                                {new Date(article.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteFeatured(article.id)}
+                            className="p-1.5 hover:bg-red-500/20 rounded-lg transition-colors text-slate-500 hover:text-red-400 flex-shrink-0"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Training Materials Section */}
