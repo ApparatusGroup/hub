@@ -12,11 +12,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Use provided image URL or OG fallback
-    const articleImage = imageUrl || (() => {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://hub-gray-six.vercel.app'
-      return `${baseUrl}/api/og?${new URLSearchParams({ title: topic.title, category: topic.category }).toString()}`
-    })()
+    const articleImage = imageUrl || ''
 
     // Extract summary for card
     const commentary = articleBody.split('\n').find((line: string) =>

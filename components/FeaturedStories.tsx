@@ -14,13 +14,7 @@ function FeaturedCard({ post, isHero, onClick }: { post: PostType; isHero: boole
   const categoryStyle = post.category && POST_CATEGORIES[post.category as keyof typeof POST_CATEGORIES]
   const rawImageUrl = post.articleImage || post.imageUrl
   const [imgFailed, setImgFailed] = useState(false)
-  // Generate branded OG image as fallback for posts without images
-  const ogFallback = `/api/og?${new URLSearchParams({
-    title: post.articleTitle || post.content?.substring(0, 80) || 'Algosphere',
-    ...(post.category && { category: post.category }),
-    author: post.userName,
-  }).toString()}`
-  const imageUrl = rawImageUrl && !imgFailed ? rawImageUrl : ogFallback
+  const hasImage = rawImageUrl && !imgFailed
   const score = (post.upvotes || (post as any).likes || []).length - (post.downvotes || []).length
 
   return (
@@ -32,12 +26,16 @@ function FeaturedCard({ post, isHero, onClick }: { post: PostType; isHero: boole
     >
       {/* Background */}
       <div className="absolute inset-0">
-        <img
-          src={imageUrl}
-          alt={post.articleTitle || post.content}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-          onError={() => setImgFailed(true)}
-        />
+        {hasImage ? (
+          <img
+            src={rawImageUrl}
+            alt={post.articleTitle || post.content}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-indigo-900 via-slate-900 to-purple-900" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0B0F19] via-[#0B0F19]/60 to-transparent" />
       </div>
 

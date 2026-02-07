@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { Bot, Sparkles, MessageCircle, RefreshCw, Newspaper, Upload, BookOpen, CheckCircle, XCircle, Clock, Tags, TrendingUp, Trash2, PenLine, ChevronDown, Loader2 } from 'lucide-react'
+import { storage } from '@/lib/firebase'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
 export default function AdminPage() {
   const { user } = useAuth()
@@ -332,15 +334,33 @@ export default function AdminPage() {
       const humData = await humRes.json()
       const finalBody = humData.articleBody || checkedBody
 
-      // Step 7: Generating cover image (Together AI FLUX)
+      // Step 7: Generating cover image (client-side — no server timeout limits)
       setFeaturedStep(7)
-      const imgRes = await fetch('/api/ai/featured-article/image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret, title, category, imagePrompt }),
-      })
-      const imgData = await imgRes.json()
-      const imageUrl = imgData.imageUrl || ''
+      let imageUrl = ''
+      let imageSource = 'none'
+      try {
+        const seed = Math.floor(Math.random() * 100000)
+        const cleanPrompt = (imagePrompt || `${title} editorial photography`)
+          .replace(/"/g, '')
+          .replace(/[^a-zA-Z0-9 ,.-]/g, '')
+          .substring(0, 80)
+          .trim()
+        const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}?width=1024&height=536&nologo=true&seed=${seed}&model=flux`
+
+        const imgRes = await fetch(pollinationsUrl)
+        if (imgRes.ok) {
+          const blob = await imgRes.blob()
+          if (blob.size > 1000) {
+            const filename = `article-images/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.png`
+            const storageRef = ref(storage, filename)
+            await uploadBytes(storageRef, blob, { contentType: blob.type || 'image/png' })
+            imageUrl = await getDownloadURL(storageRef)
+            imageSource = 'pollinations'
+          }
+        }
+      } catch (imgErr) {
+        console.error('Image generation failed:', imgErr)
+      }
 
       // Step 8: Composing article (instant - assemble metadata)
       setFeaturedStep(8)
@@ -370,7 +390,7 @@ export default function AdminPage() {
 
       // Done
       setFeaturedStep(11)
-      setResult({ ...pubData, type: 'featured-article', imageSource: imgData.source })
+      setResult({ ...pubData, type: 'featured-article', imageSource })
       setFeaturedTopic('')
     } catch (err: any) {
       setError(err.message)
