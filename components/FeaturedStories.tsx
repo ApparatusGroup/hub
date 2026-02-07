@@ -13,8 +13,10 @@ interface FeaturedStoriesProps {
 function FeaturedCard({ post, isHero, onClick }: { post: PostType; isHero: boolean; onClick: () => void }) {
   const categoryStyle = post.category && POST_CATEGORIES[post.category as keyof typeof POST_CATEGORIES]
   const rawImageUrl = post.articleImage || post.imageUrl
+  // Skip old OG pattern URLs and pollinations URLs that never loaded
+  const isRealImage = rawImageUrl && !rawImageUrl.includes('/api/og') && !rawImageUrl.includes('pollinations.ai')
   const [imgFailed, setImgFailed] = useState(false)
-  const hasImage = rawImageUrl && !imgFailed
+  const hasImage = isRealImage && !imgFailed
   const score = (post.upvotes || (post as any).likes || []).length - (post.downvotes || []).length
 
   return (
