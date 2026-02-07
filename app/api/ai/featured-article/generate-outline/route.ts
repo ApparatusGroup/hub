@@ -32,7 +32,7 @@ Return ONLY the outline and IMAGE_PROMPT line. No commentary.`
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-haiku-3.5',
+        model: 'anthropic/claude-3.5-haiku',
         messages: [{ role: 'user', content: outlinePrompt }],
         max_tokens: 400,
         temperature: 0.9,
