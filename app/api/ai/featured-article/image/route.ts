@@ -5,8 +5,6 @@ import crypto from 'crypto'
 // Image generation + upload needs more than the default 10s
 export const maxDuration = 25
 
-const TOGETHER_API_URL = 'https://api.together.xyz/v1/images/generations'
-
 async function uploadToStorage(imageBuffer: Buffer): Promise<string> {
   const token = crypto.randomUUID()
   const filename = `article-images/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.png`
@@ -32,46 +30,57 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const apiKey = process.env.OPENROUTER_API_KEY || ''
     const prompt = (providedPrompt || `${title} editorial photography`).substring(0, 200)
 
-    // Option 1: Together AI FLUX (if key is set)
-    const togetherKey = process.env.TOGETHER_API_KEY || ''
-    if (togetherKey) {
+    // Generate image via OpenRouter (DALL-E 3)
+    if (apiKey) {
       try {
-        const response = await fetch(TOGETHER_API_URL, {
+        const response = await fetch('https://openrouter.ai/api/v1/images/generations', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${togetherKey}`,
+            'Authorization': `Bearer ${apiKey}`,
           },
           body: JSON.stringify({
-            model: 'black-forest-labs/FLUX.1-schnell',
-            prompt: `${prompt}, editorial photography, high quality, 4k`,
-            width: 1200,
-            height: 630,
-            steps: 4,
+            model: 'openai/dall-e-3',
+            prompt: `${prompt}. Photorealistic editorial photograph, no text, no logos, no watermarks.`,
             n: 1,
-            response_format: 'b64_json',
+            size: '1792x1024',
           }),
         })
 
         if (response.ok) {
           const data = await response.json()
-          const b64 = data.data?.[0]?.b64_json
-          if (b64) {
-            const buffer = Buffer.from(b64, 'base64')
+          const imageData = data.data?.[0]
+
+          // DALL-E 3 returns a URL
+          if (imageData?.url) {
+            const imgRes = await fetch(imageData.url)
+            if (imgRes.ok) {
+              const buffer = Buffer.from(await imgRes.arrayBuffer())
+              if (buffer.length > 1000) {
+                const imageUrl = await uploadToStorage(buffer)
+                return NextResponse.json({ imageUrl, imagePrompt: prompt, source: 'openrouter-dalle3' })
+              }
+            }
+          }
+
+          // Or it might return base64
+          if (imageData?.b64_json) {
+            const buffer = Buffer.from(imageData.b64_json, 'base64')
             const imageUrl = await uploadToStorage(buffer)
-            return NextResponse.json({ imageUrl, imagePrompt: prompt, source: 'together-flux' })
+            return NextResponse.json({ imageUrl, imagePrompt: prompt, source: 'openrouter-dalle3' })
           }
         } else {
-          console.error('Together AI error:', await response.text())
+          console.error('OpenRouter image gen error:', await response.text())
         }
       } catch (err) {
-        console.error('Together AI failed:', err)
+        console.error('OpenRouter image gen failed:', err)
       }
     }
 
-    // Option 2: Pollinations — fetch the actual image and upload to Firebase Storage
+    // Fallback: Pollinations (free, no key) — fetch and store permanently
     const seed = Math.floor(Math.random() * 100000)
     const cleanPrompt = prompt
       .replace(/"/g, '')
@@ -88,9 +97,7 @@ export async function POST(request: Request) {
       clearTimeout(timeout)
 
       if (imgRes.ok) {
-        const arrayBuf = await imgRes.arrayBuffer()
-        const buffer = Buffer.from(arrayBuf)
-
+        const buffer = Buffer.from(await imgRes.arrayBuffer())
         if (buffer.length > 1000) {
           const imageUrl = await uploadToStorage(buffer)
           return NextResponse.json({ imageUrl, imagePrompt: cleanPrompt, source: 'pollinations' })
@@ -100,7 +107,6 @@ export async function POST(request: Request) {
       console.error('Pollinations fetch timed out or failed:', err)
     }
 
-    // Nothing worked — return empty
     return NextResponse.json({ imageUrl: '', imagePrompt: prompt, source: 'none' })
   } catch (error) {
     console.error('Error generating image:', error)
